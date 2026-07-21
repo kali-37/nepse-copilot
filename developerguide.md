@@ -197,7 +197,7 @@ refresh, or a SEBON rate change) without code edits.
 - Use the typed read helpers (`price_history`, `reconciled_history`,
   `bars_for_date`, `paper_trades`) rather than raw SQL in callers.
 - All writes are parameterized (no string interpolation) — keep it that way.
-- If you add a table, add it to `SCHEMA`, add typed read/write methods, and a test
+- If you add a table, add a migration to `nepse_trader/storage/migrations.py`, add typed read/write methods, and a test
   in `tests/test_storage.py`.
 
 ---

@@ -22,87 +22,7 @@ from nepse_trader.models import (
     Signal,
     SourceName,
 )
-
-SCHEMA = """
-CREATE TABLE IF NOT EXISTS price_bars (
-    symbol TEXT NOT NULL,
-    business_date TEXT NOT NULL,
-    open REAL, high REAL, low REAL, close REAL, previous_close REAL,
-    volume INTEGER, turnover REAL, trades INTEGER,
-    source TEXT NOT NULL,
-    fetched_at TEXT,
-    PRIMARY KEY (symbol, business_date, source)
-);
-CREATE INDEX IF NOT EXISTS idx_price_symbol_date ON price_bars(symbol, business_date);
-
-CREATE TABLE IF NOT EXISTS index_values (
-    name TEXT NOT NULL,
-    business_date TEXT NOT NULL,
-    value REAL NOT NULL,
-    change REAL, change_percent REAL,
-    source TEXT NOT NULL,
-    fetched_at TEXT,
-    PRIMARY KEY (name, business_date, source)
-);
-
-CREATE TABLE IF NOT EXISTS floorsheet (
-    contract_id TEXT,
-    symbol TEXT NOT NULL,
-    business_date TEXT NOT NULL,
-    buyer_broker TEXT, seller_broker TEXT,
-    quantity INTEGER NOT NULL, rate REAL NOT NULL, amount REAL,
-    source TEXT NOT NULL,
-    PRIMARY KEY (contract_id, symbol, business_date, source)
-);
-
-CREATE TABLE IF NOT EXISTS reconciled_prices (
-    symbol TEXT NOT NULL,
-    business_date TEXT NOT NULL,
-    open REAL, high REAL, low REAL, close REAL, previous_close REAL,
-    volume INTEGER, turnover REAL,
-    sources_agreeing TEXT, sources_present TEXT, disputed_fields TEXT,
-    confidence REAL,
-    PRIMARY KEY (symbol, business_date)
-);
-
-CREATE TABLE IF NOT EXISTS signals (
-    symbol TEXT NOT NULL,
-    business_date TEXT NOT NULL,
-    strategy TEXT NOT NULL,
-    action TEXT NOT NULL,
-    strength REAL,
-    reason TEXT,
-    price REAL,
-    PRIMARY KEY (symbol, business_date, strategy)
-);
-
-CREATE TABLE IF NOT EXISTS paper_trades (
-    trade_id TEXT PRIMARY KEY,
-    symbol TEXT NOT NULL,
-    side TEXT NOT NULL,
-    business_date TEXT NOT NULL,
-    quantity INTEGER NOT NULL,
-    price REAL NOT NULL,
-    gross_amount REAL,
-    broker_commission REAL,
-    sebon_fee REAL,
-    dp_charge REAL,
-    cgt REAL,
-    net_amount REAL,
-    strategy TEXT
-);
-
-CREATE TABLE IF NOT EXISTS ingest_log (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    source TEXT NOT NULL,
-    endpoint TEXT,
-    business_date TEXT,
-    rows INTEGER,
-    status TEXT,
-    message TEXT,
-    ran_at TEXT
-);
-"""
+from nepse_trader.storage.migrations import run_pending
 
 
 def _d(value: date | str | None) -> str | None:
@@ -125,7 +45,7 @@ class Storage:
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL;")
         self._conn.execute("PRAGMA foreign_keys=ON;")
-        self._conn.executescript(SCHEMA)
+        run_pending(self._conn)
         self._conn.commit()
 
     def close(self) -> None:

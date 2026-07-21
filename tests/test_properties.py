@@ -199,16 +199,23 @@ def test_reconcile_confidence_range(bars: list[PriceBar]):
 
 @given(bars=st.lists(_price_bar_strategy, min_size=1, max_size=20))
 def test_reconcile_close_within_source_range(bars: list[PriceBar]):
-    """Reconciled close lies within the min/max of AGREEING source close values."""
+    """Reconciled close lies near the min/max of AGREEING source close values."""
     reconciled = reconcile_bars(bars)
     for r in reconciled:
         if r.close is not None and r.sources_agreeing:
             agreeing = r.sources_agreeing
             agreeing_closes = [
-                b.close for b in bars if b.close is not None and b.source in agreeing
+                b.close for b in bars
+                if b.close is not None and b.source in agreeing
             ]
             if agreeing_closes:
-                assert min(agreeing_closes) <= r.close <= max(agreeing_closes) + 1e-9
+                # Floating-point summation can shift the mean slightly from the
+                # input values, so we use a relative tolerance of 1e-6.
+                lo, hi = min(agreeing_closes), max(agreeing_closes)
+                tol = max(abs(lo), abs(hi), 1.0) * 1e-6
+                assert lo - tol <= r.close <= hi + tol, (
+                    f"close={r.close} outside [{lo}, {hi}] ± {tol}"
+                )
 
 
 @given(bars=st.lists(_price_bar_strategy, min_size=1, max_size=20))
