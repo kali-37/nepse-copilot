@@ -7,12 +7,13 @@ catching edge cases example-based tests miss.
 from __future__ import annotations
 
 from datetime import date
+from decimal import Decimal as _D
 
 from hypothesis import assume, given
 from hypothesis import strategies as st
 from hypothesis.strategies import floats, integers
 
-from nepse_trader.analysis.costs import CostEngine, _round2
+from nepse_trader.analysis.costs import CostEngine, _to_money
 from nepse_trader.analysis.indicators import bollinger_bands, ema, rsi, sma
 from nepse_trader.ingest.reconcile import reconcile_bars
 from nepse_trader.models import OrderSide, PriceBar, SourceName
@@ -34,7 +35,7 @@ def test_commission_monotonic(amount: float):
     comm = e.broker_commission(amount)
     # At double the amount, commission must be >= original.
     comm2 = e.broker_commission(amount * 2)
-    assert comm2 >= comm - 1e-9, (
+    assert comm2 >= comm - _D("1e-9"), (
         f"commission({amount * 2:.2f})={comm2:.4f} < commission({amount:.2f})={comm:.4f}"
     )
 
@@ -44,7 +45,7 @@ def test_commission_floor(amount: float):
     """Broker commission is never below the minimum."""
     e = CostEngine()
     comm = e.broker_commission(amount)
-    assert comm >= e.model.broker_min_commission - 1e-9
+    assert comm >= _D(str(e.model.broker_min_commission)) - _D("1e-9")
     assert comm >= 0
 
 
@@ -54,7 +55,7 @@ def test_buy_net_greater_than_gross(price: float, qty: int):
     assume(qty * price < 1e12)
     e = CostEngine()
     bd = e.compute(OrderSide.BUY, price, qty)
-    assert bd.net_amount >= bd.gross_amount - 1e-9
+    assert bd.net_amount >= bd.gross_amount - _D("1e-9")
     assert bd.total_fees >= 0
 
 
@@ -64,8 +65,8 @@ def test_fees_breakdown_sums_to_total(price: float, qty: int):
     assume(qty * price < 1e12)
     e = CostEngine()
     bd = e.compute(OrderSide.BUY, price, qty)
-    expected = _round2(bd.broker_commission + bd.sebon_fee + bd.dp_charge + bd.cgt)
-    assert abs(bd.total_fees - expected) < 1e-9, f"total_fees={bd.total_fees} != {expected}"
+    expected = _to_money(bd.broker_commission + bd.sebon_fee + bd.dp_charge + bd.cgt)
+    assert bd.total_fees == expected, f"total_fees={bd.total_fees} != {expected}"
 
 
 @given(price=_price_amounts, qty=_quantities)
@@ -74,7 +75,7 @@ def test_cgt_zero_on_buy(price: float, qty: int):
     assume(qty * price < 1e12)
     e = CostEngine()
     bd = e.compute(OrderSide.BUY, price, qty)
-    assert bd.cgt == 0.0
+    assert bd.cgt == 0
 
 
 @given(
@@ -90,7 +91,7 @@ def test_cgt_non_negative(buy_price: float, sell_price: float, qty: int, basis_m
     e = CostEngine()
     buy_cost = e.compute(OrderSide.BUY, buy_price, qty).net_amount
     sell = e.compute(
-        OrderSide.SELL, sell_price, qty, buy_cost_basis=buy_cost * basis_mult, holding_days=100
+        OrderSide.SELL, sell_price, qty, buy_cost_basis=float(buy_cost) * basis_mult, holding_days=100
     )
     assert sell.cgt >= 0
 
@@ -102,7 +103,7 @@ def test_effective_buy_cost_per_share(price: float, qty: int):
     e = CostEngine()
     bd = e.compute(OrderSide.BUY, price, qty)
     eff = e.effective_buy_cost_per_share(price, qty)
-    assert abs(eff - bd.net_amount / qty) < 1e-9
+    assert eff == _to_money(bd.net_amount / qty)
 
 
 # ---------------------------------------------------------------------------

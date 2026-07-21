@@ -1,12 +1,16 @@
 """Core data contracts shared across ingestion, analysis, and trading.
 
-All monetary values are in NPR. All dates are NEPSE trading dates (NPT). We use
-Decimal-free floats internally for speed but round at presentation/cost layers.
+All monetary values are in NPR. All dates are NEPSE trading dates (NPT).
+
+Monetary fields (PaperTrade, Position) use :class:`~decimal.Decimal` for
+paisa-precise accounting. Price fields in PriceBar/ReconciledPrice remain
+float — they are market observations, not a ledger.
 """
 
 from __future__ import annotations
 
 from datetime import date, datetime
+from decimal import Decimal
 from enum import Enum
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -161,13 +165,13 @@ class PaperTrade(_Base):
     side: OrderSide
     business_date: date
     quantity: int
-    price: float
-    gross_amount: float
-    broker_commission: float
-    sebon_fee: float
-    dp_charge: float
-    cgt: float = 0.0
-    net_amount: float = Field(
+    price: Decimal
+    gross_amount: Decimal
+    broker_commission: Decimal
+    sebon_fee: Decimal
+    dp_charge: Decimal
+    cgt: Decimal = Decimal("0.00")
+    net_amount: Decimal = Field(
         description="Cash impact incl. all fees (signed by side handled by ledger)"
     )
     strategy: str | None = None
@@ -181,7 +185,7 @@ class PaperTrade(_Base):
 class Position(_Base):
     symbol: str
     quantity: int = 0
-    avg_cost: float = 0.0  # per-share cost incl. buy-side fees (WAC)
+    avg_cost: Decimal = Decimal("0.00")
 
     @field_validator("symbol")
     @classmethod
@@ -189,5 +193,5 @@ class Position(_Base):
         return v.strip().upper()
 
     @property
-    def cost_basis(self) -> float:
-        return self.quantity * self.avg_cost
+    def cost_basis(self) -> Decimal:
+        return Decimal(str(self.quantity)) * self.avg_cost

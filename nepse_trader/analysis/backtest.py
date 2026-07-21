@@ -153,9 +153,9 @@ class Backtester:
                     qty = self._size_buy(cash, fill)
                     if qty > 0:
                         bd = self.cost_engine.compute(OrderSide.BUY, fill, qty)
-                        cash -= bd.net_amount
+                        cash -= float(bd.net_amount)
                         shares = qty
-                        entry_basis = bd.net_amount
+                        entry_basis = float(bd.net_amount)
                         entry_price = fill
                         entry_date = bar.business_date
                 elif sig.action is SignalAction.SELL and shares > 0:
@@ -168,8 +168,8 @@ class Backtester:
                         buy_cost_basis=entry_basis,
                         holding_days=holding_days,
                     )
-                    cash += bd.net_amount
-                    pnl = bd.net_amount - entry_basis
+                    cash += float(bd.net_amount)
+                    pnl = float(bd.net_amount) - entry_basis
                     return_pct = (pnl / entry_basis * 100.0) if entry_basis else 0.0
                     trades.append(
                         {
@@ -182,8 +182,8 @@ class Backtester:
                             "pnl": round(pnl, 2),
                             "return_pct": round(return_pct, 4),
                             "holding_days": holding_days,
-                            "fees": round(bd.total_fees, 2),
-                            "cgt": round(bd.cgt, 2),
+                            "fees": round(float(bd.total_fees), 2),
+                            "cgt": round(float(bd.cgt), 2),
                         }
                     )
                     shares = 0
@@ -211,8 +211,8 @@ class Backtester:
                 buy_cost_basis=entry_basis,
                 holding_days=holding_days,
             )
-            cash += bd.net_amount
-            pnl = bd.net_amount - entry_basis
+            cash += float(bd.net_amount)
+            pnl = float(bd.net_amount) - entry_basis
             return_pct = (pnl / entry_basis * 100.0) if entry_basis else 0.0
             trades.append(
                 {
@@ -225,8 +225,8 @@ class Backtester:
                     "pnl": round(pnl, 2),
                     "return_pct": round(return_pct, 4),
                     "holding_days": holding_days,
-                    "fees": round(bd.total_fees, 2),
-                    "cgt": round(bd.cgt, 2),
+                    "fees": round(float(bd.total_fees), 2),
+                    "cgt": round(float(bd.cgt), 2),
                 }
             )
             shares = 0

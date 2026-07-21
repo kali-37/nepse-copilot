@@ -210,13 +210,13 @@ class Storage:
                     t.side.value,
                     _d(t.business_date),
                     t.quantity,
-                    t.price,
-                    t.gross_amount,
-                    t.broker_commission,
-                    t.sebon_fee,
-                    t.dp_charge,
-                    t.cgt,
-                    t.net_amount,
+                    str(t.price),
+                    str(t.gross_amount),
+                    str(t.broker_commission),
+                    str(t.sebon_fee),
+                    str(t.dp_charge),
+                    str(t.cgt),
+                    str(t.net_amount),
                     t.strategy,
                 ),
             )
@@ -336,6 +336,8 @@ class Storage:
 
     def paper_trades(self) -> list[PaperTrade]:
         """All recorded paper trades in execution order (for portfolio replay)."""
+        from decimal import Decimal as _D
+
         cur = self._conn.execute("SELECT * FROM paper_trades ORDER BY rowid")
         out: list[PaperTrade] = []
         for r in cur.fetchall():
@@ -346,13 +348,13 @@ class Storage:
                     side=OrderSide(r["side"]),
                     business_date=date.fromisoformat(r["business_date"]),
                     quantity=r["quantity"],
-                    price=r["price"],
-                    gross_amount=r["gross_amount"],
-                    broker_commission=r["broker_commission"],
-                    sebon_fee=r["sebon_fee"],
-                    dp_charge=r["dp_charge"],
-                    cgt=r["cgt"],
-                    net_amount=r["net_amount"],
+                    price=_D(str(r["price"])),
+                    gross_amount=_D(str(r["gross_amount"])),
+                    broker_commission=_D(str(r["broker_commission"])),
+                    sebon_fee=_D(str(r["sebon_fee"])),
+                    dp_charge=_D(str(r["dp_charge"])),
+                    cgt=_D(str(r["cgt"])),
+                    net_amount=_D(str(r["net_amount"])),
                     strategy=r["strategy"],
                 )
             )
