@@ -252,3 +252,109 @@ def test_signals_markdown_one_line_per_signal(places):
     md = signals_markdown(sigs)
     body_lines = [ln for ln in md.splitlines() if ln.startswith("| NABIL")]
     assert len(body_lines) == 2
+
+
+# ---------------------------------------------------------------------------
+# Alerting backend tests (mocked network)
+# ---------------------------------------------------------------------------
+
+
+def test_alerter_send_telegram_ok(monkeypatch):
+    def fake_post(url, json, timeout):
+        return httpx.Response(200, json={"ok": True})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    assert Alerter.send_telegram("token123", "chat456", "Hello") is True
+
+
+def test_alerter_send_telegram_fail(monkeypatch):
+    def fake_post(url, json, timeout):
+        return httpx.Response(200, json={"ok": False})
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    assert Alerter.send_telegram("token123", "chat456", "Hello") is False
+
+
+def test_alerter_send_telegram_http_error(monkeypatch):
+    def fake_post(url, json, timeout):
+        raise httpx.ConnectError("fail")
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    assert Alerter.send_telegram("token123", "chat456", "Hello") is False
+
+
+def test_alerter_send_discord_ok(monkeypatch):
+    def fake_post(url, json, timeout):
+        return httpx.Response(204)
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    assert Alerter.send_discord("https://discord.webhook/xyz", "Hello") is True
+
+
+def test_alerter_send_discord_fail(monkeypatch):
+    def fake_post(url, json, timeout):
+        return httpx.Response(400)
+
+    monkeypatch.setattr(httpx, "post", fake_post)
+    assert Alerter.send_discord("https://discord.webhook/xyz", "Hello") is False
+
+
+def test_alerter_send_email_success(monkeypatch):
+    class FakeSMTP:
+        def __init__(self, host, port, timeout):
+            pass
+
+        def starttls(self):
+            pass
+
+        def login(self, user, pwd):
+            pass
+
+        def send_message(self, msg):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
+    monkeypatch.setattr("smtplib.SMTP", FakeSMTP)
+    assert (
+        Alerter.send_email(
+            "smtp.example.com",
+            587,
+            "from@example.com",
+            "to@example.com",
+            "Test",
+            "Body",
+            username="user",
+            password="pass",
+        )
+        is True
+    )
+
+
+def test_alerter_send_email_failure(monkeypatch):
+    class BrokenSMTP:
+        def __init__(self, host, port, timeout):
+            raise ConnectionError("refused")
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            pass
+
+    monkeypatch.setattr("smtplib.SMTP", BrokenSMTP)
+    assert (
+        Alerter.send_email(
+            "smtp.example.com",
+            587,
+            "from@example.com",
+            "to@example.com",
+            "Test",
+            "Body",
+        )
+        is False
+    )

@@ -189,14 +189,19 @@ def write_markdown_report(path: str | Path, sections: dict[str, str]) -> None:
 
 
 class Alerter:
-    """Optional webhook alerter. With no webhook configured it never touches the network."""
+    """Pluggable alert backends: Telegram, Discord, SMTP, and generic webhook.
+
+    Every method is **mockable**: tests monkeypatch the network call rather than
+    reaching real endpoints. No new runtime dependencies beyond what's already
+    installed.
+    """
 
     def __init__(self, webhook_url: str | None = None):
         self.webhook_url = webhook_url
 
-    def _post(self, payload: dict) -> httpx.Response:
+    def _post(self, payload: dict, url: str | None = None) -> httpx.Response:
         """Thin POST wrapper kept separate so tests can monkeypatch it."""
-        return httpx.post(self.webhook_url, json=payload, timeout=10.0)
+        return httpx.post(url or self.webhook_url, json=payload, timeout=10.0)
 
     def send(self, title: str, body: str) -> bool:
         """POST the alert if a webhook is set; return success. No webhook -> False, no call."""
@@ -208,6 +213,64 @@ class Alerter:
         except httpx.HTTPError:
             return False
         return 200 <= response.status_code < 300
+
+    # -- Telegram -----------------------------------------------------------
+
+    @staticmethod
+    def send_telegram(token: str, chat_id: str, text: str) -> bool:
+        """Send a plain-text message via Telegram Bot API."""
+        url = f"https://api.telegram.org/bot{token}/sendMessage"
+        payload = {"chat_id": chat_id, "text": text, "parse_mode": "HTML"}
+        try:
+            resp = httpx.post(url, json=payload, timeout=15.0)
+        except httpx.HTTPError:
+            return False
+        return resp.status_code == 200 and resp.json().get("ok") is True
+
+    # -- Discord ------------------------------------------------------------
+
+    @staticmethod
+    def send_discord(webhook_url: str, text: str) -> bool:
+        """Send a message to a Discord channel via webhook."""
+        payload = {"content": text}
+        try:
+            resp = httpx.post(webhook_url, json=payload, timeout=15.0)
+        except httpx.HTTPError:
+            return False
+        return resp.status_code in (200, 204)
+
+    # -- SMTP / Email -------------------------------------------------------
+
+    @staticmethod
+    def send_email(
+        smtp_host: str,
+        smtp_port: int,
+        from_addr: str,
+        to_addr: str,
+        subject: str,
+        body: str,
+        username: str | None = None,
+        password: str | None = None,
+        use_tls: bool = True,
+    ) -> bool:
+        """Send an email via SMTP. Returns True on success."""
+        import smtplib
+        from email.mime.text import MIMEText
+
+        msg = MIMEText(body, "plain", "utf-8")
+        msg["Subject"] = subject
+        msg["From"] = from_addr
+        msg["To"] = to_addr
+        try:
+            with smtplib.SMTP(smtp_host, smtp_port, timeout=15) as server:
+                if use_tls:
+                    server.starttls()
+                if username and password:
+                    server.login(username, password)
+                server.send_message(msg)
+            return True
+        except Exception:
+            return False
 
 
 def print_signals(signals: list[Signal], console: Console | None = None) -> None:
