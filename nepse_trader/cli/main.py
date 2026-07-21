@@ -145,20 +145,24 @@ def sources() -> None:
 
 
 @app.command()
+@_safe_run
 def ingest(
     date_: str = typer.Option(None, "--date", help="Trading date YYYY-MM-DD (default: today)"),
     all_sources: bool = typer.Option(
         False, "--all-sources", help="Pull from EVERY configured source, ignore enable flags"
     ),
+    async_: bool = typer.Option(False, "--async", help="Fetch from all sources concurrently"),
 ) -> None:
     """Pull public data from sources into the local database.
 
     By default only the sources enabled in config are used. --all-sources scrapes
     every site and keeps whatever responds (resilient to any one site being down).
+    Use --async to fetch from all sources concurrently (faster but more memory).
     """
     bd = _parse_date(date_)
     pipe = DailyPipeline(include_all_sources=all_sources)
-    rep = pipe.ingest(bd)
+    import asyncio
+    rep = asyncio.run(pipe.async_ingest(bd)) if async_ else pipe.ingest(bd)
     console.print_json(json.dumps(rep.as_dict()))
     if rep.errors:
         console.print(f"[yellow]sources with errors:[/yellow] {', '.join(rep.errors)}")

@@ -9,6 +9,7 @@ skipped, never fatal.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from dataclasses import dataclass, field
 from datetime import date
@@ -139,6 +140,37 @@ class DailyPipeline:
             report.total_indices += ni
             self.storage.log_ingest(sname, "prices", business_date, n, "ok")
         return report
+
+    async def async_ingest(self, business_date: date | None = None) -> IngestReport:
+        """Async variant: fetches from all sources concurrently."""
+        report = IngestReport(business_date=business_date)
+        async def _fetch_one(client):
+            sname = client.name.value
+            bars = await self._safe_async_fetch(
+                client.async_fetch_prices, business_date, sname, "prices", report
+            )
+            indices = await self._safe_async_fetch(
+                client.async_fetch_indices, business_date, sname, "indices", report
+            )
+            n = self.storage.upsert_price_bars(bars)
+            ni = self.storage.upsert_index_values(indices)
+            report.per_source[sname] = report.per_source.get(sname, 0) + n
+            report.total_bars += n
+            report.total_indices += ni
+            self.storage.log_ingest(sname, "prices", business_date, n, "ok")
+
+        await asyncio.gather(*[_fetch_one(c) for c in self.clients])
+        return report
+
+    async def _safe_async_fetch(self, fn, business_date, sname, kind, report) -> list:
+        try:
+            result = await fn(business_date)
+            return result or []
+        except Exception as exc:
+            report.errors[f"{sname}:{kind}"] = str(exc)
+            self.storage.log_ingest(sname, kind, business_date, 0, "error", str(exc))
+            log.warning("ingest %s failed for %s: %s", kind, sname, exc)
+            return []
 
     def _safe_fetch(self, fn, business_date, sname, kind, report) -> list:
         """Call a client fetch method, isolating its failure to that data type."""

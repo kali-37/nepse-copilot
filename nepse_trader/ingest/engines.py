@@ -50,6 +50,16 @@ class FetchEngine:
     ) -> RawResponse:
         raise NotImplementedError
 
+    async def async_raw_request(
+        self,
+        url: str,
+        method: str = "GET",
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        json_body: Any | None = None,
+    ) -> RawResponse:
+        raise NotImplementedError
+
     def close(self) -> None:  # pragma: no cover - trivial
         pass
 
@@ -65,10 +75,31 @@ class HttpxEngine(FetchEngine):
             headers={"User-Agent": settings.user_agent},
             follow_redirects=True,
         )
+        self._async_client: httpx.AsyncClient | None = None
 
     def raw_request(self, url, method="GET", params=None, headers=None, json_body=None):
         try:
             resp = self.client.request(
+                method.upper(), url, params=params, headers=headers, json=json_body
+            )
+        except httpx.TransportError as exc:
+            raise TransportFailure(str(exc)) from exc
+        return RawResponse(
+            status_code=resp.status_code,
+            text=resp.text,
+            url=str(resp.url),
+            headers=dict(resp.headers),
+        )
+
+    async def async_raw_request(self, url, method="GET", params=None, headers=None, json_body=None):
+        if self._async_client is None:
+            self._async_client = httpx.AsyncClient(
+                timeout=self.settings.request_timeout,
+                headers={"User-Agent": self.settings.user_agent},
+                follow_redirects=True,
+            )
+        try:
+            resp = await self._async_client.request(
                 method.upper(), url, params=params, headers=headers, json=json_body
             )
         except httpx.TransportError as exc:

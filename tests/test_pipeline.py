@@ -244,3 +244,12 @@ def test_full_ingest_reconcile_signal_backtest_chain(pipe):
     sections, summary = pipe.daily_report(d, strategies=["sma_cross"], top=5, min_bars=60)
     assert summary["symbols"] >= 1
     assert summary["backtests"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_async_ingest_matches_sync(pipe):
+    """Async ingest should produce the same result as sync."""
+    rep_async = await pipe.async_ingest(START)
+    assert rep_async.total_bars == 2
+    assert rep_async.total_indices == 2
+    assert not rep_async.errors

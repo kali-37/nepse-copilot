@@ -97,3 +97,25 @@ def test_baseclient_raises_fetcherror_on_404():
     client = BaseClient(settings=_settings(), engine=_StatusEngine(404))
     with pytest.raises(FetchError):
         client.fetch("https://example.test/z")
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_fetch_roundtrip():
+    respx.get("https://example.test/async").mock(
+        return_value=httpx.Response(200, text="async-ok")
+    )
+    client = BaseClient(settings=_settings(), client=httpx.Client())
+    result = await client.async_fetch("https://example.test/async")
+    assert result.text == "async-ok"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_async_fetch_raises_on_retryable():
+    respx.get("https://example.test/async-err").mock(
+        return_value=httpx.Response(500)
+    )
+    client = BaseClient(settings=_settings(max_retries=1), client=httpx.Client())
+    with pytest.raises(httpx.TransportError):
+        await client.async_fetch("https://example.test/async-err")

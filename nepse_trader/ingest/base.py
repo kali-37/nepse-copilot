@@ -80,6 +80,17 @@ class _HostThrottle:
                 sleep(self.min_interval - elapsed)
         self._last[host] = clock()
 
+    async def async_wait(self, host: str, clock=time.monotonic) -> None:
+        import asyncio
+
+        last = self._last.get(host)
+        now = clock()
+        if last is not None:
+            elapsed = now - last
+            if elapsed < self.min_interval:
+                await asyncio.sleep(self.min_interval - elapsed)
+        self._last[host] = clock()
+
 
 class BaseClient:
     """Wraps httpx with throttling, retries, and optional raw-response caching."""
@@ -130,6 +141,21 @@ class BaseClient:
             self._cache(url, result)
         return result
 
+    async def async_fetch(
+        self,
+        url: str,
+        method: str = "GET",
+        params: dict[str, Any] | None = None,
+        headers: dict[str, str] | None = None,
+        json_body: Any | None = None,
+    ) -> FetchResult:
+        host = httpx.URL(url).host or "unknown"
+        await self.throttle.async_wait(host)
+        result = await self._async_do_request(url, method, params, headers, json_body)
+        if self.cache_raw:
+            self._cache(url, result)
+        return result
+
     @retry(
         retry=retry_if_exception_type((httpx.TransportError, TransportFailure, RateLimitedError)),
         wait=wait_exponential(multiplier=1.5, min=2, max=30),
@@ -144,6 +170,51 @@ class BaseClient:
         headers: dict[str, str] | None,
         json_body: Any | None,
     ) -> FetchResult:
+        resp = self.engine.raw_request(url, method, params, headers, json_body)
+        if resp.status_code in (429, 403):
+            raise RateLimitedError(
+                f"{resp.status_code} from {url}: backing off (we do not bypass limits)"
+            )
+        if resp.status_code >= 500:
+            raise httpx.TransportError(f"server error {resp.status_code} from {url}")
+        if resp.status_code >= 400:
+            raise FetchError(f"{resp.status_code} from {url}: {resp.text[:200]}")
+        return FetchResult(
+            url=resp.url,
+            status_code=resp.status_code,
+            text=resp.text,
+            headers=resp.headers,
+        )
+
+    @retry(
+        retry=retry_if_exception_type((httpx.TransportError, TransportFailure, RateLimitedError)),
+        wait=wait_exponential(multiplier=1.5, min=2, max=30),
+        stop=stop_after_attempt(3),
+        reraise=True,
+    )
+    async def _async_do_request(
+        self,
+        url: str,
+        method: str,
+        params: dict[str, Any] | None,
+        headers: dict[str, str] | None,
+        json_body: Any | None,
+    ) -> FetchResult:
+        resp = await self.engine.async_raw_request(url, method, params, headers, json_body)
+        if resp.status_code in (429, 403):
+            raise RateLimitedError(
+                f"{resp.status_code} from {url}: backing off (we do not bypass limits)"
+            )
+        if resp.status_code >= 500:
+            raise httpx.TransportError(f"server error {resp.status_code} from {url}")
+        if resp.status_code >= 400:
+            raise FetchError(f"{resp.status_code} from {url}: {resp.text[:200]}")
+        return FetchResult(
+            url=resp.url,
+            status_code=resp.status_code,
+            text=resp.text,
+            headers=resp.headers,
+        )
         resp = self.engine.raw_request(url, method, params, headers, json_body)
         # Honour rate-limit / forbidden signals by backing off — never bypass.
         if resp.status_code in (429, 403):
@@ -195,3 +266,9 @@ class SourceClient:
 
     def market_status(self) -> MarketStatus | None:
         return None
+
+    async def async_fetch_prices(self, business_date: date | None = None) -> list[PriceBar]:
+        return self.fetch_prices(business_date) if callable(getattr(self, "fetch_prices", None)) else []
+
+    async def async_fetch_indices(self, business_date: date | None = None) -> list[IndexValue]:
+        return self.fetch_indices(business_date) if callable(getattr(self, "fetch_indices", None)) else []
