@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Callable
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 log = logging.getLogger("nepse_trader.storage.migrations")
 
@@ -32,7 +32,7 @@ def _applied_versions(conn) -> set[str]:
 def _mark_applied(conn, version: str) -> None:
     conn.execute(
         "INSERT OR IGNORE INTO schema_version (version, applied_at) VALUES (?, ?)",
-        (version, datetime.now(timezone.utc).isoformat()),
+        (version, datetime.now(UTC).isoformat()),
     )
 
 
