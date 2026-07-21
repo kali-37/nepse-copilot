@@ -22,7 +22,9 @@ from __future__ import annotations
 
 import re
 from datetime import date
+from decimal import Decimal
 
+import httpx
 from selectolax.parser import HTMLParser
 
 from nepse_trader.config import SourceSpec, load_sources
@@ -34,6 +36,8 @@ from nepse_trader.ingest.base import (
 )
 from nepse_trader.ingest.htmlparse import has_header, table_rows, td_texts
 from nepse_trader.models import (
+    CorporateAction,
+    CorporateActionType,
     FloorsheetEntry,
     IndexValue,
     MarketStatus,
@@ -49,11 +53,93 @@ _DEFAULT_URLS: dict[str, str] = {
     "live_trading": "https://www.sharesansar.com/live-trading",
     "top_gainers": "https://www.sharesansar.com/top-gainers",
     "top_losers": "https://www.sharesansar.com/top-losers",
+    "announcements": "https://www.sharesansar.com/announcements",
 }
 
 _XHR_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
 
 _TAG_RE = re.compile(r"<[^>]+>")
+
+# Corporate action headline patterns.
+_BONUS_RE = re.compile(r"(\d+\.?\d*)\s*%\s*bonus", re.IGNORECASE)
+_RIGHTS_RE = re.compile(r"(\d+\.?\d*)\s*[::]\s*(\d+\.?\d*)", re.IGNORECASE)
+_SPLIT_RE = re.compile(r"(?:split|sub[- ]?division)", re.IGNORECASE)
+_DIVIDEND_RE = re.compile(r"(\d+\.?\d*)\s*%\s*dividend", re.IGNORECASE)
+
+
+def _parse_headline(
+    headline: str,
+    symbol: str,
+    ex_date: date,
+    source: SourceName,
+) -> CorporateAction | None:
+    """Extract a corporate action from a ShareSansar announcement headline.
+
+    Tries bonus → rights → split → dividend patterns in order
+    and returns the first match.
+    """
+    h = headline.lower()
+
+    m = _BONUS_RE.search(h)
+    if m:
+        pct = float(m.group(1))
+        if pct > 0:
+            ratio_denom = int(round(100 / pct))
+            return CorporateAction(
+                symbol=symbol,
+                ex_date=ex_date,
+                action_type=CorporateActionType.BONUS,
+                ratio_numerator=1,
+                ratio_denominator=ratio_denom,
+                factor=Decimal(str(round(100 / (100 + pct), 6))),
+                source=source,
+                notes=headline,
+            )
+
+    m = _RIGHTS_RE.search(h)
+    if m:
+        num = float(m.group(1))
+        den = float(m.group(2)) if m.lastindex and m.lastindex >= 2 else 1.0
+        if num > 0 and den > 0:
+            return CorporateAction(
+                symbol=symbol,
+                ex_date=ex_date,
+                action_type=CorporateActionType.RIGHTS,
+                ratio_numerator=int(num),
+                ratio_denominator=int(den),
+                factor=Decimal("1.0"),
+                source=source,
+                notes=headline,
+            )
+
+    if _SPLIT_RE.search(h):
+        return CorporateAction(
+            symbol=symbol,
+            ex_date=ex_date,
+            action_type=CorporateActionType.SPLIT,
+            ratio_numerator=1,
+            ratio_denominator=1,
+            factor=Decimal("1.0"),
+            source=source,
+            notes=headline,
+        )
+
+    m = _DIVIDEND_RE.search(h)
+    if m:
+        pct = float(m.group(1))
+        if pct > 0:
+            return CorporateAction(
+                symbol=symbol,
+                ex_date=ex_date,
+                action_type=CorporateActionType.DIVIDEND,
+                ratio_numerator=int(round(pct)),
+                ratio_denominator=100,
+                factor=Decimal("1.0"),
+                source=source,
+                notes=headline,
+            )
+
+    return None
 
 
 def _strip_html(value: object) -> str:
@@ -299,6 +385,57 @@ class ShareSansarClient(SourceClient):
                 }
             )
         return cleaned
+
+    @staticmethod
+    def parse_corporate_actions(
+        html: str,
+        source: SourceName = SourceName.SHARESANSAR,
+    ) -> list[CorporateAction]:
+        """Parse announcements page HTML into corporate action events.
+
+        Looks for bonus/rights/split/dividend keywords in the headline column
+        and extracts the symbol and ratio from the text.
+        """
+        rows = table_rows(html, "#headFixed") if "#headFixed" in html else table_rows(html, "table")
+        out: list[CorporateAction] = []
+        seen: set[tuple[str, date, str]] = set()
+
+        for row in rows:
+            cells = td_texts(row)
+            if len(cells) < 4:
+                continue
+            symbol_raw = cells[2].strip().upper() if len(cells) > 2 else ""
+            headline = cells[1].strip() if len(cells) > 1 else ""
+            date_text = cells[3].strip() if len(cells) > 3 else ""
+            if not symbol_raw or not headline or not date_text:
+                continue
+            symbol = re.sub(r"[^A-Z0-9]", "", symbol_raw)
+            if not symbol or symbol == "SNO":
+                continue
+            try:
+                d = _parse_date(date_text)
+            except Exception:
+                continue
+            if d is None:
+                continue
+
+            ca = _parse_headline(headline, symbol, d, source)
+            if ca is not None:
+                key = (ca.symbol, ca.ex_date, ca.action_type.value)
+                if key not in seen:
+                    seen.add(key)
+                    out.append(ca)
+        return out
+
+    def fetch_corporate_actions(self) -> list[CorporateAction]:
+        try:
+            result = self.client.fetch(
+                self._url("announcements"),
+                params={"tag": "all"},
+            )
+        except (FetchError, RateLimitedError, ValueError, httpx.TransportError):
+            return []
+        return self.parse_corporate_actions(result.text, self.name)
 
     # -- fetchers (network; failures degrade to []) --------------------------
 

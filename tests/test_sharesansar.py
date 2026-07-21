@@ -307,3 +307,76 @@ def test_fetch_prices_returns_empty_on_error():
     # 404 -> FetchError inside fetch -> degrade to [].
     assert client.fetch_prices(BDATE) == []
     http_client.close()
+
+
+# ---------------------------------------------------------------------------
+# Corporate actions parsing
+# ---------------------------------------------------------------------------
+
+ANNOUNCEMENTS_HTML = """
+<html><body>
+<table id="headFixed" class="table">
+  <thead><tr><th>S.No</th><th>Headline</th><th>Symbol</th><th>Date</th></tr></thead>
+  <tbody>
+    <tr><td>1</td><td>NABIL Proposed 10% Bonus Share</td><td>NABIL</td><td>2082-04-15</td></tr>
+    <tr><td>2</td><td>NLIC 1:1 Right Share Issue</td><td>NLIC</td><td>2082-04-20</td></tr>
+    <tr><td>3</td><td>SCB announces 21% dividend</td><td>SCB</td><td>2082-05-01</td></tr>
+  </tbody>
+</table>
+</body></html>
+"""
+
+
+def test_parse_corporate_actions_bonus():
+    cas = ShareSansarClient.parse_corporate_actions(ANNOUNCEMENTS_HTML)
+    bonuses = [ca for ca in cas if ca.action_type.value == "bonus"]
+    assert len(bonuses) == 1
+    assert bonuses[0].symbol == "NABIL"
+    assert bonuses[0].ratio_numerator == 1
+    assert bonuses[0].ratio_denominator == 10
+    from decimal import Decimal as _D
+    assert bonuses[0].factor == _D(str(round(100 / 110, 6)))
+
+
+def test_parse_corporate_actions_rights():
+    cas = ShareSansarClient.parse_corporate_actions(ANNOUNCEMENTS_HTML)
+    rights = [ca for ca in cas if ca.action_type.value == "rights"]
+    assert len(rights) == 1
+    assert rights[0].symbol == "NLIC"
+
+
+def test_parse_corporate_actions_dividend():
+    cas = ShareSansarClient.parse_corporate_actions(ANNOUNCEMENTS_HTML)
+    dividends = [ca for ca in cas if ca.action_type.value == "dividend"]
+    assert len(dividends) == 1
+    assert dividends[0].symbol == "SCB"
+
+
+def test_parse_corporate_actions_empty_html():
+    cas = ShareSansarClient.parse_corporate_actions("<html></html>")
+    assert cas == []
+
+
+@respx.mock
+def test_fetch_corporate_actions_network():
+    url = "https://www.sharesansar.com/announcements"
+    respx.get(url).mock(return_value=httpx.Response(200, text=ANNOUNCEMENTS_HTML))
+
+    http_client = httpx.Client()
+    base = BaseClient(client=http_client, cache_raw=False)
+    client = ShareSansarClient(client=base, source_spec=None)
+    cas = client.fetch_corporate_actions()
+    assert len(cas) == 3
+    assert any(ca.action_type.value == "bonus" for ca in cas)
+    http_client.close()
+
+
+@respx.mock
+def test_fetch_corporate_actions_error_degrades():
+    url = "https://www.sharesansar.com/announcements"
+    respx.get(url).mock(return_value=httpx.Response(500))
+    http_client = httpx.Client()
+    base = BaseClient(client=http_client, cache_raw=False)
+    client = ShareSansarClient(client=base, source_spec=None)
+    assert client.fetch_corporate_actions() == []
+    http_client.close()
