@@ -46,11 +46,16 @@ class Storage:
         self._conn = sqlite3.connect(str(self.db_path))
         self._conn.row_factory = sqlite3.Row
         self._conn.execute("PRAGMA journal_mode=WAL;")
+        self._conn.execute("PRAGMA synchronous=NORMAL;")
+        self._conn.execute("PRAGMA cache_size=-64000;")
+        self._conn.execute("PRAGMA temp_store=MEMORY;")
         self._conn.execute("PRAGMA foreign_keys=ON;")
         run_pending(self._conn)
         self._conn.commit()
+        self._symbols_cache: list[str] | None = None
 
     def close(self) -> None:
+        self._symbols_cache = None
         self._conn.close()
 
     def __enter__(self) -> Storage:
@@ -102,6 +107,7 @@ class Storage:
                      trades=excluded.trades, fetched_at=excluded.fetched_at""",
                 rows,
             )
+        self._invalidate_symbols()
         return len(rows)
 
     def upsert_index_values(self, values: Iterable[IndexValue]) -> int:
@@ -248,6 +254,20 @@ class Storage:
                 ),
             )
 
+    def batch_log_ingest(
+        self,
+        entries: list[tuple[str, str, date | None, int, str, str]],
+    ) -> None:
+        now = datetime.now().isoformat()
+        rows = [(s, e, _d(bd), r, st, msg, now) for s, e, bd, r, st, msg in entries]
+        with self._tx() as c:
+            c.executemany(
+                """INSERT INTO ingest_log
+                   (source,endpoint,business_date,rows,status,message,ran_at)
+                   VALUES (?,?,?,?,?,?,?)""",
+                rows,
+            )
+
     # ---- reads ----------------------------------------------------------
     def price_history(self, symbol: str, source: SourceName | None = None) -> list[PriceBar]:
         symbol = symbol.strip().upper()
@@ -295,8 +315,13 @@ class Storage:
         return out
 
     def symbols(self) -> list[str]:
-        cur = self._conn.execute("SELECT DISTINCT symbol FROM price_bars ORDER BY symbol")
-        return [r["symbol"] for r in cur.fetchall()]
+        if self._symbols_cache is None:
+            cur = self._conn.execute("SELECT DISTINCT symbol FROM price_bars ORDER BY symbol")
+            self._symbols_cache = [r["symbol"] for r in cur.fetchall()]
+        return self._symbols_cache
+
+    def _invalidate_symbols(self) -> None:
+        self._symbols_cache = None
 
     def reconciled_history_for_date(self, business_date: date) -> list[ReconciledPrice]:
         """All reconciled consensus rows for a single business date."""
