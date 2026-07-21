@@ -6,6 +6,7 @@ from datetime import date, timedelta
 
 import pytest
 
+from nepse_trader.analysis.backtest import Backtester
 from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.config import get_settings
 from nepse_trader.ingest.base import SourceClient
@@ -216,4 +217,30 @@ def test_daily_report_assembles_all_sections(pipe):
         assert isinstance(sections[title], str) and sections[title]
     assert any("Backtest leaderboard" in k for k in sections)
     assert summary["business_date"] == d.isoformat()
+    assert summary["backtests"] >= 1
+
+
+def test_full_ingest_reconcile_signal_backtest_chain(pipe):
+    _seed_hump(pipe, days=70)
+    d = START + timedelta(days=69)
+    # 1. Signal generation
+    sigs = pipe.signals_for("AAA", "sma_cross", fast=3, slow=8)
+    assert len(sigs) > 0
+    # 2. Backtest on reconciled price history
+    price_bars = []
+    for i in range(70):
+        bd = START + timedelta(days=i)
+        prices = pipe.reconcile(bd)
+        for p in prices:
+            if p.symbol == "AAA":
+                price_bars.append(p)
+    assert len(price_bars) >= 60
+    bt = Backtester()
+    from nepse_trader.analysis.strategies import SmaCrossStrategy
+    result = bt.run(SmaCrossStrategy(fast=3, slow=8), price_bars)
+    assert result.num_trades >= 1
+    assert len(result.equity_curve) >= 60
+    # 3. Daily report covers the chain via the pipeline
+    sections, summary = pipe.daily_report(d, strategies=["sma_cross"], top=5, min_bars=60)
+    assert summary["symbols"] >= 1
     assert summary["backtests"] >= 1
