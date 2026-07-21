@@ -37,10 +37,42 @@ from nepse_trader.reporting import (
 )
 from nepse_trader.storage import Storage
 
+
+def _safe_run(fn):
+    """Decorator: catch common exceptions and print user-friendly messages."""
+    from functools import wraps
+
+    @wraps(fn)
+    def wrapper(*args, **kwargs):
+        try:
+            return fn(*args, **kwargs)
+        except typer.Exit:
+            raise
+        except (ConnectionError, TimeoutError):
+            console.print("[red]Network error — check your internet connection.[/red]")
+            raise typer.Exit(1) from None
+        except FileNotFoundError as e:
+            console.print(f"[red]File not found:[/red] {e}")
+            raise typer.Exit(1) from None
+        except ValueError as e:
+            console.print(f"[red]Invalid value:[/red] {e}")
+            raise typer.Exit(1) from None
+        except KeyError as e:
+            console.print(f"[red]Missing key:[/red] {e}")
+            raise typer.Exit(1) from None
+        except Exception as e:
+            console.print(f"[red]Unexpected error:[/red] {e}")
+            raise typer.Exit(1) from None
+
+    return wrapper
+
+
 app = typer.Typer(
     add_completion=False,
     help="NEPSE public-data aggregation, analysis, backtesting & paper trading.",
     no_args_is_help=True,
+    pretty_exceptions_show_locals=False,
+    pretty_exceptions_enable=False,
 )
 har_app = typer.Typer(help="HAR capture analysis & endpoint discovery.", no_args_is_help=True)
 paper_app = typer.Typer(help="Paper-trading (no live orders).", no_args_is_help=True)
@@ -265,6 +297,7 @@ def screen(
 
 
 @app.command(name="run-daily")
+@_safe_run
 def run_daily(
     date_: str = typer.Option(None, "--date", help="Trading date YYYY-MM-DD (default: today)"),
     strategies: str = typer.Option(
@@ -321,6 +354,7 @@ def run_daily(
 
 # --------------------------------------------------------------------- paper
 @paper_app.command("buy")
+@_safe_run
 def paper_buy(
     symbol: str,
     price: float = typer.Option(..., help="Buy price per share (NPR)"),
@@ -346,6 +380,7 @@ def paper_buy(
 
 
 @paper_app.command("sell")
+@_safe_run
 def paper_sell(
     symbol: str,
     price: float = typer.Option(..., help="Sell price per share (NPR)"),
@@ -371,8 +406,9 @@ def paper_sell(
 
 
 @paper_app.command("status")
+@_safe_run
 def paper_status(
-    cash: float = typer.Option(PAPER_CASH_DEFAULT, help="Starting cash (keep consistent)"),
+    cash: float = typer.Option(PAPER_CASH_DEFAULT, help="Starting cash for replay"),
 ) -> None:
     """Show the current paper portfolio (rebuilt from recorded trades)."""
     pipe = DailyPipeline()
