@@ -14,6 +14,8 @@ from datetime import date, datetime
 from pathlib import Path
 
 from nepse_trader.models import (
+    CorporateAction,
+    CorporateActionType,
     IndexValue,
     OrderSide,
     PaperTrade,
@@ -356,6 +358,49 @@ class Storage:
                     cgt=_D(str(r["cgt"])),
                     net_amount=_D(str(r["net_amount"])),
                     strategy=r["strategy"],
+                )
+            )
+        return out
+
+    def upsert_corporate_action(self, ca: CorporateAction) -> None:
+        with self._tx() as c:
+            c.execute(
+                """INSERT OR REPLACE INTO corporate_actions
+                   (symbol,ex_date,action_type,ratio_numerator,ratio_denominator,factor,source,notes)
+                   VALUES (?,?,?,?,?,?,?,?)""",
+                (
+                    ca.symbol,
+                    _d(ca.ex_date),
+                    ca.action_type.value,
+                    ca.ratio_numerator,
+                    ca.ratio_denominator,
+                    float(ca.factor),
+                    ca.source.value,
+                    ca.notes,
+                ),
+            )
+
+    def corporate_actions(self, symbol: str | None = None) -> list[CorporateAction]:
+        query = "SELECT * FROM corporate_actions"
+        params: tuple = ()
+        if symbol:
+            query += " WHERE symbol=?"
+            params = (symbol.upper(),)
+        query += " ORDER BY ex_date"
+        cur = self._conn.execute(query, params)
+        out: list[CorporateAction] = []
+        from decimal import Decimal as _D
+        for r in cur.fetchall():
+            out.append(
+                CorporateAction(
+                    symbol=r["symbol"],
+                    ex_date=date.fromisoformat(r["ex_date"]),
+                    action_type=CorporateActionType(r["action_type"]),
+                    ratio_numerator=r["ratio_numerator"],
+                    ratio_denominator=r["ratio_denominator"],
+                    factor=_D(str(r["factor"])),
+                    source=SourceName(r["source"]),
+                    notes=r["notes"] or "",
                 )
             )
         return out

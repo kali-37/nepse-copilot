@@ -126,9 +126,29 @@ def _m0000_initial(conn) -> None:
     """)
 
 
+
+
+def _m0001_corporate_actions(conn) -> None:
+    """Add corporate_actions table for price-adjustment events."""
+    conn.execute("""
+        CREATE TABLE IF NOT EXISTS corporate_actions (
+            symbol TEXT NOT NULL,
+            ex_date TEXT NOT NULL,
+            action_type TEXT NOT NULL,
+            ratio_numerator INTEGER NOT NULL,
+            ratio_denominator INTEGER NOT NULL DEFAULT 1,
+            factor REAL NOT NULL,
+            source TEXT NOT NULL,
+            notes TEXT DEFAULT '',
+            PRIMARY KEY (symbol, ex_date, action_type)
+        )
+    """)
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
+    ("0001_corporate_actions", _m0001_corporate_actions),
 ]
 
 

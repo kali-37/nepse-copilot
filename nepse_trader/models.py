@@ -182,6 +182,35 @@ class PaperTrade(_Base):
         return v.strip().upper()
 
 
+class CorporateActionType(str, Enum):
+    BONUS = "bonus"
+    RIGHTS = "rights"
+    SPLIT = "split"
+    DIVIDEND = "dividend"
+
+
+class CorporateAction(_Base):
+    """A corporate event that adjusts historical prices."""
+
+    symbol: str
+    ex_date: date
+    action_type: CorporateActionType
+    ratio_numerator: int
+    ratio_denominator: int = 1
+    factor: Decimal
+    source: SourceName
+    notes: str = ""
+
+    @field_validator("symbol")
+    @classmethod
+    def _upper_symbol(cls, v: str) -> str:
+        return v.strip().upper()
+
+    @property
+    def description(self) -> str:
+        return f"{self.action_type.value} {self.ratio_numerator}:{self.ratio_denominator}"
+
+
 class Position(_Base):
     symbol: str
     quantity: int = 0
