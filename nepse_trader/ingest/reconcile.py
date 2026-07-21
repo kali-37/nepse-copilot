@@ -86,8 +86,10 @@ def reconcile_bars(
             if field == "close":
                 close_agreeing = agreeing
 
+        # Deduplicate agreeing sources — a source cannot agree more than once.
+        unique_agreeing = sorted({s for s in close_agreeing}, key=lambda s: s.value)
         confidence = (
-            len(close_agreeing) / len(present_sources) if present_sources else 0.0
+            len(unique_agreeing) / len(present_sources) if present_sources else 0.0
         )
         out.append(
             ReconciledPrice(
