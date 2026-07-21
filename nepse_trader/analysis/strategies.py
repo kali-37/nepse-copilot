@@ -385,11 +385,236 @@ class CompositeStrategy(Strategy):
         return out
 
 
+class SupertrendStrategy(Strategy):
+    """Trend-following using Supertrend as a trailing stop/reversal signal."""
+
+    name = "supertrend"
+
+    def __init__(self, period: int = 10, multiplier: float = 3.0) -> None:
+        if period <= 0:
+            raise ValueError("period must be positive")
+        self.period = period
+        self.multiplier = multiplier
+
+    def generate(self, bars: list[PriceBar]) -> list[Signal]:
+        if not bars:
+            return []
+        highs = [b.high if b.high is not None else 0.0 for b in bars]
+        lows = [b.low if b.low is not None else 0.0 for b in bars]
+        closes, has_close = self._closes(bars)
+        band, direction = ind.supertrend(highs, lows, closes, self.period, self.multiplier)
+        out: list[Signal] = []
+        prev_dir: int = 0
+        for i, bar in enumerate(bars):
+            if not has_close[i] or band[i] is None:
+                continue
+            d = direction[i]
+            action = SignalAction.HOLD
+            reason = f"band={band[i]:.2f}"
+            strength = abs(closes[i] - band[i]) / band[i] if band[i] else 0.0
+            if d == +1 and prev_dir == -1:
+                action = SignalAction.BUY
+                reason = f"uptrend flip band={band[i]:.2f}"
+            elif d == -1 and prev_dir == +1:
+                action = SignalAction.SELL
+                reason = f"downtrend flip band={band[i]:.2f}"
+            out.append(
+                self._emit(bar, action, _clamp01(strength), reason, {"band": band[i], "direction": float(d)})
+            )
+            prev_dir = d
+        return out
+
+
+class IchimokuStrategy(Strategy):
+    """Ichimoku Cloud: TK cross, price vs cloud, and Chikou confirmation."""
+
+    name = "ichimoku"
+
+    def __init__(
+        self,
+        tenkan_period: int = 9,
+        kijun_period: int = 26,
+        senkou_period: int = 52,
+        displacement: int = 26,
+    ) -> None:
+        self.tenkan_period = tenkan_period
+        self.kijun_period = kijun_period
+        self.senkou_period = senkou_period
+        self.displacement = displacement
+
+    def generate(self, bars: list[PriceBar]) -> list[Signal]:
+        if not bars:
+            return []
+        highs = [b.high if b.high is not None else 0.0 for b in bars]
+        lows = [b.low if b.low is not None else 0.0 for b in bars]
+        closes, has_close = self._closes(bars)
+
+        tenkan = ind.tenkan_sen(highs, lows, self.tenkan_period)
+        kijun = ind.kijun_sen(highs, lows, self.kijun_period)
+        senkou_a_raw = ind.senkou_span_a(tenkan, kijun, self.displacement)
+        senkou_b_raw = ind.senkou_span_b(highs, lows, self.senkou_period, self.displacement)
+
+        out: list[Signal] = []
+        prev_tk: int = 0  # -1 tenkan below kijun, +1 above, 0 equal/undefined
+        for i, bar in enumerate(bars):
+            if not has_close[i]:
+                continue
+            t, k = tenkan[i], kijun[i]
+            sa, sb = senkou_a_raw[i], senkou_b_raw[i]
+            if t is None or k is None:
+                continue
+            # TK cross
+            tk_signal: int = 0
+            if t > k:
+                tk_signal = +1
+            elif t < k:
+                tk_signal = -1
+            # Price relative to cloud
+            close = closes[i]
+            above_cloud = sa is not None and sb is not None and close > max(sa, sb)
+            below_cloud = sa is not None and sb is not None and close < min(sa, sb)
+            # Chikou (close 26 bar ago vs current close)
+            chikou_confirm = False
+            chikou_idx = i - self.displacement
+            if chikou_idx >= 0:
+                past_close = closes[chikou_idx]
+                chikou_confirm = past_close < close
+
+            action = SignalAction.HOLD
+            reason_parts: list[str] = []
+            strength = 0.0
+            if tk_signal == +1 and prev_tk <= 0 and above_cloud:
+                action = SignalAction.BUY
+                strength = (t - k) / k if k else 0.1
+                reason_parts.append("TK_bullish")
+                if chikou_confirm:
+                    reason_parts.append("Chikou_confirm")
+            elif tk_signal == -1 and prev_tk >= 0 and below_cloud:
+                action = SignalAction.SELL
+                strength = (k - t) / k if k else 0.1
+                reason_parts.append("TK_bearish")
+                if chikou_confirm:
+                    reason_parts.append("Chikou_confirm")
+            out.append(
+                self._emit(
+                    bar,
+                    action,
+                    _clamp01(strength),
+                    " ".join(reason_parts) if reason_parts else "no_signal",
+                    {
+                        "tenkan": t,
+                        "kijun": k,
+                        "senkou_a": sa if sa is not None else 0.0,
+                        "senkou_b": sb if sb is not None else 0.0,
+                    },
+                )
+            )
+            prev_tk = tk_signal
+        return out
+
+
+class DonchianStrategy(Strategy):
+    """Donchian channel breakout: buy above upper, sell below lower."""
+
+    name = "donchian"
+
+    def __init__(self, period: int = 20, confirmation_bars: int = 1) -> None:
+        if period <= 0:
+            raise ValueError("period must be positive")
+        self.period = period
+        self.confirmation_bars = confirmation_bars
+
+    def generate(self, bars: list[PriceBar]) -> list[Signal]:
+        if not bars:
+            return []
+        highs = [b.high if b.high is not None else 0.0 for b in bars]
+        lows = [b.low if b.low is not None else 0.0 for b in bars]
+        closes, has_close = self._closes(bars)
+        upper, middle, lower = ind.donchian_channel(highs, lows, self.period)
+        out: list[Signal] = []
+        prev_state: int = 0  # -1 below lower, +1 above upper, 0 inside
+        for i, bar in enumerate(bars):
+            if not has_close[i] or upper[i] is None or lower[i] is None:
+                continue
+            close = closes[i]
+            if close > upper[i]:
+                state = +1
+            elif close < lower[i]:
+                state = -1
+            else:
+                state = 0
+            action = SignalAction.HOLD
+            strength = 0.0
+            if state == +1 and prev_state != +1:
+                action = SignalAction.BUY
+                strength = (close - upper[i]) / upper[i]
+            elif state == -1 and prev_state != -1:
+                action = SignalAction.SELL
+                strength = (lower[i] - close) / close
+            out.append(
+                self._emit(
+                    bar,
+                    action,
+                    _clamp01(strength),
+                    f"close={close:.2f} upper={upper[i]:.2f} lower={lower[i]:.2f}",
+                    {"upper": upper[i], "middle": middle[i], "lower": lower[i], "close": close},
+                )
+            )
+            prev_state = state
+        return out
+
+
+class MeanReversionStrategy(Strategy):
+    """RSI mean reversion: buy oversold, sell overbought."""
+
+    name = "mean_reversion"
+
+    def __init__(self, rsi_period: int = 14, oversold: float = 30.0, overbought: float = 70.0) -> None:
+        if rsi_period <= 0:
+            raise ValueError("rsi_period must be positive")
+        self.rsi_period = rsi_period
+        self.oversold = oversold
+        self.overbought = overbought
+
+    def generate(self, bars: list[PriceBar]) -> list[Signal]:
+        closes, has_close = self._closes(bars)
+        rsi = ind.rsi(closes, self.rsi_period)
+        out: list[Signal] = []
+        prev_state: int = 0  # -1 oversold, +1 overbought, 0 neutral
+        for i, bar in enumerate(bars):
+            if not has_close[i] or rsi[i] is None:
+                continue
+            r = rsi[i]
+            if r <= self.oversold:
+                state = -1
+            elif r >= self.overbought:
+                state = +1
+            else:
+                state = 0
+            action = SignalAction.HOLD
+            strength = 0.0
+            if state == -1 and prev_state != -1:
+                action = SignalAction.BUY
+                strength = max(0.0, (self.oversold - r) / self.oversold)
+            elif state == +1 and prev_state != +1:
+                action = SignalAction.SELL
+                strength = max(0.0, (r - self.overbought) / (100.0 - self.overbought))
+            out.append(
+                self._emit(bar, action, _clamp01(strength), f"rsi={r:.1f}", {"rsi": r})
+            )
+            prev_state = state
+        return out
+
+
 STRATEGIES: dict[str, type[Strategy]] = {
     "sma_cross": SmaCrossStrategy,
     "rsi": RsiStrategy,
     "macd": MacdStrategy,
     "bollinger": BollingerStrategy,
+    "supertrend": SupertrendStrategy,
+    "ichimoku": IchimokuStrategy,
+    "donchian": DonchianStrategy,
+    "mean_reversion": MeanReversionStrategy,
 }
 
 

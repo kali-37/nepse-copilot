@@ -10,10 +10,14 @@ from nepse_trader.analysis.strategies import (
     STRATEGIES,
     BollingerStrategy,
     CompositeStrategy,
+    DonchianStrategy,
+    IchimokuStrategy,
     MacdStrategy,
+    MeanReversionStrategy,
     RsiStrategy,
     SmaCrossStrategy,
     Strategy,
+    SupertrendStrategy,
     build_strategy,
 )
 from nepse_trader.models import PriceBar, Signal, SignalAction, SourceName
@@ -259,7 +263,7 @@ def test_build_strategy_unknown_raises() -> None:
 
 
 def test_registry_complete() -> None:
-    assert set(STRATEGIES) == {"sma_cross", "rsi", "macd", "bollinger"}
+    assert set(STRATEGIES) == {"sma_cross", "rsi", "macd", "bollinger", "supertrend", "ichimoku", "donchian", "mean_reversion"}
     for name in STRATEGIES:
         assert isinstance(build_strategy(name), Strategy)
 
@@ -276,3 +280,90 @@ def test_latest_signal_none_when_insufficient() -> None:
     bars = _bars([100.0, 101.0])  # too short for slow SMA
     strat = SmaCrossStrategy(fast=3, slow=8)
     assert strat.latest_signal(bars) is None
+
+
+# --- Supertrend ---
+
+def test_supertrend_generates_signals():
+    n = 30
+    highs = [100.0 + i * 0.5 for i in range(n)]
+    lows = [99.0 + i * 0.5 for i in range(n)]
+    bars = _ohlcv_bars(highs, lows, [h - 0.1 for h in highs])
+    strat = SupertrendStrategy(period=5, multiplier=2.0)
+    signals = strat.generate(bars)
+    assert len(signals) > 0
+
+
+def test_supertrend_registered():
+    assert "supertrend" in STRATEGIES
+
+
+# --- Ichimoku ---
+
+def test_ichimoku_generates_signals():
+    n = 60
+    bars = _bars([100.0 + i * 0.3 for i in range(n)])
+    strat = IchimokuStrategy(tenkan_period=5, kijun_period=10, senkou_period=20)
+    signals = strat.generate(bars)
+    # Should produce at least some signals after warmup
+    assert len(signals) > 0
+
+
+def test_ichimoku_registered():
+    assert "ichimoku" in STRATEGIES
+
+
+# --- Donchian ---
+
+def test_donchian_breakout_long():
+    n = 30
+    highs = [100.0 + i * 0.2 for i in range(n)]
+    lows = [99.0 + i * 0.2 for i in range(n)]
+    bars = _ohlcv_bars(highs, lows, [h - 0.1 for h in highs])
+    strat = DonchianStrategy(period=5)
+    signals = strat.generate(bars)
+    assert len(signals) > 0
+
+
+def test_donchian_registered():
+    assert "donchian" in STRATEGIES
+
+
+# --- Mean Reversion ---
+
+def test_mean_reversion_buy_oversold():
+    bars = _bars([100.0] * 5 + [90.0, 89.0, 88.0, 87.0, 86.0])
+    strat = MeanReversionStrategy(rsi_period=5, oversold=30.0, overbought=70.0)
+    signals = strat.generate(bars)
+    assert len(signals) > 0
+
+
+def test_mean_reversion_registered():
+    assert "mean_reversion" in STRATEGIES
+
+
+# ---------------------------------------------------------------------------
+# Helper: bars with separate high/low/close
+# ---------------------------------------------------------------------------
+
+def _ohlcv_bars(
+    highs: list[float],
+    lows: list[float],
+    closes: list[float],
+    symbol: str = "ABC",
+) -> list[PriceBar]:
+    bars: list[PriceBar] = []
+    for i, (h, lo, c) in enumerate(zip(highs, lows, closes, strict=True)):
+        bars.append(
+            PriceBar(
+                symbol=symbol,
+                business_date=START + timedelta(days=i),
+                open=c,
+                high=h,
+                low=lo,
+                close=c,
+                volume=10_000,
+                source=SourceName.SHARESANSAR,
+            )
+        )
+    return bars

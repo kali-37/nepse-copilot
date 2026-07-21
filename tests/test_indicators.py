@@ -104,3 +104,46 @@ def test_ema_matches_manual_for_known_input():
     # k = 2/3; seed at index1 = mean(22,24)=23
     assert e[0] is None
     assert math.isclose(e[1], 23.0, rel_tol=1e-9)
+
+
+def test_supertrend_basic():
+    highs = [10.0, 11.0, 12.0, 11.5, 12.5, 13.0]
+    lows = [9.0, 9.5, 10.0, 10.5, 11.0, 11.5]
+    closes = [9.5, 10.5, 11.5, 11.0, 12.0, 12.5]
+    band, direction = ind.supertrend(highs, lows, closes, period=3, multiplier=2.0)
+    assert len(band) == 6
+    assert len(direction) == 6
+    assert band[0] is None
+    assert band[1] is None
+    assert band[2] is None
+    # After warmup, direction should be defined.
+    assert direction[3] in (+1, -1)
+
+
+def test_tenkan_sen():
+    highs = [10.0, 12.0, 11.0, 14.0, 13.0]
+    lows = [8.0, 9.0, 10.0, 11.0, 12.0]
+    ts = ind.tenkan_sen(highs, lows, 3)
+    assert ts[:2] == [None, None]
+    # Over indices 0..2: max high=12, min low=8 → (12+8)/2 = 10
+    assert ts[2] == 10.0
+    # Over indices 1..3: max high=14, min low=9 → (14+9)/2 = 11.5
+    assert ts[3] == 11.5
+
+
+def test_kijun_sen_same_as_tenkan():
+    highs = [10.0, 12.0, 11.0, 14.0, 13.0]
+    lows = [8.0, 9.0, 10.0, 11.0, 12.0]
+    ks = ind.kijun_sen(highs, lows, 3)
+    assert ks[2] == 10.0
+
+
+def test_donchian_channel():
+    highs = [10.0, 12.0, 11.0, 14.0, 13.0]
+    lows = [8.0, 9.0, 10.0, 11.0, 12.0]
+    upper, middle, lower = ind.donchian_channel(highs, lows, 3)
+    assert upper[:2] == [None, None]
+    # Over indices 0..2: max high=12, min low=8
+    assert upper[2] == 12.0
+    assert lower[2] == 8.0
+    assert middle[2] == 10.0

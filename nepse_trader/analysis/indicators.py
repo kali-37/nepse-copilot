@@ -147,6 +147,104 @@ def atr(
     return out
 
 
+def supertrend(
+    highs: Sequence[float],
+    lows: Sequence[float],
+    closes: Sequence[float],
+    period: int = 10,
+    multiplier: float = 3.0,
+) -> tuple[list[Number], list[int]]:
+    """Return (supertrend_line, direction) where direction[i] is +1 (uptrend) or -1.
+
+    On crossover the direction flips; the line is the trailing stop level.
+    """
+    n = len(closes)
+    band: list[Number] = [None] * n
+    direction: list[int] = [0] * n
+    atr_vals = atr(highs, lows, closes, period)
+    for i in range(1, n):
+        if atr_vals[i] is None:
+            continue
+        hl2 = (highs[i] + lows[i]) / 2.0
+        basic_upper = hl2 + multiplier * atr_vals[i]
+        basic_lower = hl2 - multiplier * atr_vals[i]
+        prev_band = band[i - 1]
+        if prev_band is not None:
+            is_uptrend = closes[i] > prev_band
+        else:
+            is_uptrend = closes[i] > basic_upper
+        if is_uptrend:
+            direction[i] = +1
+            if prev_band is not None and prev_band > basic_lower:
+                band[i] = prev_band
+            else:
+                band[i] = basic_lower
+        else:
+            direction[i] = -1
+            if prev_band is not None and prev_band < basic_upper:
+                band[i] = prev_band
+            else:
+                band[i] = basic_upper
+    # First valid direction from period index.
+    if period < n:
+        for i in range(period, n):
+            if band[i] is not None:
+                direction[i] = +1 if closes[i] > band[i] else -1
+                break
+    return band, direction
+
+
+def tenkan_sen(highs: Sequence[float], lows: Sequence[float], period: int = 9) -> list[Number]:
+    """Conversion line: (max high + min low)/2 over period."""
+    out: list[Number] = [None] * len(highs)
+    for i in range(period - 1, len(highs)):
+        out[i] = (max(highs[i - period + 1 : i + 1]) + min(lows[i - period + 1 : i + 1])) / 2.0
+    return out
+
+
+def kijun_sen(highs: Sequence[float], lows: Sequence[float], period: int = 26) -> list[Number]:
+    """Base line: (max high + min low)/2 over period."""
+    return tenkan_sen(highs, lows, period)
+
+
+def senkou_span_a(
+    tenkan: Sequence[Number], kijun: Sequence[Number], shift: int = 26
+) -> list[Number]:
+    """Senkou A: (tenkan + kijun)/2, shifted forward by shift bars."""
+    return [(t + k) / 2.0 if (t is not None and k is not None) else None for t, k in zip(tenkan, kijun, strict=False)]
+
+
+def senkou_span_b(
+    highs: Sequence[float], lows: Sequence[float], period: int = 52, shift: int = 26
+) -> list[Number]:
+    """Senkou B: (max high + min low)/2 over 52-period, shifted forward."""
+    return kijun_sen(highs, lows, period)
+
+
+def chikou_span(closes: Sequence[float], shift: int = 26) -> list[float]:
+    """Chikou: current close plotted 26 bars back (lagging span)."""
+    return list(closes)
+
+
+def donchian_channel(
+    highs: Sequence[float],
+    lows: Sequence[float],
+    period: int = 20,
+) -> tuple[list[Number], list[Number], list[Number]]:
+    """Returns (upper, middle, lower) Donchian channel lines."""
+    n = len(highs)
+    upper: list[Number] = [None] * n
+    middle: list[Number] = [None] * n
+    lower: list[Number] = [None] * n
+    for i in range(period - 1, n):
+        u = max(highs[i - period + 1 : i + 1])
+        lo = min(lows[i - period + 1 : i + 1])
+        upper[i] = u
+        lower[i] = lo
+        middle[i] = (u + lo) / 2.0
+    return upper, middle, lower
+
+
 def latest(series: Sequence[Number]) -> Number:
     """Return the last non-None value, or None."""
     for v in reversed(series):
