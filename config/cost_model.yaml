@@ -1,0 +1,34 @@
+# NEPSE equity transaction cost & tax model.
+# Sources: SEBON broker commission schedule, CDSC, and reputable Nepali broker
+# fee pages (investopaper, nimbstock, ssl.com.np, crystalsecurities, merodafa).
+# Verified June 2026. Update here if SEBON/NEPSE revise the schedule.
+#
+# rate_percent values are PERCENT of the transaction amount (e.g. 0.33 = 0.33%).
+# The applicable slab rate is charged on the WHOLE transaction amount (not
+# marginal/blended). A boundary amount belongs to the LOWER (higher-rate) tier:
+# exactly Rs 50,000 is charged 0.36%. Slab ranges are (prev_max, max] inclusive.
+
+broker_commission_slabs:
+  - { min_amount: 0,          max_amount: 50000,    rate_percent: 0.36 }
+  - { min_amount: 50000,      max_amount: 500000,   rate_percent: 0.33 }
+  - { min_amount: 500000,     max_amount: 2000000,  rate_percent: 0.31 }
+  - { min_amount: 2000000,    max_amount: 10000000, rate_percent: 0.27 }
+  - { min_amount: 10000000,   max_amount: null,     rate_percent: 0.24 }
+
+# Flat minimum commission floor (Rs). Applies to very small trades (~< Rs 2,500).
+broker_min_commission: 10.0
+
+# SEBON regulatory fee as a percent of transaction amount.
+sebon_fee_percent: 0.015
+
+# DP (Demat) charge: flat Rs per scrip per settlement (collected via the DP
+# under CDSC). Conventionally charged on each settlement leg.
+dp_charge_per_scrip: 25.0
+
+# Capital Gains Tax (charged at source by CDSC on the SELL leg, on realized gain)
+cgt_short_percent: 7.5        # individual, holding period <= 365 days
+cgt_long_percent: 5.0         # individual, holding period > 365 days
+cgt_institutional_percent: 10.0
+
+settlement_cycle: "T+2"
+currency: "NPR"

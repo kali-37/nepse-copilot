@@ -1,0 +1,196 @@
+# NEPSE public-data source map.
+# Endpoints discovered via research + HAR capture. `confidence` reflects how
+# verified the endpoint is (high = observed live; low = inferred, confirm via
+# your own HAR capture in har/captures/ and the `nepse-trader har analyze` tool).
+#
+# IMPORTANT: These are sites' own front-end / internal endpoints. Treat them as
+# UNOFFICIAL. Use only publicly published data, identify with a real User-Agent,
+# rate-limit politely, and obtain a NEPSE data license for any commercial use.
+# We do NOT bypass auth, CAPTCHAs, WAFs, or rate limits.
+
+sources:
+
+  # ---- ShareSansar: primary source (permissive robots.txt, no challenge) ----
+  sharesansar:
+    name: sharesansar
+    base_url: "https://www.sharesansar.com"
+    access_method: mixed          # HTML for prices, DataTables JSON for the rest
+    requires_auth: false
+    enabled: true
+    rate_limit_seconds: 1.5
+    notes: >
+      robots.txt fully permissive. /today-share-price is whole-market EOD HTML
+      (parse table#headFixed). DataTables endpoints return JSON when called with
+      X-Requested-With: XMLHttpRequest. POST endpoints need the CSRF _token meta.
+    endpoints:
+      today_share_price:
+        method: GET
+        url: "https://www.sharesansar.com/today-share-price"
+        params: { }            # add date=YYYY-MM-DD at call time
+        confidence: high
+        notes: "Whole-market EOD OHLCV HTML table. ?date=YYYY-MM-DD for backfill."
+      live_trading:
+        method: GET
+        url: "https://www.sharesansar.com/live-trading"
+        confidence: high
+        notes: "Server-rendered live board HTML; carries 'As of' + market status."
+      floorsheet:
+        method: GET
+        url: "https://www.sharesansar.com/floorsheet"
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+        confidence: high
+        notes: "DataTables JSON: keys symbol, contract_no, buyer, seller, quantity, rate, amount, date_."
+      top_gainers:
+        method: GET
+        url: "https://www.sharesansar.com/top-gainers"
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+        confidence: high
+      top_losers:
+        method: GET
+        url: "https://www.sharesansar.com/top-losers"
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+        confidence: high
+      indices_sub_indices:
+        method: GET
+        url: "https://www.sharesansar.com/indices-sub-indices"
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+        confidence: high
+        notes: "DataTables JSON daily index OHLC. data: index_id, from, to (YYYY-MM-DD)."
+      company_page:
+        method: GET
+        url: "https://www.sharesansar.com/company/{symbol}"
+        confidence: high
+        notes: "Source of numeric company id (#companyid) and CSRF _token for POSTs."
+      company_price_history:
+        method: POST
+        url: "https://www.sharesansar.com/company-price-history"
+        headers: { "X-Requested-With": "XMLHttpRequest" }
+        confidence: high
+        notes: "Per-company daily OHLCV. Needs X-CSRF-Token + company=<numeric id>."
+
+  # ---- MeroLagani: secondary HTML source (ASP.NET WebForms) ----
+  merolagani:
+    name: merolagani
+    base_url: "https://merolagani.com"
+    access_method: html_scrape
+    requires_auth: false
+    enabled: false
+    rate_limit_seconds: 2.0
+    notes: "Server-rendered HTML. Postback pagination needs __VIEWSTATE tokens."
+    endpoints:
+      latest_market:
+        method: GET
+        url: "https://merolagani.com/LatestMarket.aspx"
+        confidence: high
+      stock_quote:
+        method: GET
+        url: "https://merolagani.com/StockQuote.aspx"
+        confidence: high
+        notes: "Full daily share-price table (HTML)."
+      indices:
+        method: GET
+        url: "https://merolagani.com/Indices.aspx"
+        confidence: high
+      company_detail:
+        method: GET
+        url: "https://merolagani.com/CompanyDetail.aspx"
+        params: { }            # symbol=NABIL
+        confidence: high
+
+  # ---- Chukul: optional versioned JSON API (paths inferred — verify via HAR) ----
+  chukul:
+    name: chukul
+    base_url: "https://api.chukul.com"
+    access_method: public_json_api
+    requires_auth: false
+    enabled: false
+    rate_limit_seconds: 1.5
+    notes: >
+      Versioned /v1/ JSON backend powering chukul.com. Paths below are INFERRED
+      and must be confirmed by capturing chukul.com/nepse-live-market in DevTools
+      and running `nepse-trader har analyze`. Disabled until verified.
+    endpoints:
+      live:
+        method: GET
+        url: "https://api.chukul.com/v1/market/live/"
+        confidence: low
+      stock:
+        method: GET
+        url: "https://api.chukul.com/v1/stock/"
+        confidence: low
+      index:
+        method: GET
+        url: "https://api.chukul.com/v1/index/"
+        confidence: low
+
+  # ---- NEPSE official: optional, via user-installed nepse-scraper lib or HAR ----
+  nepse_official:
+    name: nepse_official
+    base_url: "https://www.nepalstock.com"
+    access_method: unofficial_api
+    requires_auth: true            # obfuscated WASM "Salter" token (we do not reimplement)
+    enabled: false
+    rate_limit_seconds: 2.0
+    notes: >
+      The /api/nots/ endpoints require a short-lived obfuscated token reconstructed
+      via a WASM module — an access gate NEPSE applies to its own front-end. This
+      project does NOT reimplement that deobfuscation. Two supported paths:
+      (1) install the MIT-licensed `nepse-scraper` package (handles tokens itself,
+      init with verify_ssl=False due to NEPSE's incomplete TLS chain), or
+      (2) capture your own authenticated session and use the HAR-replay client.
+      Endpoint paths recorded for reference / HAR matching only.
+    endpoints:
+      market_open:
+        method: GET
+        url: "https://www.nepalstock.com/api/nots/nepse-data/market-open"
+        confidence: high
+        notes: "Reference only — needs Salter token."
+      today_price:
+        method: POST
+        url: "https://www.nepalstock.com/api/nots/nepse-data/today-price"
+        confidence: high
+        notes: "Reference only — needs Salter token + computed POST id."
+      nepse_index:
+        method: GET
+        url: "https://www.nepalstock.com/api/nots/nepse-index"
+        confidence: high
+        notes: "Reference only — needs Salter token."
+
+# Index id maps (for endpoints that key indices by id).
+index_ids:
+  sharesansar:   # used by /indices-sub-indices (index_id)
+    Banking: 1
+    Development Bank: 2
+    Finance: 3
+    Float: 4
+    Hotels and Tourism: 5
+    HydroPower: 6
+    Insurance: 7
+    Life Insurance: 8
+    Manufacturing and Processing: 9
+    Microfinance: 10
+    Mutual Fund: 11
+    Non Life Insurance: 13
+    Others: 14
+    Sensitive Float: 15
+    Sensitive: 16
+    Trading: 17
+    Investment: 18
+  nepse_official:   # used by /api/nots/graph/index/{id}
+    NEPSE: 58
+    Sensitive: 57
+    Float: 62
+    Sensitive Float: 63
+    Banking: 51
+    Development Bank: 55
+    Finance: 60
+    Hotels and Tourism: 52
+    HydroPower: 54
+    Investment: 67
+    Life Insurance: 65
+    Manufacturing and Processing: 56
+    Microfinance: 64
+    Mutual Fund: 66
+    Non Life Insurance: 59
+    Others: 53
+    Trading: 61

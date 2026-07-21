@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+data/*.db
+data/*.sqlite3
+har/captures/*.har
+!har/captures/.gitkeep
+*.log
+# Runtime run-logs: keep the tree, ignore the files.
+logs/**/*.log
+!logs/.gitkeep
+.env
+dist/
+build/
+.build_workflow.js
+.review_workflow.js
