@@ -435,6 +435,41 @@ class Storage:
         row = cur.fetchone()
         return date.fromisoformat(row["d"]) if row and row["d"] else None
 
+    def all_price_bars(self) -> list[sqlite3.Row]:
+        return self._conn.execute(
+            "SELECT * FROM price_bars ORDER BY symbol, business_date"
+        ).fetchall()
+
+    def all_reconciled(self) -> list[sqlite3.Row]:
+        return self._conn.execute(
+            "SELECT * FROM reconciled_prices ORDER BY symbol, business_date"
+        ).fetchall()
+
+    def all_signals(self) -> list[sqlite3.Row]:
+        return self._conn.execute(
+            "SELECT * FROM signals ORDER BY symbol, business_date"
+        ).fetchall()
+
+    def all_index_values(self) -> list[sqlite3.Row]:
+        return self._conn.execute(
+            "SELECT * FROM index_values ORDER BY business_date"
+        ).fetchall()
+
+    def all_ingest_logs(self) -> list[sqlite3.Row]:
+        return self._conn.execute(
+            "SELECT * FROM ingest_log ORDER BY ran_at"
+        ).fetchall()
+
+    def all_corporate_actions(self) -> list[sqlite3.Row]:
+        return self._conn.execute(
+            "SELECT * FROM corporate_actions ORDER BY ex_date"
+        ).fetchall()
+
+    def all_paper_trades(self) -> list[sqlite3.Row]:
+        return self._conn.execute(
+            "SELECT * FROM paper_trades ORDER BY business_date"
+        ).fetchall()
+
     @staticmethod
     def _row_to_bar(r: sqlite3.Row) -> PriceBar:
         return PriceBar(

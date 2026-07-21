@@ -22,6 +22,7 @@ from nepse_trader.analysis.strategies import STRATEGIES, build_strategy
 from nepse_trader.calendar import is_trading_day
 from nepse_trader.cli.progress import progress_bars, progress_spinner
 from nepse_trader.config import get_settings, load_sources
+from nepse_trader.export import EXPORT_TABLES, export_csv, export_parquet
 from nepse_trader.har import analyzer
 from nepse_trader.ingest.fundamentals import MeroLaganiFundamentalsClient
 from nepse_trader.logging_setup import run_logger
@@ -573,6 +574,61 @@ def har_redact(har_file: str) -> None:
     out = Path(har_file).with_suffix(".redacted.har")
     out.write_text(json.dumps(red, indent=2), encoding="utf-8")
     console.print(f"[green]Redacted HAR written:[/green] {out}")
+
+
+# -------------------------------------------------------------------- export
+export_app = typer.Typer(help="Export database tables to CSV or Parquet.", no_args_is_help=True)
+app.add_typer(export_app, name="export")
+
+
+@export_app.command("csv")
+@_safe_run
+def export_csv_cmd(
+    out_dir: str = typer.Option("exports", help="Output directory"),
+    tables: str = typer.Option(
+        "all", help=f"Comma list or 'all' of: {', '.join(EXPORT_TABLES)}"
+    ),
+) -> None:
+    """Export database tables to CSV files."""
+    storage = Storage(get_settings().db_path)
+    tbl_list = (
+        list(EXPORT_TABLES)
+        if tables.strip().lower() == "all"
+        else [t.strip() for t in tables.split(",") if t.strip()]
+    )
+    with progress_spinner(console, f"Exporting {len(tbl_list)} table(s) to CSV..."):
+        written = export_csv(storage, Path(out_dir), tbl_list)
+    if not written:
+        console.print("[yellow]No tables exported (all empty or none matched).[/yellow]")
+    else:
+        console.print(f"[green]Exported {len(written)} file(s) to {out_dir}/[/green]")
+        for p in written:
+            console.print(f"  • {p}")
+
+
+@export_app.command("parquet")
+@_safe_run
+def export_parquet_cmd(
+    out_dir: str = typer.Option("exports", help="Output directory"),
+    tables: str = typer.Option(
+        "all", help=f"Comma list or 'all' of: {', '.join(EXPORT_TABLES)}"
+    ),
+) -> None:
+    """Export database tables to Parquet files (requires polars)."""
+    storage = Storage(get_settings().db_path)
+    tbl_list = (
+        list(EXPORT_TABLES)
+        if tables.strip().lower() == "all"
+        else [t.strip() for t in tables.split(",") if t.strip()]
+    )
+    with progress_spinner(console, f"Exporting {len(tbl_list)} table(s) to Parquet..."):
+        written = export_parquet(storage, Path(out_dir), tbl_list)
+    if not written:
+        console.print("[yellow]No tables exported. Install polars: pip install polars[/yellow]")
+    else:
+        console.print(f"[green]Exported {len(written)} file(s) to {out_dir}/[/green]")
+        for p in written:
+            console.print(f"  • {p}")
 
 
 if __name__ == "__main__":
