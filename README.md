@@ -42,25 +42,35 @@ verify each site's real data endpoints from your own browser captures.
 ## Architecture
 
 ```
-                 ┌─────────────────────────── ingestion (polite HTTP) ───────────────────────────┐
-  ShareSansar ──▶│ ShareSansarClient   MeroLaganiClient   ChukulClient   NepseScraper/HAR replay │
-  MeroLagani  ──▶│  (HTML + JSON)        (HTML)           (JSON, config)   (optional / your HAR)  │
-  Chukul      ──▶└───────────────────────────────┬───────────────────────────────────────────────┘
-  (NEPSE)                                         ▼
+                  ┌─────────────────────────── ingestion (polite HTTP) ───────────────────────────┐
+  ShareSansar ──▶│ ShareSansarClient  MeroLaganiClient  ChukulClient  NepseAlpha  NepseScraper │
+  MeroLagani  ──▶│  (HTML + JSON)       (HTML)          (JSON, config)  (UDF JSON)  (HAR / lib) │
+  Chukul      ──▶│  + FundamentalsClient (EPS, PE, PBV, market cap)                              │
+  NepseAlpha  ──▶└───────────────────────────────┬────────────────────────────────────────────────┘
+                                                  ▼
                               reconcile_bars()  →  cross-source consensus + confidence
-                                                   │
-                          ┌────────────────────────┼────────────────────────────┐
-                          ▼                         ▼                            ▼
-                    SQLite storage          indicators + strategies        Nepal CostEngine
-                    (idempotent upsert)      (SMA/RSI/MACD/Boll/Composite)  (slabs, SEBON, DP, CGT)
-                          │                         │                            │
-                          └──────────┬─────────────┴──────────────┬─────────────┘
-                                     ▼                            ▼
-                               Backtester                  PaperPortfolio (WAC + FIFO CGT)
-                                     │                            │
-                                     └──────────────┬─────────────┘
-                                                    ▼
-                                       reporting (rich + markdown) + Alerter
+                              adjust_prices()   →  corporate-action back-adjustment
+                                                  │
+                          ┌────────────────────────┼───────────────────────────┬──────────────────┐
+                          ▼                         ▼                           ▼                  ▼
+                    SQLite storage          indicators + strategies        Nepal CostEngine    Calendar
+                    (idempotent upsert)      (8 strategies incl.             (slabs, SEBON,    (trading days,
+                          │                 Supertrend, Ichimoku,            DP, CGT, stops)    holidays)
+                          │                 Donchian, Mean-rev)                                  │
+                          │                         │                           │                  │
+                          └──────────┬──────────────┴─────────────┬─────────────┘──────────────────┘
+                                     │                           │
+                               ┌─────┴─────┐              PaperPortfolio
+                               │           │              (WAC + FIFO CGT)
+                         Backtester    Risk sizing
+                         (single-sym)  (stop-loss,      Walk-forward
+                                       take-profit,     optimisation
+                          Portfolio    circuit clamp,   (grid search,
+                          (multi-sym)  lot rounding)    expanding/rolling)
+                               │           │
+                               └─────┬─────┘
+                                     ▼
+                        reporting (rich + markdown) + Alerter (Telegram, Discord, SMTP)
 ```
 
 Key modules:
@@ -73,15 +83,22 @@ Key modules:
 | `nepse_trader/ingest/*.py` | Per-source clients (ShareSansar primary) |
 | `nepse_trader/ingest/reconcile.py` | Cross-source consensus + confidence |
 | `nepse_trader/storage/db.py` | SQLite (idempotent daily upserts) |
-| `nepse_trader/analysis/indicators.py` | SMA, EMA, RSI, MACD, Bollinger, ATR (pure) |
-| `nepse_trader/analysis/strategies.py` | Crossover/mean-reversion + composite voting |
+| `nepse_trader/calendar.py` | NEPSE trading calendar (holidays, next/prev trading day) |
+| `nepse_trader/analysis/indicators.py` | SMA, EMA, RSI, MACD, Bollinger, ATR, Supertrend, Donchian, Ichimoku (pure) |
+| `nepse_trader/analysis/strategies.py` | SMA cross, RSI, MACD, Bollinger, Supertrend, Ichimoku, Donchian, Mean-reversion + composite voting |
 | `nepse_trader/analysis/costs.py` | Nepal commission/SEBON/DP/CGT engine |
-| `nepse_trader/analysis/backtest.py` | Event-driven backtester w/ Nepal costs |
+| `nepse_trader/analysis/backtest.py` | Event-driven backtester w/ Nepal costs + stop-loss/take-profit |
+| `nepse_trader/analysis/risk.py` | Position sizing, stop-loss/take-profit, exposure limits, circuit-limit aware |
+| `nepse_trader/analysis/portfolio.py` | Multi-symbol portfolio backtester with equal-weight allocation |
+| `nepse_trader/analysis/walkforward.py` | Walk-forward optimisation (expanding/rolling windows, grid search) |
+| `nepse_trader/ingest/nepsealpha.py` | NepseAlpha TradingView UDF datafeed client |
+| `nepse_trader/ingest/fundamentals.py` | MeroLagani fundamentals (EPS, PE, PBV, market cap, 52W range) |
 | `nepse_trader/trading/portfolio.py` | Paper portfolio (WAC, FIFO lots for CGT) |
-| `nepse_trader/reporting.py` | Markdown/rich reports + optional webhook alert |
+| `nepse_trader/reporting.py` | Markdown/rich reports + optional webhook alert (Telegram, Discord, SMTP) |
 | `nepse_trader/har/analyzer.py` | HAR → ranked endpoints, config snippet, redaction |
+| `nepse_trader/config_validation.py` | JSON Schema validation for config YAML files |
 | `nepse_trader/pipeline.py` | Daily orchestration |
-| `nepse_trader/cli/main.py` | Typer CLI |
+| `nepse_trader/cli/main.py` | Typer CLI (run-daily, paper, corporate-actions, fundamentals, har) |
 
 ## Install
 
