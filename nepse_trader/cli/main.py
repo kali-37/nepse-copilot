@@ -566,6 +566,59 @@ def har_to_config(har_file: str, source: str = typer.Option(..., help="Source na
     console.print(analyzer.to_config_snippet(har, source))
 
 
+@app.command()
+@_safe_run
+def dashboard() -> None:
+    """Summary statistics about the local database and paper portfolio."""
+    storage = Storage(get_settings().db_path)
+    stats = storage.db_stats()
+    from rich.table import Table
+
+    rows = [
+        ("Symbols with price data", stats.get("symbols_with_data", 0)),
+        ("Sources contributing data", stats.get("sources_with_data", 0)),
+        ("Price bar rows", f"{stats.get('price_bar_rows', 0):,}"),
+        ("Reconciled rows", f"{stats.get('reconciled_rows', 0):,}"),
+        ("Price date range", f"{stats.get('price_date_earliest')} → {stats.get('price_date_latest')}"),
+        ("Reconciled date range", f"{stats.get('reconciled_date_earliest')} → {stats.get('reconciled_date_latest')}"),
+        ("Signal strategies", stats.get("signal_strategies", 0)),
+        ("Signal rows", f"{stats.get('signal_rows', 0):,}"),
+        ("Ingest log entries", f"{stats.get('ingest_log_rows', 0):,}"),
+        ("Paper trades recorded", stats.get("paper_trades", 0)),
+    ]
+
+    if stats.get("latest_reconciled_date"):
+        rows.append(("Latest reconciliation", stats["latest_reconciled_date"]))
+        rows.append(("  • Symbols", stats.get("latest_symbols", 0)))
+        rows.append(("  • Avg confidence", stats.get("latest_avg_confidence", "—")))
+        rows.append(("  • Disputed (<70%)", stats.get("latest_disputed", 0)))
+
+    db_path = Path(get_settings().db_path)
+    size_mb = db_path.stat().st_size / (1024 * 1024) if db_path.exists() else 0
+    rows.append(("Database size", f"{size_mb:.1f} MB"))
+
+    table = Table(title="NEPSE Trader — Dashboard", show_header=False)
+    table.add_column("Metric")
+    table.add_column("Value")
+    for label, val in rows:
+        table.add_row(label, str(val))
+    console.print(table)
+
+    # Paper portfolio summary
+    try:
+        from nepse_trader.trading.portfolio import PaperPortfolio
+        pf = PaperPortfolio(initial_cash=100_000.0)
+        for t in storage.paper_trades():
+            if t.side.value == "BUY":
+                pf.buy(t.symbol, t.price, t.quantity, t.business_date, t.strategy)
+            else:
+                pf.sell(t.symbol, t.price, t.quantity, t.business_date, t.strategy)
+        if pf.trades:
+            console.print(f"\n[bold]Paper portfolio:[/bold] {pf.summary()}")
+    except Exception:
+        pass
+
+
 @har_app.command("redact")
 def har_redact(har_file: str) -> None:
     """Strip cookies/auth headers; write <name>.redacted.har next to the input."""

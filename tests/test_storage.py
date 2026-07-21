@@ -84,3 +84,20 @@ def test_bars_for_date(tmp_path):
     rows = db.bars_for_date(D)
     assert {r.symbol for r in rows} == {"AAA", "BBB"}
     db.close()
+
+
+def test_db_stats(tmp_path):
+    db = Storage(tmp_path / "t.db")
+    stats = db.db_stats()
+    assert stats["symbols_with_data"] == 0
+    assert stats["price_bar_rows"] == 0
+    assert stats["reconciled_rows"] == 0
+    assert stats["latest_reconciled_date"] is None
+
+    db.upsert_price_bars([_bar("NABIL", 500.0, SourceName.SHARESANSAR, volume=100)])
+    stats = db.db_stats()
+    assert stats["symbols_with_data"] == 1
+    assert stats["price_bar_rows"] == 1
+    assert stats["price_date_earliest"] is not None
+    assert stats["price_date_latest"] is not None
+    db.close()

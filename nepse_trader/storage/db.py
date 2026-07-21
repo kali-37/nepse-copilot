@@ -470,6 +470,62 @@ class Storage:
             "SELECT * FROM paper_trades ORDER BY business_date"
         ).fetchall()
 
+    def db_stats(self) -> dict:
+        """Aggregate statistics about the database contents."""
+        out: dict = {}
+
+        cur = self._conn.execute("SELECT COUNT(DISTINCT symbol) AS n FROM price_bars")
+        out["symbols_with_data"] = cur.fetchone()["n"]
+
+        cur = self._conn.execute("SELECT COUNT(*) AS n FROM price_bars")
+        out["price_bar_rows"] = cur.fetchone()["n"]
+
+        cur = self._conn.execute("SELECT COUNT(*) AS n FROM reconciled_prices")
+        out["reconciled_rows"] = cur.fetchone()["n"]
+
+        cur = self._conn.execute("SELECT MIN(business_date) AS earliest, MAX(business_date) AS latest FROM price_bars")
+        row = cur.fetchone()
+        out["price_date_earliest"] = row["earliest"]
+        out["price_date_latest"] = row["latest"]
+
+        cur = self._conn.execute("SELECT MIN(business_date) AS earliest, MAX(business_date) AS latest FROM reconciled_prices")
+        row = cur.fetchone()
+        out["reconciled_date_earliest"] = row["earliest"]
+        out["reconciled_date_latest"] = row["latest"]
+
+        cur = self._conn.execute("SELECT COUNT(DISTINCT source) AS n FROM price_bars")
+        out["sources_with_data"] = cur.fetchone()["n"]
+
+        cur = self._conn.execute("SELECT COUNT(DISTINCT strategy) AS n FROM signals")
+        out["signal_strategies"] = cur.fetchone()["n"]
+
+        cur = self._conn.execute("SELECT COUNT(*) AS n FROM signals")
+        out["signal_rows"] = cur.fetchone()["n"]
+
+        cur = self._conn.execute("SELECT COUNT(*) AS n FROM ingest_log")
+        out["ingest_log_rows"] = cur.fetchone()["n"]
+
+        lrd = self.latest_reconciled_date()
+        out["latest_reconciled_date"] = lrd.isoformat() if lrd else None
+        if lrd:
+            cur = self._conn.execute(
+                "SELECT COUNT(*) AS n, AVG(confidence) AS avg_conf FROM reconciled_prices WHERE business_date=?",
+                (_d(lrd),),
+            )
+            row = cur.fetchone()
+            out["latest_symbols"] = row["n"]
+            out["latest_avg_confidence"] = round(row["avg_conf"], 4) if row["avg_conf"] else None
+            cur = self._conn.execute(
+                "SELECT COUNT(*) AS n FROM reconciled_prices WHERE business_date=? AND confidence<0.7",
+                (_d(lrd),),
+            )
+            out["latest_disputed"] = cur.fetchone()["n"]
+
+        cur = self._conn.execute("SELECT COUNT(*) AS n FROM paper_trades")
+        out["paper_trades"] = cur.fetchone()["n"]
+
+        return out
+
     @staticmethod
     def _row_to_bar(r: sqlite3.Row) -> PriceBar:
         return PriceBar(
