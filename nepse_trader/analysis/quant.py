@@ -191,7 +191,7 @@ def beta(asset_returns: Sequence[float], market_returns: Sequence[float]) -> Num
     cov = covariance(a, m)
     if cov is None:
         return None
-    return cov / (var_m ** 2)
+    return cov / (var_m**2)
 
 
 @dataclass

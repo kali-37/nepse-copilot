@@ -150,9 +150,18 @@ class Storage:
     def upsert_price_bars(self, bars: Iterable[PriceBar]) -> int:
         rows = [
             (
-                b.symbol, _d(b.business_date), b.open, b.high, b.low, b.close,
-                b.previous_close, b.volume, b.turnover, b.trades,
-                b.source.value, _dt(b.fetched_at),
+                b.symbol,
+                _d(b.business_date),
+                b.open,
+                b.high,
+                b.low,
+                b.close,
+                b.previous_close,
+                b.volume,
+                b.turnover,
+                b.trades,
+                b.source.value,
+                _dt(b.fetched_at),
             )
             for b in bars
         ]
@@ -175,8 +184,15 @@ class Storage:
 
     def upsert_index_values(self, values: Iterable[IndexValue]) -> int:
         rows = [
-            (v.name, _d(v.business_date), v.value, v.change, v.change_percent,
-             v.source.value, _dt(v.fetched_at))
+            (
+                v.name,
+                _d(v.business_date),
+                v.value,
+                v.change,
+                v.change_percent,
+                v.source.value,
+                _dt(v.fetched_at),
+            )
             for v in values
         ]
         if not rows:
@@ -197,11 +213,19 @@ class Storage:
     def upsert_reconciled(self, prices: Iterable[ReconciledPrice]) -> int:
         rows = [
             (
-                p.symbol, _d(p.business_date), p.open, p.high, p.low, p.close,
-                p.previous_close, p.volume, p.turnover,
+                p.symbol,
+                _d(p.business_date),
+                p.open,
+                p.high,
+                p.low,
+                p.close,
+                p.previous_close,
+                p.volume,
+                p.turnover,
                 ",".join(s.value for s in p.sources_agreeing),
                 ",".join(s.value for s in p.sources_present),
-                ",".join(p.disputed_fields), p.confidence,
+                ",".join(p.disputed_fields),
+                p.confidence,
             )
             for p in prices
         ]
@@ -228,8 +252,15 @@ class Storage:
 
     def upsert_signals(self, signals: Iterable[Signal]) -> int:
         rows = [
-            (s.symbol, _d(s.business_date), s.strategy, s.action.value,
-             s.strength, s.reason, s.price)
+            (
+                s.symbol,
+                _d(s.business_date),
+                s.strategy,
+                s.action.value,
+                s.strength,
+                s.reason,
+                s.price,
+            )
             for s in signals
         ]
         if not rows:
@@ -253,20 +284,46 @@ class Storage:
                    (trade_id,symbol,side,business_date,quantity,price,gross_amount,
                     broker_commission,sebon_fee,dp_charge,cgt,net_amount,strategy)
                    VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                (t.trade_id, t.symbol, t.side.value, _d(t.business_date), t.quantity,
-                 t.price, t.gross_amount, t.broker_commission, t.sebon_fee,
-                 t.dp_charge, t.cgt, t.net_amount, t.strategy),
+                (
+                    t.trade_id,
+                    t.symbol,
+                    t.side.value,
+                    _d(t.business_date),
+                    t.quantity,
+                    t.price,
+                    t.gross_amount,
+                    t.broker_commission,
+                    t.sebon_fee,
+                    t.dp_charge,
+                    t.cgt,
+                    t.net_amount,
+                    t.strategy,
+                ),
             )
 
-    def log_ingest(self, source: str, endpoint: str, business_date: date | None,
-                   rows: int, status: str, message: str = "") -> None:
+    def log_ingest(
+        self,
+        source: str,
+        endpoint: str,
+        business_date: date | None,
+        rows: int,
+        status: str,
+        message: str = "",
+    ) -> None:
         with self._tx() as c:
             c.execute(
                 """INSERT INTO ingest_log
                    (source,endpoint,business_date,rows,status,message,ran_at)
                    VALUES (?,?,?,?,?,?,?)""",
-                (source, endpoint, _d(business_date), rows, status, message,
-                 datetime.now().isoformat()),
+                (
+                    source,
+                    endpoint,
+                    _d(business_date),
+                    rows,
+                    status,
+                    message,
+                    datetime.now().isoformat(),
+                ),
             )
 
     # ---- reads ----------------------------------------------------------
@@ -296,11 +353,19 @@ class Storage:
                 ReconciledPrice(
                     symbol=r["symbol"],
                     business_date=date.fromisoformat(r["business_date"]),
-                    open=r["open"], high=r["high"], low=r["low"], close=r["close"],
-                    previous_close=r["previous_close"], volume=r["volume"],
+                    open=r["open"],
+                    high=r["high"],
+                    low=r["low"],
+                    close=r["close"],
+                    previous_close=r["previous_close"],
+                    volume=r["volume"],
                     turnover=r["turnover"],
-                    sources_agreeing=[SourceName(s) for s in (r["sources_agreeing"] or "").split(",") if s],
-                    sources_present=[SourceName(s) for s in (r["sources_present"] or "").split(",") if s],
+                    sources_agreeing=[
+                        SourceName(s) for s in (r["sources_agreeing"] or "").split(",") if s
+                    ],
+                    sources_present=[
+                        SourceName(s) for s in (r["sources_present"] or "").split(",") if s
+                    ],
                     disputed_fields=[f for f in (r["disputed_fields"] or "").split(",") if f],
                     confidence=r["confidence"] or 0.0,
                 )
@@ -323,11 +388,19 @@ class Storage:
                 ReconciledPrice(
                     symbol=r["symbol"],
                     business_date=date.fromisoformat(r["business_date"]),
-                    open=r["open"], high=r["high"], low=r["low"], close=r["close"],
-                    previous_close=r["previous_close"], volume=r["volume"],
+                    open=r["open"],
+                    high=r["high"],
+                    low=r["low"],
+                    close=r["close"],
+                    previous_close=r["previous_close"],
+                    volume=r["volume"],
                     turnover=r["turnover"],
-                    sources_agreeing=[SourceName(s) for s in (r["sources_agreeing"] or "").split(",") if s],
-                    sources_present=[SourceName(s) for s in (r["sources_present"] or "").split(",") if s],
+                    sources_agreeing=[
+                        SourceName(s) for s in (r["sources_agreeing"] or "").split(",") if s
+                    ],
+                    sources_present=[
+                        SourceName(s) for s in (r["sources_present"] or "").split(",") if s
+                    ],
                     disputed_fields=[f for f in (r["disputed_fields"] or "").split(",") if f],
                     confidence=r["confidence"] or 0.0,
                 )
@@ -348,13 +421,19 @@ class Storage:
         for r in cur.fetchall():
             out.append(
                 PaperTrade(
-                    trade_id=r["trade_id"], symbol=r["symbol"],
+                    trade_id=r["trade_id"],
+                    symbol=r["symbol"],
                     side=OrderSide(r["side"]),
                     business_date=date.fromisoformat(r["business_date"]),
-                    quantity=r["quantity"], price=r["price"],
-                    gross_amount=r["gross_amount"], broker_commission=r["broker_commission"],
-                    sebon_fee=r["sebon_fee"], dp_charge=r["dp_charge"], cgt=r["cgt"],
-                    net_amount=r["net_amount"], strategy=r["strategy"],
+                    quantity=r["quantity"],
+                    price=r["price"],
+                    gross_amount=r["gross_amount"],
+                    broker_commission=r["broker_commission"],
+                    sebon_fee=r["sebon_fee"],
+                    dp_charge=r["dp_charge"],
+                    cgt=r["cgt"],
+                    net_amount=r["net_amount"],
+                    strategy=r["strategy"],
                 )
             )
         return out
@@ -369,9 +448,14 @@ class Storage:
         return PriceBar(
             symbol=r["symbol"],
             business_date=date.fromisoformat(r["business_date"]),
-            open=r["open"], high=r["high"], low=r["low"], close=r["close"],
-            previous_close=r["previous_close"], volume=r["volume"],
-            turnover=r["turnover"], trades=r["trades"],
+            open=r["open"],
+            high=r["high"],
+            low=r["low"],
+            close=r["close"],
+            previous_close=r["previous_close"],
+            volume=r["volume"],
+            turnover=r["turnover"],
+            trades=r["trades"],
             source=SourceName(r["source"]),
             fetched_at=datetime.fromisoformat(r["fetched_at"]) if r["fetched_at"] else None,
         )

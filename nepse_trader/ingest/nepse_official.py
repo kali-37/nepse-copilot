@@ -158,18 +158,14 @@ def parse_today_price(
                 open=_to_float(_first(record, "openPrice", "open", "openingPrice")),
                 high=_to_float(_first(record, "highPrice", "high", "maxPrice")),
                 low=_to_float(_first(record, "lowPrice", "low", "minPrice")),
-                close=_to_float(
-                    _first(record, "lastTradedPrice", "closePrice", "close", "ltp")
-                ),
+                close=_to_float(_first(record, "lastTradedPrice", "closePrice", "close", "ltp")),
                 previous_close=_to_float(
                     _first(record, "previousClose", "previousDayClose", "preClose")
                 ),
                 volume=_to_int(
                     _first(record, "totalTradedQuantity", "volume", "qty", "shareTraded")
                 ),
-                turnover=_to_float(
-                    _first(record, "totalTradedValue", "turnover", "amount")
-                ),
+                turnover=_to_float(_first(record, "totalTradedValue", "turnover", "amount")),
                 trades=_to_int(_first(record, "totalTrades", "trades", "noOfTransactions")),
                 source=source,
             )
@@ -323,12 +319,8 @@ def _parse_sharesansar_like(
                 "openPrice": _first(record, "Open", "open", "OpenPrice"),
                 "highPrice": _first(record, "High", "high", "HighPrice"),
                 "lowPrice": _first(record, "Low", "low", "LowPrice"),
-                "lastTradedPrice": _first(
-                    record, "Close", "LTP", "Ltp", "close", "ClosePrice"
-                ),
-                "previousClose": _first(
-                    record, "PreviousClose", "PrevClose", "previousClose"
-                ),
+                "lastTradedPrice": _first(record, "Close", "LTP", "Ltp", "close", "ClosePrice"),
+                "previousClose": _first(record, "PreviousClose", "PrevClose", "previousClose"),
                 "totalTradedQuantity": _first(record, "Volume", "Vol", "volume"),
                 "totalTradedValue": _first(record, "Turnover", "turnover", "Amount"),
                 "totalTrades": _first(record, "Trans", "Trades", "trades"),
@@ -364,9 +356,7 @@ class HarReplayClient(SourceClient):
             return []
         return []
 
-    def _bars_from_entry(
-        self, entry: dict[str, Any], business_date: date | None
-    ) -> list[PriceBar]:
+    def _bars_from_entry(self, entry: dict[str, Any], business_date: date | None) -> list[PriceBar]:
         body = decode_content(entry)
         if not body:
             return []

@@ -89,13 +89,14 @@ def test_parse_stock_quote_maps_columns_by_header_name():
 
 
 def test_parse_stock_quote_handles_missing_table():
-    assert MeroLaganiClient.parse_stock_quote("<html><body>no tables</body></html>",
-                                              BUSINESS_DATE) == []
+    assert (
+        MeroLaganiClient.parse_stock_quote("<html><body>no tables</body></html>", BUSINESS_DATE)
+        == []
+    )
 
 
 def test_parse_indices_maps_name_and_value():
-    indices = MeroLaganiClient.parse_indices(INDICES_HTML, SourceName.MEROLAGANI,
-                                             BUSINESS_DATE)
+    indices = MeroLaganiClient.parse_indices(INDICES_HTML, SourceName.MEROLAGANI, BUSINESS_DATE)
     assert [i.name for i in indices] == ["NEPSE Index", "Sensitive"]
     nepse = indices[0]
     assert nepse.value == 2100.55

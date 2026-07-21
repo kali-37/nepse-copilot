@@ -671,8 +671,8 @@ medianet_versionId = "3121199";
     <div class="row">
         <div class="col-md-12">
             <div class="margin-top-bottom-10 mm-top">
-                
-                
+
+
                                 <div class="col-md-12 col-sm-12 col-xs-12">
                     <a class="advsTrack"
                         code="RADAR | CG MOTORS" href="https://radar.cgmotors.com.np/#inquiry"
@@ -681,8 +681,8 @@ medianet_versionId = "3121199";
                             class="img-responsive" alt="cg-motors" style="margin: 0 auto;">
                     </a>
                 </div>
-                
-                
+
+
                                 <div class="clearfix"></div>
             </div>
         </div>

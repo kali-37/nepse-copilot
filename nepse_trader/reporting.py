@@ -219,6 +219,7 @@ def print_signals(signals: list[Signal], console: Console | None = None) -> None
 # Daily-report builders (added for the comprehensive once-a-day run)
 # --------------------------------------------------------------------------
 
+
 def market_overview_md(breadth: dict) -> str:
     """Render market breadth: advancers/decliners/unchanged + totals.
 
@@ -242,6 +243,7 @@ def market_overview_md(breadth: dict) -> str:
 
 def movers_md(gainers: list[dict], losers: list[dict]) -> str:
     """Render top gainers and losers (each dict: symbol, close, change_percent)."""
+
     def _block(title: str, rows: list[dict]) -> list[str]:
         lines = [f"**{title}**", "", "| Symbol | Close | Change % |", "| --- | --- | --- |"]
         if not rows:

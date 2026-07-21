@@ -370,7 +370,7 @@ class Backtester:
             return 0.0
         mean = sum(rets) / len(rets)
         var = sum((r - mean) ** 2 for r in rets) / (len(rets) - 1)
-        std = var ** 0.5
+        std = var**0.5
         if std == 0:
             return 0.0
         return mean / std * math.sqrt(self.annualization)

@@ -71,7 +71,9 @@ def _rows_scrapling(html: str, table_css: str) -> list[Row]:
     for tr in tables[0].css("tr"):
         cells: Row = []
         for cell in tr.css("th, td"):
-            text = cell.get_all_text(strip=True) if hasattr(cell, "get_all_text") else str(cell.text)
+            text = (
+                cell.get_all_text(strip=True) if hasattr(cell, "get_all_text") else str(cell.text)
+            )
             cells.append((str(cell.tag).lower(), str(text)))
         out.append(cells)
     return out

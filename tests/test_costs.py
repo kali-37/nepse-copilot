@@ -62,7 +62,7 @@ def test_buy_breakdown_matches_worked_example():
     bd = eng.compute(OrderSide.BUY, price=1000, quantity=100)
     assert bd.gross_amount == 100_000.0
     assert bd.broker_commission == 330.0  # 0.33%
-    assert bd.sebon_fee == 15.0           # 0.015%
+    assert bd.sebon_fee == 15.0  # 0.015%
     assert bd.dp_charge == 25.0
     assert bd.cgt == 0.0
     assert bd.net_amount == 100_370.0
@@ -72,9 +72,7 @@ def test_buy_breakdown_matches_worked_example():
 def test_sell_breakdown_with_cgt_matches_worked_example():
     eng = _engine()
     buy = eng.compute(OrderSide.BUY, 1000, 100)
-    sell = eng.compute(
-        OrderSide.SELL, 1200, 100, buy_cost_basis=buy.net_amount, holding_days=30
-    )
+    sell = eng.compute(OrderSide.SELL, 1200, 100, buy_cost_basis=buy.net_amount, holding_days=30)
     assert sell.gross_amount == 120_000.0
     assert sell.broker_commission == 396.0  # 0.33% of 120,000
     assert sell.sebon_fee == 18.0
@@ -101,15 +99,19 @@ def test_cgt_boundary_exactly_365_days_is_short_term():
     at_365 = eng.compute(OrderSide.SELL, 1200, 100, buy_cost_basis=buy.net_amount, holding_days=365)
     at_366 = eng.compute(OrderSide.SELL, 1200, 100, buy_cost_basis=buy.net_amount, holding_days=366)
     assert at_365.cgt == round(gain * 0.075, 2)  # short-term
-    assert at_366.cgt == round(gain * 0.05, 2)   # long-term
+    assert at_366.cgt == round(gain * 0.05, 2)  # long-term
 
 
 def test_institutional_rate():
     eng = _engine()
     buy = eng.compute(OrderSide.BUY, 1000, 100)
     inst = eng.compute(
-        OrderSide.SELL, 1200, 100, buy_cost_basis=buy.net_amount,
-        holding_days=30, investor="institutional",
+        OrderSide.SELL,
+        1200,
+        100,
+        buy_cost_basis=buy.net_amount,
+        holding_days=30,
+        investor="institutional",
     )
     gain = (120_000 - 396 - 18 - 25) - buy.net_amount
     assert inst.cgt == round(gain * 0.10, 2)

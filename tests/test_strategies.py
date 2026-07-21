@@ -180,10 +180,7 @@ class _StubStrategy(Strategy):
         self._action = action
 
     def generate(self, bars: list[PriceBar]) -> list[Signal]:
-        return [
-            self._emit(b, self._action, 0.5, "stub", {"x": 1.0})
-            for b in bars
-        ]
+        return [self._emit(b, self._action, 0.5, "stub", {"x": 1.0}) for b in bars]
 
 
 def test_composite_majority_buy() -> None:

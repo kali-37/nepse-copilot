@@ -350,9 +350,7 @@ class ShareSansarClient(SourceClient):
 
     def top_gainers(self) -> list[dict]:
         try:
-            result = self.client.fetch(
-                self._url("top_gainers"), headers=dict(_XHR_HEADERS)
-            )
+            result = self.client.fetch(self._url("top_gainers"), headers=dict(_XHR_HEADERS))
             payload = result.json()
         except (FetchError, RateLimitedError, ValueError):
             return []
@@ -360,9 +358,7 @@ class ShareSansarClient(SourceClient):
 
     def top_losers(self) -> list[dict]:
         try:
-            result = self.client.fetch(
-                self._url("top_losers"), headers=dict(_XHR_HEADERS)
-            )
+            result = self.client.fetch(self._url("top_losers"), headers=dict(_XHR_HEADERS))
             payload = result.json()
         except (FetchError, RateLimitedError, ValueError):
             return []

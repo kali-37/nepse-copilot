@@ -132,9 +132,7 @@ def test_strip_html_extracts_anchor_text():
 
 
 def test_parse_today_share_price_basic_row():
-    bars = ShareSansarClient.parse_today_share_price(
-        TODAY_HTML, BDATE, SourceName.SHARESANSAR
-    )
+    bars = ShareSansarClient.parse_today_share_price(TODAY_HTML, BDATE, SourceName.SHARESANSAR)
     # Two data rows; the "Total" row is skipped.
     assert len(bars) == 2
 
@@ -153,9 +151,7 @@ def test_parse_today_share_price_basic_row():
 
 
 def test_parse_today_share_price_close_falls_back_to_ltp():
-    bars = ShareSansarClient.parse_today_share_price(
-        TODAY_HTML, BDATE, SourceName.SHARESANSAR
-    )
+    bars = ShareSansarClient.parse_today_share_price(TODAY_HTML, BDATE, SourceName.SHARESANSAR)
     khpl = bars[1]
     assert khpl.symbol == "KHPL"
     # Close cell was "-", so close should fall back to LTP (505.50).
@@ -260,11 +256,7 @@ def test_url_resolution_falls_back_when_spec_lacks_endpoint():
 def test_url_resolution_prefers_spec_url():
     spec = SourceSpec(
         name="sharesansar",
-        endpoints={
-            "top_gainers": EndpointSpec(
-                name="top_gainers", url="https://example.test/tg"
-            )
-        },
+        endpoints={"top_gainers": EndpointSpec(name="top_gainers", url="https://example.test/tg")},
     )
     client = ShareSansarClient(client=_FakeClient(), source_spec=spec)
     assert client._url("top_gainers") == "https://example.test/tg"

@@ -167,7 +167,9 @@ class PaperTrade(_Base):
     sebon_fee: float
     dp_charge: float
     cgt: float = 0.0
-    net_amount: float = Field(description="Cash impact incl. all fees (signed by side handled by ledger)")
+    net_amount: float = Field(
+        description="Cash impact incl. all fees (signed by side handled by ledger)"
+    )
     strategy: str | None = None
 
     @field_validator("symbol")

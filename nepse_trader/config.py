@@ -23,9 +23,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 class Settings(BaseSettings):
     """Runtime settings. Override via env vars (NEPSE_*) or .env."""
 
-    model_config = SettingsConfigDict(
-        env_prefix="NEPSE_", env_file=".env", extra="ignore"
-    )
+    model_config = SettingsConfigDict(env_prefix="NEPSE_", env_file=".env", extra="ignore")
 
     db_path: Path = DATA_DIR / "nepse.db"
     raw_cache_dir: Path = DATA_DIR / "raw"
@@ -37,9 +35,7 @@ class Settings(BaseSettings):
     max_retries: int = 3
     # Politeness: minimum seconds between requests to the SAME host.
     min_request_interval: float = 1.5
-    user_agent: str = (
-        "nepse-trader/0.1 (+public-data-aggregator; respects robots & ToS)"
-    )
+    user_agent: str = "nepse-trader/0.1 (+public-data-aggregator; respects robots & ToS)"
     # Enabled ingestion sources (by SourceName value).
     enabled_sources: list[str] = Field(
         default_factory=lambda: ["sharesansar", "chukul", "nepse_official"]

@@ -129,9 +129,7 @@ def test_parse_today_price_maps_nepse_shape() -> None:
 
 def test_parse_today_price_business_date_fallback() -> None:
     payload = {"content": [{"symbol": "HBL", "lastTradedPrice": 600}]}
-    bars = parse_today_price(
-        payload, SourceName.NEPSE_OFFICIAL, business_date=date(2023, 12, 31)
-    )
+    bars = parse_today_price(payload, SourceName.NEPSE_OFFICIAL, business_date=date(2023, 12, 31))
     assert len(bars) == 1
     assert bars[0].business_date == date(2023, 12, 31)
     assert bars[0].close == 600.0

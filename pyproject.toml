@@ -26,6 +26,7 @@ dev = [
     "ruff>=0.5",
     "freezegun>=1.5",
     "hypothesis>=6.100",
+    "pre-commit>=3.8",
 ]
 # Optional resilient fetch/parse backend. `scrapling` (core) enables the adaptive
 # HTML Selector; `scrapling[fetchers]` adds the curl_cffi fetch engine. We use

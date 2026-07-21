@@ -126,7 +126,9 @@ class DailyPipeline:
             # Isolate prices and indices independently: a failure fetching one
             # data type must NOT discard a successful fetch of the other.
             bars = self._safe_fetch(client.fetch_prices, business_date, sname, "prices", report)
-            indices = self._safe_fetch(client.fetch_indices, business_date, sname, "indices", report)
+            indices = self._safe_fetch(
+                client.fetch_indices, business_date, sname, "indices", report
+            )
             n = self.storage.upsert_price_bars(bars)
             ni = self.storage.upsert_index_values(indices)
             report.per_source[sname] = n
@@ -159,10 +161,16 @@ class DailyPipeline:
         for r in self.storage.reconciled_history(symbol):
             out.append(
                 PriceBar(
-                    symbol=r.symbol, business_date=r.business_date,
-                    open=r.open, high=r.high, low=r.low, close=r.close,
-                    previous_close=r.previous_close, volume=r.volume,
-                    turnover=r.turnover, source=SourceName.MANUAL,
+                    symbol=r.symbol,
+                    business_date=r.business_date,
+                    open=r.open,
+                    high=r.high,
+                    low=r.low,
+                    close=r.close,
+                    previous_close=r.previous_close,
+                    volume=r.volume,
+                    turnover=r.turnover,
+                    source=SourceName.MANUAL,
                 )
             )
         return out
@@ -228,7 +236,9 @@ class DailyPipeline:
             "decliners": dec,
             "unchanged": unch,
             "total_turnover": round(turnover, 2),
-            "avg_confidence": round(sum(confidences) / len(confidences), 4) if confidences else None,
+            "avg_confidence": round(sum(confidences) / len(confidences), 4)
+            if confidences
+            else None,
             "disputed": disputed,
         }
 

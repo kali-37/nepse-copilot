@@ -27,6 +27,7 @@ def _log_dir(tmp_path, monkeypatch):
 
 # --- slugify ----------------------------------------------------------------
 
+
 @pytest.mark.parametrize(
     "raw,expected",
     [
@@ -34,8 +35,8 @@ def _log_dir(tmp_path, monkeypatch):
         ("run daily 2026-05-18", "run-daily-2026-05-18"),
         ("paper buy NABIL", "paper-buy-NABIL"),
         ("weird/<>:name", "weird-name"),
-        ("///", "run"),       # all-symbol -> fallback
-        ("", "run"),          # empty -> fallback
+        ("///", "run"),  # all-symbol -> fallback
+        ("", "run"),  # empty -> fallback
         ("--leading--", "leading"),
     ],
 )
@@ -44,6 +45,7 @@ def test_slugify(raw, expected):
 
 
 # --- log_path scheme --------------------------------------------------------
+
 
 def test_log_path_scheme():
     now = datetime(2026, 5, 18, 9, 7, 3)
@@ -62,6 +64,7 @@ def test_log_path_component_slugified():
 
 
 # --- run_logger behaviour ---------------------------------------------------
+
 
 def test_run_logger_writes_file_and_captures_records():
     now = datetime(2026, 5, 18, 12, 0, 0)
@@ -89,8 +92,7 @@ def test_run_logger_detaches_handler_on_exit():
 def test_run_logger_scoped_attaches_to_package_logger():
     pkg = logging.getLogger(ROOT_LOGGER_NAME)
     before = list(pkg.handlers)
-    with run_logger("cli", "scoped-attach", capture_root=False,
-                    now=datetime(2026, 1, 1, 0, 0, 0)):
+    with run_logger("cli", "scoped-attach", capture_root=False, now=datetime(2026, 1, 1, 0, 0, 0)):
         assert len(pkg.handlers) == len(before) + 1
     assert pkg.handlers == before
 
@@ -151,6 +153,7 @@ def test_capture_root_false_excludes_foreign_loggers():
 
 
 # --- get_logger -------------------------------------------------------------
+
 
 def test_run_logger_control_flow_exit_is_calm():
     # typer.Exit is normal CLI control flow — logged calmly, NOT as "run failed".

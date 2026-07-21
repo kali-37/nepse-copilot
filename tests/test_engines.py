@@ -27,9 +27,7 @@ def test_build_engine_defaults_to_httpx():
 
 
 def test_build_engine_scrapling_falls_back_when_unavailable(monkeypatch):
-    monkeypatch.setattr(
-        "nepse_trader.ingest.engines.scrapling_fetcher_available", lambda: False
-    )
+    monkeypatch.setattr("nepse_trader.ingest.engines.scrapling_fetcher_available", lambda: False)
     eng = build_engine(_settings(fetch_engine="scrapling"))
     assert eng.name == "httpx"  # graceful fallback
 

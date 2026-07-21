@@ -148,8 +148,10 @@ def reconcile(
 def signal(
     symbol: str,
     strategy: str = typer.Option("sma_cross", help=f"One of: {', '.join(STRATEGIES)}"),
-    fast: int = typer.Option(None), slow: int = typer.Option(None),
-    period: int = typer.Option(None), signal_: int = typer.Option(None, "--signal"),
+    fast: int = typer.Option(None),
+    slow: int = typer.Option(None),
+    period: int = typer.Option(None),
+    signal_: int = typer.Option(None, "--signal"),
 ) -> None:
     """Generate signals for a symbol from its reconciled history."""
     pipe = DailyPipeline()
@@ -171,8 +173,10 @@ def backtest(
     strategy: str = typer.Option("sma_cross", help=f"One of: {', '.join(STRATEGIES)}"),
     cash: float = typer.Option(100_000.0, help="Initial capital (NPR)"),
     fraction: float = typer.Option(1.0, help="Fraction of cash deployed per entry"),
-    fast: int = typer.Option(None), slow: int = typer.Option(None),
-    period: int = typer.Option(None), signal_: int = typer.Option(None, "--signal"),
+    fast: int = typer.Option(None),
+    slow: int = typer.Option(None),
+    period: int = typer.Option(None),
+    signal_: int = typer.Option(None, "--signal"),
 ) -> None:
     """Backtest a strategy on a symbol's reconciled history (Nepal costs applied)."""
     pipe = DailyPipeline()
@@ -216,7 +220,9 @@ def screen(
     strategies: str = typer.Option(
         "all", "--strategies", help=f"Comma list or 'all' of: {', '.join(STRATEGIES)}"
     ),
-    rank_by: str = typer.Option("sharpe", help="sharpe|total_return_pct|cagr_pct|max_drawdown_pct|win_rate_pct"),
+    rank_by: str = typer.Option(
+        "sharpe", help="sharpe|total_return_pct|cagr_pct|max_drawdown_pct|win_rate_pct"
+    ),
     cash: float = typer.Option(100_000.0, help="Initial capital per backtest"),
     min_bars: int = typer.Option(60, help="Skip symbols with fewer bars"),
     top: int = typer.Option(30, help="Show top N leaderboard rows"),
@@ -228,9 +234,11 @@ def screen(
     so the leaderboard reflects net, after-cost performance.
     """
     pipe = DailyPipeline()
-    strat_list = list(STRATEGIES) if strategies.strip().lower() == "all" else [
-        s.strip() for s in strategies.split(",") if s.strip()
-    ]
+    strat_list = (
+        list(STRATEGIES)
+        if strategies.strip().lower() == "all"
+        else [s.strip() for s in strategies.split(",") if s.strip()]
+    )
     rows = pipe.screen_strategies(
         strategy_names=strat_list, cash=cash, min_bars=min_bars, rank_by=rank_by
     )
@@ -268,9 +276,11 @@ def run_daily(
     single command you schedule daily.
     """
     bd = _parse_date(date_) or date.today()
-    strat_list = list(STRATEGIES) if strategies.strip().lower() == "all" else [
-        s.strip() for s in strategies.split(",") if s.strip()
-    ]
+    strat_list = (
+        list(STRATEGIES)
+        if strategies.strip().lower() == "all"
+        else [s.strip() for s in strategies.split(",") if s.strip()]
+    )
     pipe = DailyPipeline(include_all_sources=all_sources)
     ing = pipe.ingest(bd)
     console.print(
@@ -285,7 +295,11 @@ def run_daily(
     )
     # Console: headline summary + the leaderboard + actionable signals.
     console.print_json(json.dumps(summary, default=str))
-    for title in ("Market overview", f"Backtest leaderboard (by {rank_by})", "Signals (actionable)"):
+    for title in (
+        "Market overview",
+        f"Backtest leaderboard (by {rank_by})",
+        "Signals (actionable)",
+    ):
         if title in sections:
             console.print(f"\n[bold]{title}[/bold]\n{sections[title]}")
     if report:

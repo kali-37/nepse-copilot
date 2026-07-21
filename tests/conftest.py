@@ -52,6 +52,7 @@ def _isolate_run_logs(tmp_path_factory):
 
 # --- test-run logging -------------------------------------------------------
 
+
 def _test_log_path() -> Path:
     now = datetime.now()
     return _REAL_LOG_DIR / "tests" / f"{now:%H-%M-%S}-{now:%Y-%m-%d}-pytest.log"
@@ -64,8 +65,9 @@ def pytest_configure(config: pytest.Config) -> None:
     handler = logging.FileHandler(path, encoding="utf-8")
     handler.setLevel(logging.DEBUG)
     handler.setFormatter(
-        logging.Formatter("%(asctime)s %(levelname)-7s %(name)s: %(message)s",
-                          datefmt="%Y-%m-%d %H:%M:%S")
+        logging.Formatter(
+            "%(asctime)s %(levelname)-7s %(name)s: %(message)s", datefmt="%Y-%m-%d %H:%M:%S"
+        )
     )
     logging.getLogger("nepse_trader").addHandler(handler)
     logging.getLogger("nepse_trader").setLevel(logging.DEBUG)

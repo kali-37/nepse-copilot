@@ -156,9 +156,7 @@ def scrapling_fetcher_available() -> bool:
         return False
 
 
-def build_engine(
-    settings: Settings, client: httpx.Client | None = None
-) -> FetchEngine:
+def build_engine(settings: Settings, client: httpx.Client | None = None) -> FetchEngine:
     """Construct the configured fetch engine, falling back to httpx if Scrapling
     is requested but unavailable."""
     choice = (settings.fetch_engine or "httpx").lower()

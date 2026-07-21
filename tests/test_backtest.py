@@ -64,9 +64,9 @@ def test_max_drawdown_known_curve():
     curve = [
         (date(2024, 1, 1), 100.0),
         (date(2024, 1, 2), 120.0),  # peak
-        (date(2024, 1, 3), 90.0),   # -25% from 120
+        (date(2024, 1, 3), 90.0),  # -25% from 120
         (date(2024, 1, 4), 110.0),
-        (date(2024, 1, 5), 60.0),   # -50% from 120 (deepest)
+        (date(2024, 1, 5), 60.0),  # -50% from 120 (deepest)
     ]
     assert _max_drawdown(curve) == 50.0
 
@@ -186,7 +186,7 @@ def test_slippage_worsens_fills():
     # Slippage makes buys fill higher and sells fill lower -> strictly worse.
     assert slipped.final_equity < base.final_equity
     assert slipped.trades[0]["entry_price"] > 100.0  # 100 * 1.01
-    assert slipped.trades[0]["exit_price"] < 200.0   # 200 * 0.99
+    assert slipped.trades[0]["exit_price"] < 200.0  # 200 * 0.99
 
 
 def test_summary_and_str_are_compact():
@@ -218,9 +218,7 @@ def test_summary_and_str_are_compact():
 def test_position_fraction_limits_capital_deployed():
     bars = _bars([100.0, 100.0, 100.0])
     # Flat price: with half the capital deployed, only ~half cash is at risk.
-    res = Backtester(initial_cash=100_000.0, position_fraction=0.5).run(
-        _OneTradeStrategy(), bars
-    )
+    res = Backtester(initial_cash=100_000.0, position_fraction=0.5).run(_OneTradeStrategy(), bars)
     trade = res.trades[0]
     # ~50k budget at price 100 buys 497 shares (gross 49,700 + buy fees ~< 300).
     assert trade["qty"] == 497

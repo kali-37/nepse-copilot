@@ -95,9 +95,7 @@ class PaperPortfolio:
 
         bd = self.cost_engine.compute(OrderSide.BUY, price, quantity)
         if bd.net_amount > self.cash:
-            raise ValueError(
-                f"insufficient funds: need {bd.net_amount:.2f}, have {self.cash:.2f}"
-            )
+            raise ValueError(f"insufficient funds: need {bd.net_amount:.2f}, have {self.cash:.2f}")
 
         self.cash = _round2(self.cash - bd.net_amount)
 
@@ -150,9 +148,7 @@ class PaperPortfolio:
 
         held = self._held(symbol)
         if quantity > held:
-            raise ValueError(
-                f"cannot sell {quantity} of {symbol}: only {held} held"
-            )
+            raise ValueError(f"cannot sell {quantity} of {symbol}: only {held} held")
 
         # Consume FIFO lots to determine cost basis of the sold qty and the
         # holding period measured from the OLDEST contributing lot's date.

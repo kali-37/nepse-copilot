@@ -35,13 +35,41 @@ def test_sources_lists_configured():
 
 
 def test_paper_buy_sell_status_roundtrip():
-    r1 = runner.invoke(app, ["paper", "buy", "NABIL", "--price", "1000", "--qty",
-                             "100", "--date", "2026-01-10", "--cash", "200000"])
+    r1 = runner.invoke(
+        app,
+        [
+            "paper",
+            "buy",
+            "NABIL",
+            "--price",
+            "1000",
+            "--qty",
+            "100",
+            "--date",
+            "2026-01-10",
+            "--cash",
+            "200000",
+        ],
+    )
     assert r1.exit_code == 0, r1.output
     assert "BUY" in r1.output
 
-    r2 = runner.invoke(app, ["paper", "sell", "NABIL", "--price", "1200", "--qty",
-                             "100", "--date", "2026-02-10", "--cash", "200000"])
+    r2 = runner.invoke(
+        app,
+        [
+            "paper",
+            "sell",
+            "NABIL",
+            "--price",
+            "1200",
+            "--qty",
+            "100",
+            "--date",
+            "2026-02-10",
+            "--cash",
+            "200000",
+        ],
+    )
     assert r2.exit_code == 0, r2.output
     assert "CGT" in r2.output
 
@@ -51,22 +79,35 @@ def test_paper_buy_sell_status_roundtrip():
 
 
 def test_paper_buy_insufficient_funds_rejected():
-    r = runner.invoke(app, ["paper", "buy", "NABIL", "--price", "1000", "--qty",
-                            "100", "--cash", "100000"])
+    r = runner.invoke(
+        app, ["paper", "buy", "NABIL", "--price", "1000", "--qty", "100", "--cash", "100000"]
+    )
     assert r.exit_code == 1
     assert "insufficient funds" in r.output
 
 
 def test_har_analyze(tmp_path):
     har = {
-        "log": {"entries": [
-            {"request": {"url": "https://www.sharesansar.com/top-gainers", "method": "GET",
-                         "queryString": [], "headers": []},
-             "response": {"status": 200,
-                          "content": {"mimeType": "application/json",
-                                      "text": json.dumps({"data": [{"symbol": "NABIL", "ltp": "1"}]})},
-                          "headers": []}}
-        ]}
+        "log": {
+            "entries": [
+                {
+                    "request": {
+                        "url": "https://www.sharesansar.com/top-gainers",
+                        "method": "GET",
+                        "queryString": [],
+                        "headers": [],
+                    },
+                    "response": {
+                        "status": 200,
+                        "content": {
+                            "mimeType": "application/json",
+                            "text": json.dumps({"data": [{"symbol": "NABIL", "ltp": "1"}]}),
+                        },
+                        "headers": [],
+                    },
+                }
+            ]
+        }
     }
     p = tmp_path / "s.har"
     p.write_text(json.dumps(har), encoding="utf-8")
@@ -76,13 +117,26 @@ def test_har_analyze(tmp_path):
 
 
 def test_har_redact_writes_file(tmp_path):
-    har = {"log": {"entries": [
-        {"request": {"url": "https://x/api", "method": "GET", "queryString": [],
-                     "headers": [{"name": "Cookie", "value": "secret"}],
-                     "cookies": [{"name": "sid", "value": "secret"}]},
-         "response": {"status": 200, "content": {"mimeType": "application/json", "text": "{}"},
-                      "headers": []}}
-    ]}}
+    har = {
+        "log": {
+            "entries": [
+                {
+                    "request": {
+                        "url": "https://x/api",
+                        "method": "GET",
+                        "queryString": [],
+                        "headers": [{"name": "Cookie", "value": "secret"}],
+                        "cookies": [{"name": "sid", "value": "secret"}],
+                    },
+                    "response": {
+                        "status": 200,
+                        "content": {"mimeType": "application/json", "text": "{}"},
+                        "headers": [],
+                    },
+                }
+            ]
+        }
+    }
     p = tmp_path / "c.har"
     p.write_text(json.dumps(har), encoding="utf-8")
     r = runner.invoke(app, ["har", "redact", str(p)])

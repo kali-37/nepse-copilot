@@ -17,17 +17,47 @@ from pathlib import Path
 from typing import Any
 
 _MARKET_KEYWORDS = (
-    "symbol", "ltp", "close", "open", "high", "low", "turnover", "volume",
-    "index", "floorsheet", "gainer", "loser", "price", "scrip", "security",
-    "nepse", "today-price", "today-share-price", "market", "quantity", "rate",
+    "symbol",
+    "ltp",
+    "close",
+    "open",
+    "high",
+    "low",
+    "turnover",
+    "volume",
+    "index",
+    "floorsheet",
+    "gainer",
+    "loser",
+    "price",
+    "scrip",
+    "security",
+    "nepse",
+    "today-price",
+    "today-share-price",
+    "market",
+    "quantity",
+    "rate",
 )
 
 _SENSITIVE_HEADERS = {"cookie", "set-cookie", "authorization", "x-csrf-token", "x-xsrf-token"}
 
 # Query/form parameter names that commonly carry credentials or session state.
 _SENSITIVE_PARAM_PATTERNS = (
-    "token", "auth", "salter", "csrf", "xsrf", "access", "refresh",
-    "session", "sid", "jwt", "bearer", "key", "secret", "password",
+    "token",
+    "auth",
+    "salter",
+    "csrf",
+    "xsrf",
+    "access",
+    "refresh",
+    "session",
+    "sid",
+    "jwt",
+    "bearer",
+    "key",
+    "secret",
+    "password",
 )
 
 # URL substrings whose RESPONSE bodies carry credentials (e.g. NEPSE's
@@ -156,15 +186,24 @@ def analyze(har: dict[str, Any]) -> list[EndpointCandidate]:
             sample_keys = _table_ids(body)
 
         # Penalise obvious non-data assets.
-        if any(url.lower().endswith(ext) for ext in (".js", ".css", ".png", ".jpg", ".svg", ".woff", ".woff2", ".ico")):
+        if any(
+            url.lower().endswith(ext)
+            for ext in (".js", ".css", ".png", ".jpg", ".svg", ".woff", ".woff2", ".ico")
+        ):
             score = 0.0
             kind = "other"
 
         if score > 0:
             candidates.append(
                 EndpointCandidate(
-                    method=method, url=url, kind=kind, score=score, status=status,
-                    content_type=ct, sample_keys=sample_keys, query_params=query_params,
+                    method=method,
+                    url=url,
+                    kind=kind,
+                    score=score,
+                    status=status,
+                    content_type=ct,
+                    sample_keys=sample_keys,
+                    query_params=query_params,
                 )
             )
 
@@ -187,7 +226,7 @@ def _table_ids(html: str) -> list[str]:
 def to_config_snippet(har: dict[str, Any], source: str, top: int = 8) -> str:
     """Emit a sources.yaml snippet for the highest-scoring endpoints."""
     cands = [c for c in analyze(har) if c.kind in ("json_api", "html_table")][:top]
-    lines = [f"  {source}:", f'    name: {source}', "    endpoints:"]
+    lines = [f"  {source}:", f"    name: {source}", "    endpoints:"]
     seen: set[str] = set()
     for c in cands:
         key = _endpoint_key(c.url, seen)

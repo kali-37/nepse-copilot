@@ -8,14 +8,15 @@ from __future__ import annotations
 
 from datetime import date
 
-from hypothesis import assume, given, strategies as st
+from hypothesis import assume, given
+from hypothesis import strategies as st
 from hypothesis.strategies import floats, integers
 
 from nepse_trader.analysis.costs import CostEngine, _round2
 from nepse_trader.analysis.indicators import bollinger_bands, ema, rsi, sma
 from nepse_trader.ingest.reconcile import reconcile_bars
 from nepse_trader.models import OrderSide, PriceBar, SourceName
-
+from nepse_trader.trading.portfolio import PaperPortfolio
 
 # ---------------------------------------------------------------------------
 # Cost engine invariants
@@ -34,7 +35,7 @@ def test_commission_monotonic(amount: float):
     # At double the amount, commission must be >= original.
     comm2 = e.broker_commission(amount * 2)
     assert comm2 >= comm - 1e-9, (
-        f"commission({amount*2:.2f})={comm2:.4f} < commission({amount:.2f})={comm:.4f}"
+        f"commission({amount * 2:.2f})={comm2:.4f} < commission({amount:.2f})={comm:.4f}"
     )
 
 
@@ -64,9 +65,7 @@ def test_fees_breakdown_sums_to_total(price: float, qty: int):
     e = CostEngine()
     bd = e.compute(OrderSide.BUY, price, qty)
     expected = _round2(bd.broker_commission + bd.sebon_fee + bd.dp_charge + bd.cgt)
-    assert abs(bd.total_fees - expected) < 1e-9, (
-        f"total_fees={bd.total_fees} != {expected}"
-    )
+    assert abs(bd.total_fees - expected) < 1e-9, f"total_fees={bd.total_fees} != {expected}"
 
 
 @given(price=_price_amounts, qty=_quantities)
@@ -163,9 +162,9 @@ def test_bollinger_bands_ordered(values: list[float]):
     """Bollinger: lower <= middle <= upper."""
     period = max(3, len(values) // 4)
     lower, middle, upper = bollinger_bands(values, period=period)
-    for l, m, u in zip(lower, middle, upper, strict=True):
-        if l is not None and m is not None and u is not None:
-            assert l <= m + 1e-9, f"lower={l} > middle={m}"
+    for lo, m, u in zip(lower, middle, upper, strict=True):
+        if lo is not None and m is not None and u is not None:
+            assert lo <= m + 1e-9, f"lower={lo} > middle={m}"
             assert m <= u + 1e-9, f"middle={m} > upper={u}"
 
 
@@ -206,8 +205,7 @@ def test_reconcile_close_within_source_range(bars: list[PriceBar]):
         if r.close is not None and r.sources_agreeing:
             agreeing = r.sources_agreeing
             agreeing_closes = [
-                b.close for b in bars
-                if b.close is not None and b.source in agreeing
+                b.close for b in bars if b.close is not None and b.source in agreeing
             ]
             if agreeing_closes:
                 assert min(agreeing_closes) <= r.close <= max(agreeing_closes) + 1e-9
@@ -225,11 +223,11 @@ def test_reconcile_disputed_fields_match(bars: list[PriceBar]):
 # Portfolio invariants
 # ---------------------------------------------------------------------------
 
-from nepse_trader.trading.portfolio import PaperPortfolio
-
 
 @given(
-    initial_cash=floats(min_value=10_000, max_value=10_000_000, allow_nan=False, allow_infinity=False),
+    initial_cash=floats(
+        min_value=10_000, max_value=10_000_000, allow_nan=False, allow_infinity=False
+    ),
     price=_price_amounts,
     qty=_quantities,
 )

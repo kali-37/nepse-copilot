@@ -38,11 +38,7 @@ def _consensus(
 
     best_cluster: list[tuple[SourceName, float]] = []
     for _, anchor in present:
-        cluster = [
-            (s, v)
-            for s, v in present
-            if _within(anchor, v, tolerance)
-        ]
+        cluster = [(s, v) for s, v in present if _within(anchor, v, tolerance)]
         if len(cluster) > len(best_cluster):
             best_cluster = cluster
 
@@ -59,9 +55,7 @@ def _within(a: float, b: float, tolerance: float) -> bool:
     return abs(a - b) / denom <= tolerance
 
 
-def reconcile_bars(
-    bars: Iterable[PriceBar], tolerance: float = 0.005
-) -> list[ReconciledPrice]:
+def reconcile_bars(bars: Iterable[PriceBar], tolerance: float = 0.005) -> list[ReconciledPrice]:
     grouped: dict[tuple[str, object], list[PriceBar]] = defaultdict(list)
     for b in bars:
         grouped[(b.symbol, b.business_date)].append(b)
@@ -74,11 +68,7 @@ def reconcile_bars(
         close_agreeing: list[SourceName] = []
 
         for field in _NUMERIC_FIELDS:
-            pairs = [
-                (b.source, getattr(b, field))
-                for b in group
-                if getattr(b, field) is not None
-            ]
+            pairs = [(b.source, getattr(b, field)) for b in group if getattr(b, field) is not None]
             agreed, agreeing, disputed = _consensus(pairs, tolerance)
             field_values[field] = agreed
             if disputed:
@@ -88,9 +78,7 @@ def reconcile_bars(
 
         # Deduplicate agreeing sources — a source cannot agree more than once.
         unique_agreeing = sorted({s for s in close_agreeing}, key=lambda s: s.value)
-        confidence = (
-            len(unique_agreeing) / len(present_sources) if present_sources else 0.0
-        )
+        confidence = len(unique_agreeing) / len(present_sources) if present_sources else 0.0
         out.append(
             ReconciledPrice(
                 symbol=symbol,

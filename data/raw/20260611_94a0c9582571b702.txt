@@ -7,7 +7,7 @@
 </title>
     <link rel="preload" href="/bundles/css/main200?v=XBmv3Nbj66DV6lzAxQCBgaIOrn903Diuut8lsSb3n9k1" as="style">
     <link rel="preload" href="/bundles/css/site205?v=L5V1uk5xoLic8qHQPSOAgTWwYTf5257cWEew3F97Y_c1" as="style">
-    
+
     <link href="/bundles/css/main200?v=XBmv3Nbj66DV6lzAxQCBgaIOrn903Diuut8lsSb3n9k1" rel="stylesheet"/>
 <link href="/bundles/css/site205?v=L5V1uk5xoLic8qHQPSOAgTWwYTf5257cWEew3F97Y_c1" rel="stylesheet"/>
 <link href="/Content/Services.css" rel="stylesheet"/>
@@ -18,7 +18,7 @@
 
 
 
- 
+
 
 
 
@@ -31,17 +31,17 @@
     <!--[if IE 7]>
       <link rel="stylesheet" href="path/to/font-awesome/css/font-awesome-ie7.min.css" />
     <![endif]-->
-    
 
-    
+
+
 
 	<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5212639010415313" crossorigin="anonymous"></script>
 <meta name="description" content="View today’s shareprice,  last traded price, LTP, opening and closing price, high and low price, percentage change, quantity, turnover of listed company" /></head>
 <body>
     <!-- Go to www.addthis.com/dashboard to customize your tools -->
-    
 
-    
+
+
     <div class="popup-wrapper">
         <div class="popup">
             <div class="popup-body">
@@ -69,11 +69,11 @@
 <input type="hidden" name="__EVENTVALIDATION" id="__EVENTVALIDATION" value="I8XsoovKkwAvoKJWwxoo0DlwxMluTTR9c32OxEI7cL226wa6Zt+V98SuaTKvunkEmO1u1g8qkMHX/mWl/ks+xziqg/RVJZv4DKPk/vxQmdLA299HPNzYsBy3gjkKkPii9fqRKYGuhIbEkecYUXujadPcYQT//WE/LF6Aoy7Z12PNfVZSMhUsuLyrgoCzINcgpMkJpICQmTOOkEmEcX9XoycbG4GBw60qX8XTD5rsbeiH5mvrJcxx538kHPTLx81n+YT9r+YbsyyGWPV3oQYEi4TJ2qACNPvOY19CQqsAtHT7GrKfzrb1oVKzI/iZ9jM4RvVHPrGRHNluK4ThgazbDJw6AJtS6VOQNcQUwu1PZhbd1wdJya3YZNpLH/SHwfqIANhwn0mNsXf1IRbiCDETi+JgcIdiI1GM6gce2ZYpTgH7LuA7A0Exnoeg2VCqdIwFttcTxU8PU7zAI9qyiFHqsIcA2SSGN9tfJTnYdwF9TuQ8haZuS9ZmMZwdAOB2KcX2Ew4LMmCQXwLEpuX1IOQ+2H3Fwc9CetP9e1hGeVHJPmzvGQZu/3FrEpBhmgtplH5jThgCwYg7iyvbYahFuemyI3suVI6CgbAJYynN8tWMgYjJgKg/BhSUoMu+C9lWyBPaDiJhPby430jtuNsPenMZcbUDBxkj/shrH2OXEWGSb9OGide9Uzal2uwwTFBsixLOFNuXcGpgVt63u/G1DTDS6fLETK2zBhhvg5Tg0ScIiLO5MQx6NchTJ1nE4iMsSLtj0lfsQYAlKgapzQj4iy232IffS0mZHxzcapU4fZAX3wES0EkCClVlx96J0cBBXQuFOduZwV/TrOMGHnV6HYBhzm4D+Mjj3gcMHpyYrH6Q7TPv8xeZXWJGkyFlFJ6Ft2M/vI4SuaSrOQUzpm+slpoG2boKGG+q9PYmioaWRRftnBM=" />
 
         <div>
-            
-            <div class="visible-mobile-ad">
-                
 
-                
+            <div class="visible-mobile-ad">
+
+
+
             </div>
             <div class="topbar">
                 <div class="container">
@@ -85,11 +85,11 @@
                                 <li><i class="icon-phone"></i>(+977) 01-5315101/5315184</li>
                                 <li><i class="icon-mobile-phone"></i>9801000860</li>
                                 <li>
-                                    
+
                                     <a onclick="javascript: window.open(&#39;https://eng.merolagani.com&#39;);" id="ctl00_btnEn" title="English Version" class="btn btn-primary btn-xs act-btn" href="javascript:__doPostBack(&#39;ctl00$btnEn&#39;,&#39;&#39;)">
                                     <span class="glyphicon glyphicon-one-fine-white-dot">ENGLISH</span></a>
                                 </li>
-                                
+
                                 <li id="ctl00_liFreeAccount" style="display: none">
                                     <a href="/Login.aspx" class="btn btn-primary btn-xs">Create Free Account</a>
                                 </li>
@@ -128,7 +128,7 @@
             </div>
             <div class="visible-desktop-ad">
                 <div class="slot-A9">
-                    
+
 
                 </div>
             </div>
@@ -136,7 +136,7 @@
                 <div class="container">
                     <div class="row">
                         <div class="visible-mobile-ad">
-                            
+
 
                         </div>
                     </div>
@@ -155,21 +155,21 @@
         </a>
     </div>
 
-    
+
 </div>
 
                         </div>
-                        
-                        
-                        
-                        
-                        
-                        
+
+
+
+
+
+
                     </div>
                 </div>
             </div>
             <div class="visible-mobile-ad">
-                
+
 
             </div>
             <nav id="navbars" class="navbar navbar-inverse" data-spy="affix" data-offset-top="197">
@@ -186,8 +186,8 @@
                              <ul>
                                 <li>
                                     <div class="form-inline home-panel-search">
-	
-                                        
+
+
 
 <autosuggest>
     <input type="hidden" name="ctl00$ASCompany$hdnAutoSuggest" id="ctl00_ASCompany_hdnAutoSuggest" value="0" />
@@ -195,7 +195,7 @@
         <span id="username-verify" class="pull-right verify-position"></span>
 </autosuggest>
                                         <a onclick="return false;" id="ctl00_lbtnSearchHeader" tabindex="-1" title="Search Company Detail" class="btn btn-primary home-button-search" data-trigger="company-detail" href="javascript:__doPostBack(&#39;ctl00$lbtnSearchHeader&#39;,&#39;&#39;)"><span class="icon-search"></span></a>
-                                    
+
 </div>
                                 </li>
                             </ul>
@@ -225,7 +225,7 @@
                                     <li class="">
                                         <a href="/Indices.aspx">Indices</a>
                                     </li>
-                                   
+
                                     <li class="">
                                         <a href="/MarketSummary.aspx">Market Overview</a>
                                     </li>
@@ -248,7 +248,7 @@
                                         <a href="/#StockEvents" onclick="LayoutMaster_ClientID.TrackEvent_OnStockEvent();">Stock Events</a>
                                     </li>
                                     <li class="">
-                                        <a 
+                                        <a
                                             href="/#divOpportunity">Tender & Auction</a>
                                     </li>
 
@@ -310,7 +310,7 @@
                                 <ul class="dropdown-menu">
                                     <li class="">
                                         <a href="/MyPortfolio.aspx">My Portfolio</a>
-                                    </li>                                    
+                                    </li>
                                     <li class="">
                                         <a class="" href="/Newsletter.aspx">Newsletter <span class="badge-info"><span class="glyphicon glyphicon-flag blink" style="color: #edaa4e"></span></span></a>
                                     </li>
@@ -371,8 +371,8 @@
                             </li>
 							<li>
                                 <div id="ctl00_Panel1" class="form-inline home-panel-search">
-	
-                                    
+
+
 
 <autosuggest>
     <input type="hidden" name="ctl00$AutoSuggest1$hdnAutoSuggest" id="ctl00_AutoSuggest1_hdnAutoSuggest" value="0" />
@@ -380,7 +380,7 @@
         <span id="username-verify" class="pull-right verify-position"></span>
 </autosuggest>
                                     <a onclick="return LayoutMaster_ClientID.trackEvent_OnNavSearch();" id="ctl00_lbtnSearch" tabindex="-1" title="Search" class="btn btn-primary home-button-search" data-trigger="company-detail" href="javascript:__doPostBack(&#39;ctl00$lbtnSearch&#39;,&#39;&#39;)"><span class="icon-search"></span></a>
-                                
+
 </div>
                             </li>
                             <li id="ctl00_liLogin" style="display: none">
@@ -410,7 +410,7 @@
                                     <li>
                                         <a href="/EditAccount.aspx?type=rm">Remove Account</a>
                                     </li>
-                                    
+
                                     <li class="divider"></li>
                                     <li><a href="/Logout.aspx" onclick="webEngageLogout();">Log Out</a></li>
                                 </ul>
@@ -425,20 +425,20 @@
         <div class="container">
             <div id="page-alert" class="page-alert"></div>
             <div id="processing"></div>
-            
-            
+
+
     <link href="/Content/sortable.css" rel="stylesheet"/>
 
     <script src="/scripts/jquery/jquery-1.10.2.min.js"></script>
 
     <script src="/scripts/jquery/sortable.js"></script>
-    
-    <div class="visible-desktop-ad">  
-        
+
+    <div class="visible-desktop-ad">
+
 
     </div>
-    <div class="visible-mobile-ad">  
-        
+    <div class="visible-mobile-ad">
+
 
     </div>
   <div class="row">
@@ -465,11 +465,11 @@
     <div class="row">
         <div class="col-lg-12">
             <div id="ctl00_ContentPlaceHolder1_Panel1" class="well well-sm">
-	
+
                 <div class="row">
                     <div class="col-sm-3">
                         <label class="control-label">Symbol</label>
-                        
+
 
 <autosuggest>
     <input type="hidden" name="ctl00$ContentPlaceHolder1$AutoSuggestCompany$hdnAutoSuggest" id="ctl00_ContentPlaceHolder1_AutoSuggestCompany_hdnAutoSuggest" value="0" />
@@ -507,9 +507,9 @@
 	</select>
                                         </div>
                 </div>
-                 
-                                     
-               
+
+
+
 
                 <br />
                 <div class="text-left">
@@ -520,7 +520,7 @@
                         <i class="icon-eraser"></i> Clear
                     </a>
                 </div>
-            
+
 </div>
         </div>
     </div>
@@ -528,12 +528,12 @@
     <div class="row">
         <div class="col-lg-12">
             <div class="panel panel-default">
-                
+
                 <div id="ctl00_ContentPlaceHolder1_divData">
                     <div class="date-label">
                         <span id="ctl00_ContentPlaceHolder1_lblMarketDate" class="label label-default">As of 2026/06/10 03:00:00</span>
                     </div>
-                    
+
 
 <script type="text/javascript">
 
@@ -557,7 +557,7 @@
 </div>
                     <br class="clearfix" />
                     <div class="table-responsive">
-                        
+
                                 <table class="table table-bordered table-striped table-hover sortable">
                                     <thead>
                                         <tr>
@@ -582,7 +582,7 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">1</td>
                                     <td class="text-center">
@@ -596,7 +596,7 @@
                                     <td class="text-right">972</td>
                                     <td class="text-right">925,471.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">2</td>
                                     <td class="text-center">
@@ -610,7 +610,7 @@
                                     <td class="text-right">20,348</td>
                                     <td class="text-right">6,308,193.30</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">3</td>
                                     <td class="text-center">
@@ -624,7 +624,7 @@
                                     <td class="text-right">2,598</td>
                                     <td class="text-right">1,268,766.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">4</td>
                                     <td class="text-center">
@@ -638,7 +638,7 @@
                                     <td class="text-right">61,990</td>
                                     <td class="text-right">17,169,299.90</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">5</td>
                                     <td class="text-center">
@@ -652,7 +652,7 @@
                                     <td class="text-right">680,111</td>
                                     <td class="text-right">280,041,580.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">6</td>
                                     <td class="text-center">
@@ -666,7 +666,7 @@
                                     <td class="text-right">25,345</td>
                                     <td class="text-right">6,758,659.10</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">7</td>
                                     <td class="text-center">
@@ -680,7 +680,7 @@
                                     <td class="text-right">3,122</td>
                                     <td class="text-right">3,404,152.70</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">8</td>
                                     <td class="text-center">
@@ -694,7 +694,7 @@
                                     <td class="text-right">6,454</td>
                                     <td class="text-right">2,930,055.60</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">9</td>
                                     <td class="text-center">
@@ -708,7 +708,7 @@
                                     <td class="text-right">182</td>
                                     <td class="text-right">1,052,224.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">10</td>
                                     <td class="text-center">
@@ -722,7 +722,7 @@
                                     <td class="text-right">110</td>
                                     <td class="text-right">36,581.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">11</td>
                                     <td class="text-center">
@@ -736,7 +736,7 @@
                                     <td class="text-right">217,481</td>
                                     <td class="text-right">75,929,926.90</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">12</td>
                                     <td class="text-center">
@@ -750,7 +750,7 @@
                                     <td class="text-right">1,831</td>
                                     <td class="text-right">1,956,518.20</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">13</td>
                                     <td class="text-center">
@@ -764,7 +764,7 @@
                                     <td class="text-right">23,168</td>
                                     <td class="text-right">19,081,760.10</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">14</td>
                                     <td class="text-center">
@@ -778,7 +778,7 @@
                                     <td class="text-right">28,899</td>
                                     <td class="text-right">9,864,391.50</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">15</td>
                                     <td class="text-center">
@@ -792,7 +792,7 @@
                                     <td class="text-right">198</td>
                                     <td class="text-right">857,028.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">16</td>
                                     <td class="text-center">
@@ -806,7 +806,7 @@
                                     <td class="text-right">10,057</td>
                                     <td class="text-right">3,640,064.30</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">17</td>
                                     <td class="text-center">
@@ -820,7 +820,7 @@
                                     <td class="text-right">173,251</td>
                                     <td class="text-right">92,505,906.70</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">18</td>
                                     <td class="text-center">
@@ -834,7 +834,7 @@
                                     <td class="text-right">1,254</td>
                                     <td class="text-right">819,893.30</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">19</td>
                                     <td class="text-center">
@@ -848,7 +848,7 @@
                                     <td class="text-right">60,896</td>
                                     <td class="text-right">35,568,189.90</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">20</td>
                                     <td class="text-center">
@@ -862,7 +862,7 @@
                                     <td class="text-right">6,467</td>
                                     <td class="text-right">2,952,444.60</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">21</td>
                                     <td class="text-center">
@@ -876,7 +876,7 @@
                                     <td class="text-right">140,401</td>
                                     <td class="text-right">30,187,342.50</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">22</td>
                                     <td class="text-center">
@@ -890,7 +890,7 @@
                                     <td class="text-right">14,063</td>
                                     <td class="text-right">7,467,136.50</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">23</td>
                                     <td class="text-center">
@@ -904,7 +904,7 @@
                                     <td class="text-right">10,926</td>
                                     <td class="text-right">9,358,269.70</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">24</td>
                                     <td class="text-center">
@@ -918,7 +918,7 @@
                                     <td class="text-right">7,736</td>
                                     <td class="text-right">2,536,040.10</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">25</td>
                                     <td class="text-center">
@@ -932,7 +932,7 @@
                                     <td class="text-right">30</td>
                                     <td class="text-right">348,500.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">26</td>
                                     <td class="text-center">
@@ -946,7 +946,7 @@
                                     <td class="text-right">22,161</td>
                                     <td class="text-right">15,020,930.40</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">27</td>
                                     <td class="text-center">
@@ -960,7 +960,7 @@
                                     <td class="text-right">92,750</td>
                                     <td class="text-right">66,795,800.50</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">28</td>
                                     <td class="text-center">
@@ -974,7 +974,7 @@
                                     <td class="text-right">97,500</td>
                                     <td class="text-right">974,460.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">29</td>
                                     <td class="text-center">
@@ -988,7 +988,7 @@
                                     <td class="text-right">18,844</td>
                                     <td class="text-right">17,586,875.30</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">30</td>
                                     <td class="text-center">
@@ -1002,7 +1002,7 @@
                                     <td class="text-right">179,057</td>
                                     <td class="text-right">118,272,158.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">31</td>
                                     <td class="text-center">
@@ -1016,7 +1016,7 @@
                                     <td class="text-right">48,057</td>
                                     <td class="text-right">37,619,465.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">32</td>
                                     <td class="text-center">
@@ -1030,7 +1030,7 @@
                                     <td class="text-right">22,811</td>
                                     <td class="text-right">11,056,090.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">33</td>
                                     <td class="text-center">
@@ -1044,7 +1044,7 @@
                                     <td class="text-right">7,705</td>
                                     <td class="text-right">17,390,888.50</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">34</td>
                                     <td class="text-center">
@@ -1058,7 +1058,7 @@
                                     <td class="text-right">8,824</td>
                                     <td class="text-right">2,522,502.20</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">35</td>
                                     <td class="text-center">
@@ -1072,7 +1072,7 @@
                                     <td class="text-right">3,565</td>
                                     <td class="text-right">6,234,528.40</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">36</td>
                                     <td class="text-center">
@@ -1086,7 +1086,7 @@
                                     <td class="text-right">406,705</td>
                                     <td class="text-right">164,149,862.30</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">37</td>
                                     <td class="text-center">
@@ -1100,7 +1100,7 @@
                                     <td class="text-right">10</td>
                                     <td class="text-right">13,000.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">38</td>
                                     <td class="text-center">
@@ -1114,7 +1114,7 @@
                                     <td class="text-right">1,405</td>
                                     <td class="text-right">905,027.50</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">39</td>
                                     <td class="text-center">
@@ -1128,7 +1128,7 @@
                                     <td class="text-right">16,135</td>
                                     <td class="text-right">7,346,388.60</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">40</td>
                                     <td class="text-center">
@@ -1142,7 +1142,7 @@
                                     <td class="text-right">700</td>
                                     <td class="text-right">6,920.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">41</td>
                                     <td class="text-center">
@@ -1156,7 +1156,7 @@
                                     <td class="text-right">31,866</td>
                                     <td class="text-right">56,806,678.30</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">42</td>
                                     <td class="text-center">
@@ -1170,7 +1170,7 @@
                                     <td class="text-right">10,090</td>
                                     <td class="text-right">12,862,953.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">43</td>
                                     <td class="text-center">
@@ -1184,7 +1184,7 @@
                                     <td class="text-right">4,140</td>
                                     <td class="text-right">38,386.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">44</td>
                                     <td class="text-center">
@@ -1198,7 +1198,7 @@
                                     <td class="text-right">768</td>
                                     <td class="text-right">1,110,599.70</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">45</td>
                                     <td class="text-center">
@@ -1212,7 +1212,7 @@
                                     <td class="text-right">29,054</td>
                                     <td class="text-right">5,835,387.90</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">46</td>
                                     <td class="text-center">
@@ -1226,7 +1226,7 @@
                                     <td class="text-right">5,752</td>
                                     <td class="text-right">4,847,561.10</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">47</td>
                                     <td class="text-center">
@@ -1240,7 +1240,7 @@
                                     <td class="text-right">26,798</td>
                                     <td class="text-right">17,022,607.50</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">48</td>
                                     <td class="text-center">
@@ -1254,7 +1254,7 @@
                                     <td class="text-right">3,455</td>
                                     <td class="text-right">1,018,678.30</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">49</td>
                                     <td class="text-center">
@@ -1268,7 +1268,7 @@
                                     <td class="text-right">218</td>
                                     <td class="text-right">275,155.20</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">50</td>
                                     <td class="text-center">
@@ -1282,7 +1282,7 @@
                                     <td class="text-right">25,897</td>
                                     <td class="text-right">9,039,425.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">51</td>
                                     <td class="text-center">
@@ -1296,7 +1296,7 @@
                                     <td class="text-right">14,387</td>
                                     <td class="text-right">3,890,502.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">52</td>
                                     <td class="text-center">
@@ -1310,7 +1310,7 @@
                                     <td class="text-right">11,211</td>
                                     <td class="text-right">7,910,895.90</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">53</td>
                                     <td class="text-center">
@@ -1324,7 +1324,7 @@
                                     <td class="text-right">40</td>
                                     <td class="text-right">46,400.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">54</td>
                                     <td class="text-center">
@@ -1338,7 +1338,7 @@
                                     <td class="text-right">85</td>
                                     <td class="text-right">91,787.50</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">55</td>
                                     <td class="text-center">
@@ -1352,7 +1352,7 @@
                                     <td class="text-right">80,025</td>
                                     <td class="text-right">84,991,376.10</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">56</td>
                                     <td class="text-center">
@@ -1366,7 +1366,7 @@
                                     <td class="text-right">1,042</td>
                                     <td class="text-right">1,085,134.60</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">57</td>
                                     <td class="text-center">
@@ -1380,7 +1380,7 @@
                                     <td class="text-right">3,706</td>
                                     <td class="text-right">2,155,386.60</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">58</td>
                                     <td class="text-center">
@@ -1394,7 +1394,7 @@
                                     <td class="text-right">8,990</td>
                                     <td class="text-right">3,445,499.60</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">59</td>
                                     <td class="text-center">
@@ -1408,7 +1408,7 @@
                                     <td class="text-right">796</td>
                                     <td class="text-right">693,594.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">60</td>
                                     <td class="text-center">
@@ -1422,7 +1422,7 @@
                                     <td class="text-right">17,658</td>
                                     <td class="text-right">13,836,878.40</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">61</td>
                                     <td class="text-center">
@@ -1436,7 +1436,7 @@
                                     <td class="text-right">5,798</td>
                                     <td class="text-right">5,979,403.10</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">62</td>
                                     <td class="text-center">
@@ -1450,7 +1450,7 @@
                                     <td class="text-right">25</td>
                                     <td class="text-right">27,750.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">63</td>
                                     <td class="text-center">
@@ -1464,7 +1464,7 @@
                                     <td class="text-right">35,051</td>
                                     <td class="text-right">14,511,973.20</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">64</td>
                                     <td class="text-center">
@@ -1478,7 +1478,7 @@
                                     <td class="text-right">35</td>
                                     <td class="text-right">38,500.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">65</td>
                                     <td class="text-center">
@@ -1492,7 +1492,7 @@
                                     <td class="text-right">138,940</td>
                                     <td class="text-right">33,288,423.40</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">66</td>
                                     <td class="text-center">
@@ -1506,7 +1506,7 @@
                                     <td class="text-right">1,559</td>
                                     <td class="text-right">14,740.91</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">67</td>
                                     <td class="text-center">
@@ -1520,7 +1520,7 @@
                                     <td class="text-right">1,758</td>
                                     <td class="text-right">1,357,516.20</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">68</td>
                                     <td class="text-center">
@@ -1534,7 +1534,7 @@
                                     <td class="text-right">32,304</td>
                                     <td class="text-right">13,321,127.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">69</td>
                                     <td class="text-center">
@@ -1548,7 +1548,7 @@
                                     <td class="text-right">12,620</td>
                                     <td class="text-right">8,241,479.90</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">70</td>
                                     <td class="text-center">
@@ -1562,7 +1562,7 @@
                                     <td class="text-right">21,866</td>
                                     <td class="text-right">5,130,958.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">71</td>
                                     <td class="text-center">
@@ -1576,7 +1576,7 @@
                                     <td class="text-right">2,000</td>
                                     <td class="text-right">21,595.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">72</td>
                                     <td class="text-center">
@@ -1590,7 +1590,7 @@
                                     <td class="text-right">728</td>
                                     <td class="text-right">814,632.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">73</td>
                                     <td class="text-center">
@@ -1604,7 +1604,7 @@
                                     <td class="text-right">104</td>
                                     <td class="text-right">184,594.70</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">74</td>
                                     <td class="text-center">
@@ -1618,7 +1618,7 @@
                                     <td class="text-right">18,741</td>
                                     <td class="text-right">4,955,825.40</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">75</td>
                                     <td class="text-center">
@@ -1632,7 +1632,7 @@
                                     <td class="text-right">130</td>
                                     <td class="text-right">165,059.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">76</td>
                                     <td class="text-center">
@@ -1646,7 +1646,7 @@
                                     <td class="text-right">28,265</td>
                                     <td class="text-right">14,076,546.70</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">77</td>
                                     <td class="text-center">
@@ -1660,7 +1660,7 @@
                                     <td class="text-right">1,036</td>
                                     <td class="text-right">1,350,840.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">78</td>
                                     <td class="text-center">
@@ -1674,7 +1674,7 @@
                                     <td class="text-right">3,699</td>
                                     <td class="text-right">3,898,296.70</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">79</td>
                                     <td class="text-center">
@@ -1688,7 +1688,7 @@
                                     <td class="text-right">4,900</td>
                                     <td class="text-right">48,800.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">80</td>
                                     <td class="text-center">
@@ -1702,7 +1702,7 @@
                                     <td class="text-right">15,907</td>
                                     <td class="text-right">9,162,974.30</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">81</td>
                                     <td class="text-center">
@@ -1716,7 +1716,7 @@
                                     <td class="text-right">17,557</td>
                                     <td class="text-right">8,660,872.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">82</td>
                                     <td class="text-center">
@@ -1730,7 +1730,7 @@
                                     <td class="text-right">160</td>
                                     <td class="text-right">173,600.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">83</td>
                                     <td class="text-center">
@@ -1744,7 +1744,7 @@
                                     <td class="text-right">1,000</td>
                                     <td class="text-right">11,673.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">84</td>
                                     <td class="text-center">
@@ -1758,7 +1758,7 @@
                                     <td class="text-right">2,349</td>
                                     <td class="text-right">1,819,992.10</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">85</td>
                                     <td class="text-center">
@@ -1772,7 +1772,7 @@
                                     <td class="text-right">31,083</td>
                                     <td class="text-right">6,196,302.10</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">86</td>
                                     <td class="text-center">
@@ -1786,7 +1786,7 @@
                                     <td class="text-right">81,589</td>
                                     <td class="text-right">17,755,284.50</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">87</td>
                                     <td class="text-center">
@@ -1800,7 +1800,7 @@
                                     <td class="text-right">15,623</td>
                                     <td class="text-right">18,224,660.20</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">88</td>
                                     <td class="text-center">
@@ -1814,7 +1814,7 @@
                                     <td class="text-right">3,787</td>
                                     <td class="text-right">2,132,867.10</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">89</td>
                                     <td class="text-center">
@@ -1828,7 +1828,7 @@
                                     <td class="text-right">474</td>
                                     <td class="text-right">159,398.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">90</td>
                                     <td class="text-center">
@@ -1842,7 +1842,7 @@
                                     <td class="text-right">28,533</td>
                                     <td class="text-right">24,856,444.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">91</td>
                                     <td class="text-center">
@@ -1856,7 +1856,7 @@
                                     <td class="text-right">33,618</td>
                                     <td class="text-right">12,206,187.50</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">92</td>
                                     <td class="text-center">
@@ -1870,7 +1870,7 @@
                                     <td class="text-right">22,769</td>
                                     <td class="text-right">5,986,426.30</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">93</td>
                                     <td class="text-center">
@@ -1884,7 +1884,7 @@
                                     <td class="text-right">119,049</td>
                                     <td class="text-right">23,834,486.20</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">94</td>
                                     <td class="text-center">
@@ -1898,7 +1898,7 @@
                                     <td class="text-right">5,020</td>
                                     <td class="text-right">4,300,305.30</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">95</td>
                                     <td class="text-center">
@@ -1912,7 +1912,7 @@
                                     <td class="text-right">1,100</td>
                                     <td class="text-right">983,582.80</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">96</td>
                                     <td class="text-center">
@@ -1926,7 +1926,7 @@
                                     <td class="text-right">25,874</td>
                                     <td class="text-right">8,803,249.60</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">97</td>
                                     <td class="text-center">
@@ -1940,7 +1940,7 @@
                                     <td class="text-right">3,686</td>
                                     <td class="text-right">32,952.14</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">98</td>
                                     <td class="text-center">
@@ -1954,7 +1954,7 @@
                                     <td class="text-right">20,529</td>
                                     <td class="text-right">7,589,646.00</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">99</td>
                                     <td class="text-center">
@@ -1968,7 +1968,7 @@
                                     <td class="text-right">42,478</td>
                                     <td class="text-right">27,486,932.20</td>
                                 </tr>
-                            
+
                                 <tr>
                                     <td class="text-center td-icon">100</td>
                                     <td class="text-center">
@@ -1982,12 +1982,12 @@
                                     <td class="text-right">26,793</td>
                                     <td class="text-right">6,714,811.40</td>
                                 </tr>
-                            
+
                                 </tbody>
                                  </table>
-                            
+
                     </div>
-                    
+
 
 <script type="text/javascript">
 
@@ -2072,7 +2072,7 @@
                             9801000860
                             <br />
                             <strong>E-mail:</strong>
-                            support@asteriskt.com                            
+                            support@asteriskt.com
                             <br />
 							<strong>For advertisement:</strong><br />
 							<em>Brajesh Subedi</em><br />
@@ -2172,7 +2172,7 @@
                     <div class="row">
                         <div class="credential_footer">
                             <div class="col-sm-5 col-xs-12">
-                                &copy; 2026 - MERO LAGANI. All Rights Reserved  
+                                &copy; 2026 - MERO LAGANI. All Rights Reserved
                             | Developed by <a href="#">Asterisk Technology </a>
                             </div>
 							<div class="col-sm-4 col-xs-12 text-left">
@@ -2180,7 +2180,7 @@
                                     <li>Supported By:<a href="https://waterflow.technology/" target="_blank">
                                         <img src="Content/images/waterflowlogo.jpg" height="35px" width="80px" class="lazy" />
                                     </a>
-                                        
+
                                     </li>
                                 </ul>
                             </div>
@@ -2194,7 +2194,7 @@
                 </div>
             </div>
         </div>
-    
+
 
 <script type="text/javascript">
 //<![CDATA[
@@ -2231,18 +2231,18 @@ $(document).ready(function(){AutoSuggest.getAutoSuggestDataById('Company','ctl00
             lblUsername: "ctl00_lblUsername",
            trackEvent_OnNavSearch: function () {
                 var newsletter = $("#ctl00_txtNews").val();
-                
-               
+
+
                 return false;
             },
             TrackEvent_OnStockEvent: function () {
-                
+
             }
         };
 
- 
 
-        
+
+
 
         $(function () {
             $('.navbar-toggle').on('click',
@@ -2254,7 +2254,7 @@ $(document).ready(function(){AutoSuggest.getAutoSuggestDataById('Company','ctl00
                     }
                 });
         });
-		
+
 		    addEventListener("scroll", (event) => {
             if ($("#navbars").hasClass("affix")) {
                 $(".icon-home").css("display", "none");
@@ -2272,7 +2272,7 @@ $(document).ready(function(){AutoSuggest.getAutoSuggestDataById('Company','ctl00
 <script src="/Scripts/jquicker-1.5.js" defer></script>
 
 
-    
+
     <script type="text/javascript">
         $(document).ready(function () {
             $("#ctl00_ContentPlaceHolder1_txtMarketDateFilter").datepicker({
@@ -2346,8 +2346,8 @@ $(document).ready(function(){AutoSuggest.getAutoSuggestDataById('Company','ctl00
 				  console.log("success...");
                     if (data != null) {
 						  console.log("here in...");
-                        if (data.IsAuthenticated) { 
-							console.log("true...");						
+                        if (data.IsAuthenticated) {
+							console.log("true...");
                             $("#" + LayoutMaster_ClientID.liUser).show();
                             $("#" + LayoutMaster_ClientID.liLogin).hide();
                             $("#" + LayoutMaster_ClientID.liStartTour).show();
@@ -2413,7 +2413,7 @@ $(document).ready(function(){AutoSuggest.getAutoSuggestDataById('Company','ctl00
                 webengage.user.logout();
             }
         </script>
-        
+
     </div>
     <script type="text/javascript">
             var allowNotification = 'true';
@@ -2446,7 +2446,7 @@ $(document).ready(function(){AutoSuggest.getAutoSuggestDataById('Company','ctl00
             background: #e80811;
             border-color: #e80811;
         }
-		
+
 	 .list-inline.list-payment-partners li {
         width: 20%;
         margin-bottom: 5px;
@@ -2468,7 +2468,7 @@ $(document).ready(function(){AutoSuggest.getAutoSuggestDataById('Company','ctl00
     .freeAccount .btn.btn-default.btn-lg {
         padding: 5.5px 5px;
     }
-    
+
     @media only screen and (min-width: 768px) {
         .navbar-nav{
             margin-left:-30px!important;
@@ -2478,9 +2478,5 @@ $(document).ready(function(){AutoSuggest.getAutoSuggestDataById('Company','ctl00
             margin-right: -50px !important;
         }
     }
-    
+
 </style>
-
-
-
-

@@ -142,8 +142,14 @@ class ChukulClient(SourceClient):
             if symbol is None or not str(symbol).strip():
                 continue
             close = _pick(
-                row, "ltp", "last_price", "lastTradedPrice", "last_traded_price",
-                "close", "closing_price", cast=_num,
+                row,
+                "ltp",
+                "last_price",
+                "lastTradedPrice",
+                "last_traded_price",
+                "close",
+                "closing_price",
+                cast=_num,
             )
             bars.append(
                 PriceBar(
@@ -154,15 +160,30 @@ class ChukulClient(SourceClient):
                     low=_pick(row, "low", "low_price", "day_low", cast=_num),
                     close=close,
                     previous_close=_pick(
-                        row, "previous_close", "prevClose", "prev_close",
-                        "previousclose", "yesterday_price", cast=_num,
+                        row,
+                        "previous_close",
+                        "prevClose",
+                        "prev_close",
+                        "previousclose",
+                        "yesterday_price",
+                        cast=_num,
                     ),
                     volume=_pick(
-                        row, "volume", "qty", "quantity", "totalTradedQuantity",
-                        "total_traded_quantity", "traded_shares", cast=_int,
+                        row,
+                        "volume",
+                        "qty",
+                        "quantity",
+                        "totalTradedQuantity",
+                        "total_traded_quantity",
+                        "traded_shares",
+                        cast=_int,
                     ),
                     turnover=_pick(
-                        row, "turnover", "amount", "traded_amount", "total_amount",
+                        row,
+                        "turnover",
+                        "amount",
+                        "traded_amount",
+                        "total_amount",
                         cast=_num,
                     ),
                     source=source,
@@ -181,7 +202,13 @@ class ChukulClient(SourceClient):
         for row in _as_records(payload):
             name = _pick(row, "name", "index", "index_name", "title", "label")
             value = _pick(
-                row, "value", "close", "current", "index_value", "ltp", "points",
+                row,
+                "value",
+                "close",
+                "current",
+                "index_value",
+                "ltp",
+                "points",
                 cast=_num,
             )
             if name is None or not str(name).strip() or value is None:
@@ -193,8 +220,13 @@ class ChukulClient(SourceClient):
                     value=value,
                     change=_pick(row, "change", "point_change", "diff", cast=_num),
                     change_percent=_pick(
-                        row, "change_percent", "percent_change", "perc_change",
-                        "changePercent", "percent", cast=_num,
+                        row,
+                        "change_percent",
+                        "percent_change",
+                        "perc_change",
+                        "changePercent",
+                        "percent",
+                        cast=_num,
                     ),
                     source=source,
                 )

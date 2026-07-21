@@ -58,8 +58,29 @@ def test_bollinger_constant_series_has_zero_width():
 
 
 def test_bollinger_width_positive_on_variation():
-    series = [100, 102, 98, 104, 96, 105, 95, 106, 94, 107,
-              93, 108, 92, 109, 91, 110, 90, 111, 89, 112, 88]
+    series = [
+        100,
+        102,
+        98,
+        104,
+        96,
+        105,
+        95,
+        106,
+        94,
+        107,
+        93,
+        108,
+        92,
+        109,
+        91,
+        110,
+        90,
+        111,
+        89,
+        112,
+        88,
+    ]
     lower, middle, upper = ind.bollinger_bands(series, 20, 2.0)
     assert upper[-1] > middle[-1] > lower[-1]
 

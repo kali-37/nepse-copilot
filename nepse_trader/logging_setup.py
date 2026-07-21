@@ -87,9 +87,7 @@ def _is_control_flow_exit(exc: BaseException) -> bool:
     don't hard-depend on click internals; falls back to a guarded import.
     """
     name = type(exc).__name__
-    if name in ("Exit", "Abort") and (
-        hasattr(exc, "exit_code") or hasattr(exc, "code")
-    ):
+    if name in ("Exit", "Abort") and (hasattr(exc, "exit_code") or hasattr(exc, "code")):
         return True
     try:  # pragma: no cover - exercised indirectly via the CLI
         import click

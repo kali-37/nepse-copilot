@@ -18,7 +18,10 @@ def _bars(symbol: str, closes: list[float]) -> list[PriceBar]:
         PriceBar(
             symbol=symbol,
             business_date=START + timedelta(days=i),
-            open=c, high=c, low=c, close=c,
+            open=c,
+            high=c,
+            low=c,
+            close=c,
             source=SourceName.MANUAL,
         )
         for i, c in enumerate(closes)
@@ -51,8 +54,9 @@ def test_screen_skips_short_history():
 
 
 def test_screen_rank_by_drawdown_is_ascending():
-    rows = screen(_store(), ["AAA", "BBB"], ["sma_cross", "macd"], min_bars=60,
-                  rank_by="max_drawdown_pct")
+    rows = screen(
+        _store(), ["AAA", "BBB"], ["sma_cross", "macd"], min_bars=60, rank_by="max_drawdown_pct"
+    )
     dds = [r.max_drawdown_pct for r in rows]
     assert dds == sorted(dds)  # lower drawdown first
 

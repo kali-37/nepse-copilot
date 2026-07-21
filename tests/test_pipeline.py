@@ -26,9 +26,18 @@ class _StubSource(SourceClient):
     def fetch_prices(self, business_date=None):
         bd = business_date or START
         return [
-            PriceBar(symbol="NABIL", business_date=bd, open=500, high=505, low=495,
-                     close=500 + self._offset, previous_close=498, volume=1000,
-                     turnover=500000, source=self.name)
+            PriceBar(
+                symbol="NABIL",
+                business_date=bd,
+                open=500,
+                high=505,
+                low=495,
+                close=500 + self._offset,
+                previous_close=498,
+                volume=1000,
+                turnover=500000,
+                source=self.name,
+            )
         ]
 
     def fetch_indices(self, business_date=None):
@@ -155,9 +164,14 @@ def _seed_hump(pipe, days=70, symbols=("AAA", "BBB")):
         for sym in symbols:
             for src in (SourceName.SHARESANSAR, SourceName.MEROLAGANI):
                 bars.append(
-                    PriceBar(symbol=sym, business_date=d, close=float(base),
-                             previous_close=float(base - 1), turnover=float(base) * 1000,
-                             source=src)
+                    PriceBar(
+                        symbol=sym,
+                        business_date=d,
+                        close=float(base),
+                        previous_close=float(base - 1),
+                        turnover=float(base) * 1000,
+                        source=src,
+                    )
                 )
     pipe.storage.upsert_price_bars(bars)
     for i in range(days):
