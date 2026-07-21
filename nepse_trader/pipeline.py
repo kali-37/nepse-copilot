@@ -24,6 +24,7 @@ from nepse_trader.ingest.base import SourceClient
 from nepse_trader.ingest.chukul import ChukulClient
 from nepse_trader.ingest.merolagani import MeroLaganiClient
 from nepse_trader.ingest.nepse_official import NepseScraperClient
+from nepse_trader.ingest.nepsealpha import NepseAlphaClient
 from nepse_trader.ingest.reconcile import reconcile_bars
 from nepse_trader.ingest.sharesansar import ShareSansarClient
 from nepse_trader.models import PriceBar, ReconciledPrice, Signal, SourceName
@@ -36,6 +37,7 @@ _CLIENT_FACTORIES = {
     SourceName.SHARESANSAR.value: ShareSansarClient,
     SourceName.MEROLAGANI.value: MeroLaganiClient,
     SourceName.CHUKUL.value: ChukulClient,
+    SourceName.NEPSEALPHA.value: NepseAlphaClient,
     SourceName.NEPSE_OFFICIAL.value: NepseScraperClient,
 }
 
