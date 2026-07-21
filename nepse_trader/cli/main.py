@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 import logging
 from datetime import date
+from decimal import Decimal
 from pathlib import Path
 
 import typer
@@ -22,6 +23,7 @@ from nepse_trader.calendar import is_trading_day
 from nepse_trader.config import get_settings, load_sources
 from nepse_trader.har import analyzer
 from nepse_trader.logging_setup import run_logger
+from nepse_trader.models import CorporateAction, CorporateActionType, SourceName
 from nepse_trader.pipeline import DailyPipeline
 from nepse_trader.reporting import (
     backtest_report,
@@ -32,6 +34,7 @@ from nepse_trader.reporting import (
     signals_table,
     write_markdown_report,
 )
+from nepse_trader.storage import Storage
 
 app = typer.Typer(
     add_completion=False,
@@ -40,8 +43,10 @@ app = typer.Typer(
 )
 har_app = typer.Typer(help="HAR capture analysis & endpoint discovery.", no_args_is_help=True)
 paper_app = typer.Typer(help="Paper-trading (no live orders).", no_args_is_help=True)
+ca_app = typer.Typer(help="Corporate actions (manual add & list).", no_args_is_help=True)
 app.add_typer(har_app, name="har")
 app.add_typer(paper_app, name="paper")
+app.add_typer(ca_app, name="corporate-actions")
 
 console = Console()
 PAPER_CASH_DEFAULT = 100_000.0
@@ -371,6 +376,74 @@ def paper_status(
     pf = pipe.replay_portfolio(cash)
     console.print(portfolio_summary(pf.to_dict()))
     console.print(f"\n{pf.summary()}")
+
+
+# ---------------------------------------------------------------- corporate-actions
+@ca_app.command("list")
+def ca_list(
+    symbol: str = typer.Option(None, "--symbol", "-s", help="Filter by symbol"),
+) -> None:
+    """List stored corporate action events."""
+    storage = Storage(get_settings().db_path)
+    cas = storage.corporate_actions(symbol=symbol)
+    if not cas:
+        console.print("[yellow]No corporate actions found.[/yellow]")
+        raise typer.Exit()
+    from rich.table import Table
+
+    table = Table(title="Corporate Actions")
+    for col in ("Symbol", "Ex-Date", "Type", "Ratio", "Factor", "Source", "Notes"):
+        table.add_column(col)
+    for ca in cas:
+        table.add_row(
+            ca.symbol,
+            ca.ex_date.isoformat(),
+            ca.action_type.value,
+            f"{ca.ratio_numerator}:{ca.ratio_denominator}",
+            str(ca.factor),
+            ca.source.value,
+            ca.notes or "",
+        )
+    console.print(table)
+
+
+@ca_app.command("add")
+def ca_add(
+    symbol: str = typer.Option(..., help="Ticker symbol"),
+    ex_date: str = typer.Option(..., "--ex-date", help="Ex-date YYYY-MM-DD"),
+    action_type: str = typer.Option(..., "--type", help="bonus / rights / split / dividend"),
+    ratio_numerator: int = typer.Option(1, "--num", help="Ratio numerator (e.g. 1 for 1:1)"),
+    ratio_denominator: int = typer.Option(1, "--den", help="Ratio denominator (e.g. 1 for 1:1)"),
+    notes: str = typer.Option("", "--notes", help="Optional notes"),
+) -> None:
+    """Manually record a corporate action event."""
+    try:
+        atype = CorporateActionType(action_type.lower())
+    except ValueError:
+        console.print(f"[red]Invalid action type: {action_type}. Use bonus/rights/split/dividend[/red]")
+        raise typer.Exit(code=1) from None
+    try:
+        bd = date.fromisoformat(ex_date)
+    except ValueError:
+        console.print(f"[red]Invalid date: {ex_date}. Use YYYY-MM-DD[/red]")
+        raise typer.Exit(code=1) from None
+
+    factor = round(ratio_denominator / ratio_numerator, 6) if ratio_numerator else 1.0
+    d_factor = Decimal(str(factor))
+
+    ca = CorporateAction(
+        symbol=symbol,
+        ex_date=bd,
+        action_type=atype,
+        ratio_numerator=ratio_numerator,
+        ratio_denominator=ratio_denominator,
+        factor=d_factor,
+        source=SourceName.MANUAL,
+        notes=notes,
+    )
+    storage = Storage(get_settings().db_path)
+    storage.upsert_corporate_action(ca)
+    console.print(f"[green]Recorded:[/green] {ca.description} for {ca.symbol} on {ca.ex_date} (factor {ca.factor})")
 
 
 # ----------------------------------------------------------------------- har
