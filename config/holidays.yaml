@@ -1,0 +1,16 @@
+# NEPSE trading holidays
+# Fixed-date (Gregorian) holidays plus variable Bikram Sambat ranges.
+holidays:
+  - { name: New Year, month: 1, day: 1 }
+  - { name: Martyrs' Day, month: 1, day: 29 }
+  - { name: Democracy Day, month: 2, day: 19 }
+  - { name: International Women's Day, month: 3, day: 8 }
+  - { name: Constitution Day, month: 9, day: 20 }
+  - { name: Christmas, month: 12, day: 25 }
+
+# Variable-date holidays (ranges of dates, typically for Bikram Sambat festivals).
+# These are approximate; update yearly based on official NEPSE notice.
+# Each March/April: Nepali New Year (around Apr 13–14).
+ranges:
+  # Dashain (~Oct): 15-day festival, ~5 trading days closed.
+  # Tihar (~Nov): ~5 days, ~2–3 trading days closed.

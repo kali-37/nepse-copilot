@@ -18,6 +18,7 @@ from rich.console import Console
 from nepse_trader.analysis.backtest import Backtester
 from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.analysis.strategies import STRATEGIES, build_strategy
+from nepse_trader.calendar import is_trading_day
 from nepse_trader.config import get_settings, load_sources
 from nepse_trader.har import analyzer
 from nepse_trader.logging_setup import run_logger
@@ -276,6 +277,9 @@ def run_daily(
     single command you schedule daily.
     """
     bd = _parse_date(date_) or date.today()
+    if not is_trading_day(bd):
+        console.print(f"[yellow]Skipping {bd.isoformat()} — not a NEPSE trading day[/yellow]")
+        raise typer.Exit()
     strat_list = (
         list(STRATEGIES)
         if strategies.strip().lower() == "all"

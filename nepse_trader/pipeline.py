@@ -18,6 +18,7 @@ from nepse_trader.analysis import quant
 from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.analysis.screen import ScreenRow, best_per_symbol, screen
 from nepse_trader.analysis.strategies import STRATEGIES, Strategy, build_strategy
+from nepse_trader.calendar import periods_per_year as _calendar_periods
 from nepse_trader.config import Settings, SourcesConfig, get_settings, load_sources
 from nepse_trader.ingest.base import SourceClient
 from nepse_trader.ingest.chukul import ChukulClient
@@ -264,7 +265,8 @@ class DailyPipeline:
         gainers = [g for g in gainers if g["symbol"] not in loser_syms or len(rows) > top]
         return gainers, losers
 
-    def quant_stats(self, symbols: list[str], periods_per_year: int = 252) -> list[dict]:
+    def quant_stats(self, symbols: list[str], periods_per_year: int | None = None) -> list[dict]:
+        periods_per_year = periods_per_year or _calendar_periods()
         """Per-symbol quantitative summary over reconciled close history."""
         out: list[dict] = []
         for sym in symbols:
