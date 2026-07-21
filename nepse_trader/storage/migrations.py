@@ -145,10 +145,18 @@ def _m0001_corporate_actions(conn) -> None:
     """)
 
 
+def _m0002_adjusted_close(conn) -> None:
+    """Add adjusted_close column to reconciled_prices."""
+    existing = {row[1] for row in conn.execute("PRAGMA table_info(reconciled_prices)")}
+    if "adjusted_close" not in existing:
+        conn.execute("ALTER TABLE reconciled_prices ADD COLUMN adjusted_close REAL")
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
     ("0001_corporate_actions", _m0001_corporate_actions),
+    ("0002_adjusted_close", _m0002_adjusted_close),
 ]
 
 

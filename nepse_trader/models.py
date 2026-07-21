@@ -110,6 +110,7 @@ class ReconciledPrice(_Base):
     symbol: str
     business_date: date
     close: float | None = None
+    adjusted_close: float | None = None
     open: float | None = None
     high: float | None = None
     low: float | None = None

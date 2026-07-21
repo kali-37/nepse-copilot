@@ -16,7 +16,7 @@ from __future__ import annotations
 from collections import defaultdict
 from collections.abc import Iterable
 
-from nepse_trader.models import PriceBar, ReconciledPrice, SourceName
+from nepse_trader.models import CorporateAction, PriceBar, ReconciledPrice, SourceName
 
 _NUMERIC_FIELDS = ("open", "high", "low", "close", "previous_close", "volume", "turnover")
 
@@ -98,3 +98,50 @@ def reconcile_bars(bars: Iterable[PriceBar], tolerance: float = 0.005) -> list[R
         )
     out.sort(key=lambda r: (r.symbol, r.business_date))
     return out
+
+
+def adjust_prices(
+    prices: list[ReconciledPrice],
+    actions: list[CorporateAction],
+) -> list[ReconciledPrice]:
+    """Back-adjust reconciled closes by corporate action factors.
+
+    For each symbol, walks chronological prices and applies cumulative
+    adjustment factors from corporate actions (Yahoo Finance convention:
+    pre-event prices are multiplied by the factor so the series is
+    continuous at the ex-date).
+    """
+    if not actions:
+        for p in prices:
+            p.adjusted_close = p.close
+        return prices
+
+    actions_by_symbol: dict[str, list[CorporateAction]] = {}
+    for ca in actions:
+        actions_by_symbol.setdefault(ca.symbol, []).append(ca)
+
+    for symbol in {p.symbol for p in prices}:
+        cas = sorted(
+            actions_by_symbol.get(symbol, []),
+            key=lambda ca: ca.ex_date,
+        )
+        if not cas:
+            for p in prices:
+                if p.symbol == symbol:
+                    p.adjusted_close = p.close
+            continue
+
+        sym_prices = sorted(
+            [p for p in prices if p.symbol == symbol],
+            key=lambda p: p.business_date,
+        )
+        idx = 0
+        for p in sym_prices:
+            while idx < len(cas) and p.business_date >= cas[idx].ex_date:
+                idx += 1
+            factor = 1.0
+            for j in range(idx, len(cas)):
+                factor *= float(cas[j].factor)
+            p.adjusted_close = round(p.close * factor, 2) if p.close is not None else None
+
+    return prices
