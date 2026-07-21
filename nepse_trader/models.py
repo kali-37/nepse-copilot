@@ -225,3 +225,21 @@ class Position(_Base):
     @property
     def cost_basis(self) -> Decimal:
         return Decimal(str(self.quantity)) * self.avg_cost
+
+
+class FundamentalData(_Base):
+    symbol: str
+    company_name: str = ""
+    sector: str = ""
+    shares_outstanding: float | None = None
+    market_price: float | None = None
+    eps: float | None = None
+    pe_ratio: float | None = None
+    book_value: float | None = None
+    pbv: float | None = None
+    dividend_pct: float | None = None
+    market_cap: float | None = None
+    high_52w: float | None = None
+    low_52w: float | None = None
+    avg_volume_30d: int | None = None
+    fetched_at: datetime | None = None

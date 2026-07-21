@@ -22,6 +22,7 @@ from nepse_trader.analysis.strategies import STRATEGIES, build_strategy
 from nepse_trader.calendar import is_trading_day
 from nepse_trader.config import get_settings, load_sources
 from nepse_trader.har import analyzer
+from nepse_trader.ingest.fundamentals import MeroLaganiFundamentalsClient
 from nepse_trader.logging_setup import run_logger
 from nepse_trader.models import CorporateAction, CorporateActionType, SourceName
 from nepse_trader.pipeline import DailyPipeline
@@ -47,6 +48,8 @@ ca_app = typer.Typer(help="Corporate actions (manual add & list).", no_args_is_h
 app.add_typer(har_app, name="har")
 app.add_typer(paper_app, name="paper")
 app.add_typer(ca_app, name="corporate-actions")
+fund_app = typer.Typer(help="Company fundamentals (EPS, PE, PB, etc.).", no_args_is_help=True)
+app.add_typer(fund_app, name="fundamentals")
 
 console = Console()
 PAPER_CASH_DEFAULT = 100_000.0
@@ -376,6 +379,40 @@ def paper_status(
     pf = pipe.replay_portfolio(cash)
     console.print(portfolio_summary(pf.to_dict()))
     console.print(f"\n{pf.summary()}")
+
+
+# ---------------------------------------------------------------- fundamentals
+@fund_app.command("show")
+def fund_show(
+    symbol: str = typer.Argument(..., help="NEPSE symbol"),
+) -> None:
+    """Show fundamental data for a symbol from MeroLagani."""
+    client = MeroLaganiFundamentalsClient()
+    data = client.fetch_fundamentals(symbol)
+    if data is None or (data.market_price is None and data.eps is None):
+        console.print(f"[red]No fundamentals found for {symbol}.[/red]")
+        raise typer.Exit(1)
+    from rich.table import Table
+    table = Table(title=f"{symbol} — Fundamentals", show_header=False)
+    table.add_column("Field")
+    table.add_column("Value")
+    for field, val in [
+        ("Company", data.company_name),
+        ("Sector", data.sector),
+        ("Market Price", f"NPR {data.market_price:,.2f}" if data.market_price else "—"),
+        ("EPS", f"{data.eps:.2f}" if data.eps else "—"),
+        ("P/E", f"{data.pe_ratio:.2f}" if data.pe_ratio else "—"),
+        ("Book Value", f"{data.book_value:.2f}" if data.book_value else "—"),
+        ("PBV", f"{data.pbv:.2f}" if data.pbv else "—"),
+        ("Dividend", f"{data.dividend_pct:.2f}%" if data.dividend_pct else "—"),
+        ("Market Cap", f"NPR {data.market_cap:,.0f}" if data.market_cap else "—"),
+        ("Shares Out.", f"{data.shares_outstanding:,.0f}" if data.shares_outstanding else "—"),
+        ("52W High", f"{data.high_52w:.2f}" if data.high_52w else "—"),
+        ("52W Low", f"{data.low_52w:.2f}" if data.low_52w else "—"),
+        ("30D Avg Vol", f"{data.avg_volume_30d:,}" if data.avg_volume_30d else "—"),
+    ]:
+        table.add_row(field, val)
+    console.print(table)
 
 
 # ---------------------------------------------------------------- corporate-actions
