@@ -1,0 +1,14 @@
+{
+  "data": [
+    {
+      "Symbol": "NABIL",
+      "lastTradedPrice": "1,234.50",
+      "Open": "1,200.00",
+      "High": "1,250.00",
+      "Low": "1,195.00",
+      "prevClose": "1,204.40",
+      "totalTradedQuantity": "12,345",
+      "amount": "15,000,000.75"
+    }
+  ]
+}

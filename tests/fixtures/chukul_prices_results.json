@@ -1,0 +1,13 @@
+{
+  "results": [
+    {
+      "scrip": "NABIL",
+      "close": 1234.5,
+      "totalTradedQuantity": 12345
+    },
+    {
+      "name": "no-symbol-here",
+      "close": 1.0
+    }
+  ]
+}
