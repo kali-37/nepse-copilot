@@ -11,8 +11,10 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
+from typing import Any
 
 from nepse_trader import reporting
 from nepse_trader.analysis import quant
@@ -319,6 +321,7 @@ class DailyPipeline:
         cash: float = 100_000.0,
         min_bars: int = 60,
         rank_by: str = "sharpe",
+        on_progress: Callable[[int, int, str], Any] | None = None,
     ) -> list[ScreenRow]:
         """Backtest the strategy panel across symbols; return a ranked leaderboard."""
         symbols = symbols or self.storage.symbols()
@@ -330,6 +333,7 @@ class DailyPipeline:
             min_bars=min_bars,
             cost_engine=self.cost_engine,
             rank_by=rank_by,
+            on_progress=on_progress,
         )
 
     # --------------------------------------------------------------- report

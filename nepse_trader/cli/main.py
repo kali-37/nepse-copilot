@@ -20,6 +20,7 @@ from nepse_trader.analysis.backtest import Backtester
 from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.analysis.strategies import STRATEGIES, build_strategy
 from nepse_trader.calendar import is_trading_day
+from nepse_trader.cli.progress import progress_bars, progress_spinner
 from nepse_trader.config import get_settings, load_sources
 from nepse_trader.har import analyzer
 from nepse_trader.ingest.fundamentals import MeroLaganiFundamentalsClient
@@ -161,8 +162,9 @@ def ingest(
     """
     bd = _parse_date(date_)
     pipe = DailyPipeline(include_all_sources=all_sources)
-    import asyncio
-    rep = asyncio.run(pipe.async_ingest(bd)) if async_ else pipe.ingest(bd)
+    with progress_spinner(console, f"Ingesting from {len(pipe.clients)} source(s)..."):
+        import asyncio
+        rep = asyncio.run(pipe.async_ingest(bd)) if async_ else pipe.ingest(bd)
     console.print_json(json.dumps(rep.as_dict()))
     if rep.errors:
         console.print(f"[yellow]sources with errors:[/yellow] {', '.join(rep.errors)}")
@@ -180,7 +182,8 @@ def reconcile(
     """Reconcile stored prices across sources into a confidence-scored consensus."""
     bd = _parse_date(date_) or date.today()
     pipe = DailyPipeline()
-    prices = pipe.reconcile(bd)
+    with progress_spinner(console, "Reconciling prices across sources..."):
+        prices = pipe.reconcile(bd)
     console.print(reconciliation_report(prices))
     low = [p for p in prices if not p.is_trustworthy]
     console.print(
@@ -225,7 +228,8 @@ def backtest(
 ) -> None:
     """Backtest a strategy on a symbol's reconciled history (Nepal costs applied)."""
     pipe = DailyPipeline()
-    bars = pipe.reconciled_bars(symbol)
+    with progress_spinner(console, f"Loading reconciled history for {symbol.upper()}..."):
+        bars = pipe.reconciled_bars(symbol)
     if len(bars) < 2:
         console.print(f"[yellow]Not enough history for {symbol.upper()} to backtest.[/yellow]")
         raise typer.Exit(code=1)
@@ -256,7 +260,8 @@ def stats(
     if not syms:
         console.print("[yellow]No symbols in the database yet — ingest + reconcile first.[/yellow]")
         raise typer.Exit()
-    rows = pipe.quant_stats(syms, periods_per_year=periods)
+    with progress_spinner(console, f"Computing stats for {len(syms)} symbol(s)..."):
+        rows = pipe.quant_stats(syms, periods_per_year=periods)
     console.print(quant_md(rows))
 
 
@@ -279,14 +284,21 @@ def screen(
     so the leaderboard reflects net, after-cost performance.
     """
     pipe = DailyPipeline()
+    all_syms = pipe.storage.symbols()
     strat_list = (
         list(STRATEGIES)
         if strategies.strip().lower() == "all"
         else [s.strip() for s in strategies.split(",") if s.strip()]
     )
-    rows = pipe.screen_strategies(
-        strategy_names=strat_list, cash=cash, min_bars=min_bars, rank_by=rank_by
-    )
+    console.print(f"[dim]Screening {len(all_syms)} symbols × {len(strat_list)} strategies...[/dim]")
+    with progress_bars(console) as prog:
+        task = prog.add_task("Backtesting...", total=len(all_syms))
+        def _progress(_i, _total, _sym):
+            prog.update(task, completed=_i, description=f"Backtesting {_sym}")
+        rows = pipe.screen_strategies(
+            strategy_names=strat_list, cash=cash, min_bars=min_bars, rank_by=rank_by,
+            on_progress=_progress,
+        )
     if not rows:
         console.print(
             "[yellow]Nothing to screen[/yellow] — need symbols with >= "
@@ -331,14 +343,18 @@ def run_daily(
         else [s.strip() for s in strategies.split(",") if s.strip()]
     )
     pipe = DailyPipeline(include_all_sources=all_sources)
-    ing = pipe.ingest(bd)
+    with progress_spinner(console, f"Ingesting from {len(pipe.clients)} source(s)..."):
+        ing = pipe.ingest(bd)
     console.print(
         f"Ingested {ing.total_bars} bars from {len(ing.per_source)} source(s)"
         + (f"; errors: {', '.join(ing.errors)}" if ing.errors else "")
     )
-    prices = pipe.reconcile(bd)
+    with progress_spinner(console, "Reconciling..."):
+        prices = pipe.reconcile(bd)
     console.print(f"Reconciled {len(prices)} symbols.")
 
+    all_syms = pipe.storage.symbols()
+    console.print(f"[dim]Full analysis on {len(all_syms)} symbols...[/dim]")
     sections, summary = pipe.daily_report(
         bd, strategies=strat_list, top=top, rank_by=rank_by, paper_cash=cash
     )

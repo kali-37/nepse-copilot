@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from typing import Any
 
 from nepse_trader.analysis.backtest import Backtester
 from nepse_trader.analysis.costs import CostEngine
@@ -58,19 +59,26 @@ def screen(
     min_bars: int = 60,
     cost_engine: CostEngine | None = None,
     rank_by: str = "sharpe",
+    on_progress: Callable[[int, int, str], Any] | None = None,
 ) -> list[ScreenRow]:
     """Backtest every (symbol, strategy) pair and return a ranked leaderboard.
 
     `get_bars(symbol)` returns that symbol's chronological PriceBars (typically
     `DailyPipeline.reconciled_bars`). Symbols with fewer than `min_bars` bars are
     skipped. Rows are sorted best-first by `rank_by` (see RANKABLE).
+
+    When *on_progress* is given it is called as ``on_progress(done, total, symbol)``
+    after each symbol is processed — useful for attaching a CLI progress bar.
     """
     if rank_by not in RANKABLE:
         raise ValueError(f"rank_by must be one of {sorted(RANKABLE)}")
     bt = Backtester(cost_engine=cost_engine or CostEngine(), initial_cash=cash)
     strategies = _strategies(strategy_names)
     rows: list[ScreenRow] = []
-    for symbol in symbols:
+    total = len(symbols)
+    for i, symbol in enumerate(symbols, 1):
+        if on_progress:
+            on_progress(i, total, symbol)
         bars = get_bars(symbol)
         if len(bars) < min_bars:
             continue
