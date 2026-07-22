@@ -17,3 +17,4 @@ dist/
 build/
 .build_workflow.js
 .review_workflow.js
+web/dist
