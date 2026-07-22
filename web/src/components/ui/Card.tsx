@@ -10,7 +10,7 @@ interface Props {
 export function Card({ children, className = '', title, actions }: Props) {
   return (
     <div
-      className={`rounded-xl border border-border bg-surface p-5 shadow-sm ${className}`}
+      className={`rounded-xl border border-border bg-surface p-5 shadow-sm transition-shadow hover:shadow-md ${className}`}
     >
       {(title || actions) && (
         <div className="mb-4 flex items-center justify-between">

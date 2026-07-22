@@ -72,9 +72,9 @@ export function RootLayout({ children }: Props) {
                 key={item.to}
                 to={item.to}
                 onClick={() => setSidebarOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                   active
-                    ? 'bg-nepse-50 text-nepse-700 dark:bg-nepse-900/30 dark:text-nepse-400'
+                    ? 'bg-nepse-50 text-nepse-700 dark:bg-nepse-900/30 dark:text-nepse-400 shadow-sm'
                     : 'text-text-secondary hover:bg-surface-tertiary hover:text-text-primary'
                 }`}
               >
@@ -107,7 +107,8 @@ export function RootLayout({ children }: Props) {
           </button>
           <div className="flex items-center gap-2 text-xs text-text-tertiary">
             <LineChart className="h-3.5 w-3.5" />
-            <span>NEPSE</span>
+            <span className="font-medium">NEPSE Trader</span>
+            <span className="rounded-full border border-nepse-200 bg-nepse-50 px-1.5 py-0.5 text-[10px] font-semibold text-nepse-600 dark:border-nepse-800 dark:bg-nepse-900/30 dark:text-nepse-400">BETA</span>
           </div>
           <div className="flex-1" />
           <span className="text-xs text-text-tertiary">
@@ -119,7 +120,7 @@ export function RootLayout({ children }: Props) {
           </span>
         </header>
 
-        <main className="flex-1 p-4 lg:p-8">{children}</main>
+        <main className="page-enter flex-1 p-4 lg:p-8">{children}</main>
       </div>
     </div>
   );

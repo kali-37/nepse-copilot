@@ -1,16 +1,17 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --color-nepse-50: #eff6ff;
-  --color-nepse-100: #dbeafe;
-  --color-nepse-200: #bfdbfe;
-  --color-nepse-300: #93c5fd;
-  --color-nepse-400: #60a5fa;
-  --color-nepse-500: #3b82f6;
-  --color-nepse-600: #2563eb;
-  --color-nepse-700: #1d4ed8;
-  --color-nepse-800: #1e40af;
-  --color-nepse-900: #1e3a8a;
+  --color-nepse-50: #eef2ff;
+  --color-nepse-100: #e0e7ff;
+  --color-nepse-200: #c7d2fe;
+  --color-nepse-300: #a5b4fc;
+  --color-nepse-400: #818cf8;
+  --color-nepse-500: #6366f1;
+  --color-nepse-600: #4f46e5;
+  --color-nepse-700: #4338ca;
+  --color-nepse-800: #3730a3;
+  --color-nepse-900: #312e81;
   --color-surface: #ffffff;
   --color-surface-secondary: #f8fafc;
   --color-surface-tertiary: #f1f5f9;
@@ -18,27 +19,33 @@
   --color-text-primary: #0f172a;
   --color-text-secondary: #475569;
   --color-text-tertiary: #94a3b8;
-  --color-positive: #16a34a;
-  --color-negative: #dc2626;
-  --color-warning: #f59e0b;
-  --color-chart-line: #3b82f6;
-  --color-chart-up: #16a34a;
-  --color-chart-down: #dc2626;
+  --color-positive: #059669;
+  --color-negative: #e11d48;
+  --color-warning: #d97706;
+  --color-accent: #f59e0b;
+  --color-chart-line: #6366f1;
+  --color-chart-up: #059669;
+  --color-chart-down: #e11d48;
+  --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, monospace;
 }
 
 .dark {
   --color-surface: #0f172a;
   --color-surface-secondary: #1e293b;
   --color-surface-tertiary: #334155;
-  --color-border: #334155;
+  --color-border: #475569;
   --color-text-primary: #f1f5f9;
   --color-text-secondary: #94a3b8;
   --color-text-tertiary: #64748b;
+  --color-positive: #34d399;
+  --color-negative: #fb7185;
+  --color-warning: #fbbf24;
 }
 
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   background-color: var(--color-surface-secondary);
   color: var(--color-text-primary);
   -webkit-font-smoothing: antialiased;
@@ -49,6 +56,16 @@ body {
 *::before,
 *::after {
   box-sizing: border-box;
+}
+
+::selection {
+  background: var(--color-nepse-200);
+  color: var(--color-nepse-900);
+}
+
+.dark ::selection {
+  background: var(--color-nepse-800);
+  color: var(--color-nepse-200);
 }
 
 ::-webkit-scrollbar {
@@ -63,4 +80,13 @@ body {
 ::-webkit-scrollbar-thumb {
   background: var(--color-text-tertiary);
   border-radius: 3px;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.page-enter {
+  animation: fadeIn 0.3s ease-out;
 }
