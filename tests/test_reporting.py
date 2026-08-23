@@ -15,11 +15,16 @@ from nepse_trader.models import (
     SourceName,
 )
 from nepse_trader.reporting import (
+    RASHIFAL_DISCLAIMER,
     Alerter,
     backtest_report,
+    do_not_touch_md,
+    plan_cards_md,
     portfolio_summary,
     price_bars_markdown,
+    rashifal_md,
     reconciliation_report,
+    sell_queue_md,
     signals_markdown,
     signals_table,
     write_markdown_report,
@@ -358,3 +363,174 @@ def test_alerter_send_email_failure(monkeypatch):
         )
         is False
     )
+
+
+# --------------------------------------------------------------------------
+# Advisor / rashifal builders
+# --------------------------------------------------------------------------
+
+
+def _card(**overrides) -> dict:
+    payload = {
+        "symbol": "NABIL",
+        "action": "accumulate",
+        "reference_price": 578.0,
+        "entry_low": 574.5,
+        "entry_high": 581.5,
+        "stop": 553.0,
+        "targets": [605.0, 625.75],
+        "quantity": 70,
+        "horizon_days": 10,
+        "earliest_sell_date": "2026-08-24",
+        "conviction": 3,
+        "rationale": "sma_cross:buy; rsi:buy",
+        "gross_pnl": 1638.0,
+        "net_pnl": 1180.45,
+        "entry_cost": 210.3,
+        "exit_cost": 205.1,
+        "capital_gains_tax": 42.15,
+        "note": "",
+        "signals": ["sma_cross:buy"],
+    }
+    payload.update(overrides)
+    return payload
+
+
+def _rashifal(**overrides) -> dict:
+    payload = {
+        "run_id": 1,
+        "run_date": "2026-08-20",
+        "mode": "normal",
+        "horizon": "week",
+        "online": True,
+        "equity": 1_000_000.0,
+        "regime": "broad advance",
+        "sector_of_the_day": "Hydropower (+3.10%)",
+        "cards": [_card()],
+        "sell_queue": [],
+        "do_not_touch": [],
+        "breadth": {"advancers": 90, "decliners": 10},
+        "banner": "",
+        "thesis": "",
+        "degraded": False,
+        "generated_at": "2026-08-20T10:00:00+00:00",
+    }
+    payload.update(overrides)
+    return payload
+
+
+class TestPlanCardsMd:
+    def test_renders_a_row_per_card(self):
+        out = plan_cards_md([_card(), _card(symbol="ADBL")])
+        assert out.count("\n") == 3  # header + separator + two rows
+        assert "NABIL" in out and "ADBL" in out
+
+    def test_shows_both_targets_and_the_settlement_date(self):
+        out = plan_cards_md([_card()])
+        assert "605.00" in out
+        assert "625.75" in out
+        assert "2026-08-24" in out
+
+    def test_a_single_target_leaves_the_second_column_blank(self):
+        out = plan_cards_md([_card(targets=[605.0])])
+        assert "605.00" in out
+        assert out.rstrip().endswith("| 2026-08-24 |")
+
+    def test_no_targets_renders_dashes_not_a_crash(self):
+        out = plan_cards_md([_card(targets=[])])
+        assert "-" in out
+
+    def test_an_empty_list_says_so(self):
+        out = plan_cards_md([])
+        assert "no actionable cards today" in out
+
+    def test_a_missing_key_renders_a_dash(self):
+        out = plan_cards_md([{"symbol": "NABIL"}])
+        assert "NABIL" in out
+
+
+class TestSellQueueMd:
+    def test_renders_the_reason_and_the_legal_date(self):
+        out = sell_queue_md(
+            [
+                {
+                    "symbol": "NABIL",
+                    "quantity": 100,
+                    "reference_price": 470.0,
+                    "reason": "price 470.0 at or below stop 480.0",
+                    "earliest_sell_date": "2026-08-24",
+                }
+            ]
+        )
+        assert "at or below stop" in out
+        assert "2026-08-24" in out
+
+    def test_an_empty_queue_says_nothing_to_exit(self):
+        assert "nothing to exit" in sell_queue_md([])
+
+
+class TestDoNotTouchMd:
+    def test_renders_the_reason(self):
+        out = do_not_touch_md([{"symbol": "NICA", "reason": "only 3 bars"}])
+        assert "NICA" in out
+        assert "only 3 bars" in out
+
+    def test_an_empty_list_confirms_full_coverage(self):
+        assert "every requested symbol got a card" in do_not_touch_md([])
+
+
+class TestRashifalMd:
+    def test_includes_the_header_facts(self):
+        out = rashifal_md(_rashifal())
+        assert "2026-08-20" in out
+        assert "broad advance" in out
+        assert "Hydropower" in out
+        assert "online" in out
+
+    def test_offline_is_labelled(self):
+        assert "offline" in rashifal_md(_rashifal(online=False))
+
+    def test_the_disclaimer_is_always_present(self):
+        out = rashifal_md(_rashifal())
+        assert RASHIFAL_DISCLAIMER in out
+
+    def test_the_disclaimer_denies_astrological_input(self):
+        assert "No astrological" in RASHIFAL_DISCLAIMER
+        assert "investment advice" in RASHIFAL_DISCLAIMER.lower()
+
+    def test_a_banner_appears_before_anything_else(self):
+        out = rashifal_md(_rashifal(banner="AI narrative unavailable — daily cap reached"))
+        assert out.index("daily cap reached") < out.index("Buy candidates")
+
+    def test_no_banner_means_no_warning_block(self):
+        assert "⚠️" not in rashifal_md(_rashifal())
+
+    def test_buys_and_holds_are_separate_sections(self):
+        out = rashifal_md(_rashifal(cards=[_card(), _card(symbol="ADBL", action="hold")]))
+        assert "Buy candidates" in out
+        assert "Hold / reduce" in out
+
+    def test_no_holds_means_no_hold_section(self):
+        assert "Hold / reduce" not in rashifal_md(_rashifal())
+
+    def test_the_thesis_section_appears_only_when_there_is_one(self):
+        assert "This week's thesis" not in rashifal_md(_rashifal())
+        out = rashifal_md(_rashifal(thesis="Breadth improved but turnover is thin."))
+        assert "This week's thesis" in out
+        assert "turnover is thin" in out
+
+    def test_commentary_appears_only_when_a_card_has_a_note(self):
+        assert "### Commentary" not in rashifal_md(_rashifal())
+        out = rashifal_md(_rashifal(cards=[_card(note="Deposit mix improved.")]))
+        assert "### Commentary" in out
+        assert "Deposit mix improved." in out
+
+    def test_the_sell_queue_and_skips_are_always_shown(self):
+        out = rashifal_md(_rashifal())
+        assert "Sell queue" in out
+        assert "Do not touch" in out
+
+    def test_an_empty_run_still_renders(self):
+        out = rashifal_md({})
+        assert RASHIFAL_DISCLAIMER in out
+        assert "no actionable cards today" in out

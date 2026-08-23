@@ -6,6 +6,7 @@ from datetime import date
 
 from nepse_trader.calendar import (
     _get_holidays,
+    add_trading_days,
     is_trading_day,
     load_holidays,
     next_trading_day,
@@ -88,3 +89,69 @@ class TestLoadHolidays:
         assert isinstance(holidays, list)
         assert all(isinstance(h, date) for h in holidays)
         assert holidays == sorted(holidays)  # already sorted
+
+
+class TestAddTradingDays:
+    """T+2 settlement lives on this function, so the weekend cases matter most."""
+
+    def test_thursday_plus_two_is_monday_not_saturday(self):
+        thursday = date(2026, 8, 20)
+        assert thursday.strftime("%A") == "Thursday"
+        assert add_trading_days(thursday, 2) == date(2026, 8, 24)
+
+    def test_wednesday_plus_two_is_sunday_not_friday(self):
+        wednesday = date(2026, 8, 19)
+        assert add_trading_days(wednesday, 2) == date(2026, 8, 23)
+
+    def test_sunday_plus_two_is_tuesday(self):
+        sunday = date(2026, 8, 23)
+        assert sunday.strftime("%A") == "Sunday"
+        assert add_trading_days(sunday, 2) == date(2026, 8, 25)
+
+    def test_zero_snaps_forward_off_a_weekend(self):
+        friday = date(2026, 8, 21)
+        assert add_trading_days(friday, 0) == date(2026, 8, 23)
+
+    def test_zero_on_a_trading_day_is_a_no_op(self):
+        wednesday = date(2026, 8, 19)
+        assert add_trading_days(wednesday, 0) == wednesday
+
+    def test_counting_starts_from_the_next_trading_day_after_a_weekend(self):
+        """A trade dated Saturday is really the Sunday session."""
+        saturday = date(2026, 8, 22)
+        assert add_trading_days(saturday, 1) == add_trading_days(date(2026, 8, 23), 1)
+
+    def test_a_holiday_is_skipped(self):
+        constitution_day = date(2026, 9, 20)  # a Sunday, and a holiday
+        assert not is_trading_day(constitution_day)
+        thursday = date(2026, 9, 17)
+        # T+1 is Monday the 21st (Fri/Sat weekend, Sun is the holiday), T+2 the 22nd.
+        assert add_trading_days(thursday, 2) == date(2026, 9, 22)
+
+    def test_negative_moves_back(self):
+        monday = date(2026, 8, 24)
+        assert add_trading_days(monday, -1) == date(2026, 8, 23)
+        assert add_trading_days(monday, -2) == date(2026, 8, 20)
+
+    def test_negative_from_a_weekend_snaps_back_first(self):
+        saturday = date(2026, 8, 22)
+        assert add_trading_days(saturday, -1) == date(2026, 8, 19)
+
+    def test_the_result_is_always_a_trading_day(self):
+        start = date(2026, 8, 3)
+        for offset in range(30):
+            for n in (0, 1, 2, 5, -1, -3):
+                result = add_trading_days(date.fromordinal(start.toordinal() + offset), n)
+                assert is_trading_day(result)
+
+    def test_forward_then_back_returns_to_the_start(self):
+        wednesday = date(2026, 8, 19)
+        assert add_trading_days(add_trading_days(wednesday, 3), -3) == wednesday
+
+    def test_a_long_span_is_monotonic(self):
+        d = date(2026, 1, 5)
+        previous = add_trading_days(d, 0)
+        for n in range(1, 60):
+            current = add_trading_days(d, n)
+            assert current > previous
+            previous = current

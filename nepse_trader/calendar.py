@@ -97,6 +97,25 @@ def previous_trading_day(d: date) -> date:
     return d
 
 
+def add_trading_days(d: date, n: int) -> date:
+    """Return the date *n* trading days from *d*, skipping weekends and holidays.
+
+    Positive *n* moves forward, negative *n* moves back, and ``n == 0`` snaps
+    forward to the next trading day (so a settlement date computed from a
+    Friday trade lands on a day the market is actually open).
+
+    This is what T+2 settlement needs: two *trading* days, not two calendar
+    days. A Thursday buy settles the following Monday, not Saturday.
+    """
+    d = next_trading_day(d) if n >= 0 else previous_trading_day(d)
+    step = timedelta(days=1 if n >= 0 else -1)
+    for _ in range(abs(n)):
+        d += step
+        while not is_trading_day(d):
+            d += step
+    return d
+
+
 def periods_per_year(reference_year: int | None = None) -> int:
     """Approximate number of NEPSE trading days in a calendar year."""
     y = reference_year or date.today().year

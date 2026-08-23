@@ -36,6 +36,11 @@ __all__ = [
     "movers_md",
     "quant_md",
     "leaderboard_md",
+    "plan_cards_md",
+    "sell_queue_md",
+    "do_not_touch_md",
+    "rashifal_md",
+    "RASHIFAL_DISCLAIMER",
 ]
 
 
@@ -380,3 +385,144 @@ def leaderboard_md(rows: list[dict], limit: int = 25) -> str:
     if not rows:
         out.append("| _no backtests run_ |" + " |" * (len(_LEADER_COLS) - 1))
     return "\n".join(out)
+
+
+# --------------------------------------------------------------------------
+# Advisor / rashifal builders
+# --------------------------------------------------------------------------
+
+# Printed on every advisor report. The format is a horoscope; the method is not,
+# and a report shaped like a horoscope has an obligation to say so out loud.
+RASHIFAL_DISCLAIMER = (
+    "_The daily-horoscope format is borrowed for readability only. **No astrological "
+    "input feeds any number in this report.** Every price, stop, target, quantity and "
+    "date is computed from reconciled price history by "
+    "`nepse_trader.advisor.plan`. Commentary, where present, is written by a language "
+    "model that can see those numbers but cannot change them. None of this is "
+    "investment advice._"
+)
+
+
+def plan_cards_md(cards: list[dict]) -> str:
+    """Render plan cards as one table row per symbol.
+
+    Cards are ``PlanCard.as_dict()``. The columns are chosen so the row answers
+    the question the user actually asked — what to buy, at what price, where the
+    stop goes, how many shares, and the earliest date it can legally be sold.
+    """
+    cols = [
+        ("symbol", "Symbol", 0),
+        ("action", "Action", 0),
+        ("conviction", "Conv", 0),
+        ("reference_price", "Last", 2),
+        ("entry_low", "Entry lo", 2),
+        ("entry_high", "Entry hi", 2),
+        ("stop", "Stop", 2),
+        ("quantity", "Qty", 0),
+        ("net_pnl", "Net PnL", 2),
+    ]
+    header = "| " + " | ".join(c[1] for c in cols) + " | T1 | T2 | Sell on/after |"
+    sep = "| " + " | ".join("---" for _ in cols) + " | --- | --- | --- |"
+    out = [header, sep]
+    for c in cards:
+        cells = []
+        for key, _label, places in cols:
+            v = c.get(key)
+            cells.append(_md_escape(str(v)) if key in ("symbol", "action") else _fmt_num(v, places))
+        targets = c.get("targets") or []
+        cells.append(_fmt_num(targets[0] if targets else None))
+        cells.append(_fmt_num(targets[1] if len(targets) > 1 else None))
+        cells.append(_md_escape(str(c.get("earliest_sell_date", "-"))))
+        out.append("| " + " | ".join(cells) + " |")
+    if not cards:
+        out.append("| _no actionable cards today_ |" + " |" * (len(cols) + 2))
+    return "\n".join(out)
+
+
+def sell_queue_md(rows: list[dict]) -> str:
+    """Render the exit queue: what to sell, why, and the earliest legal date."""
+    out = [
+        "| Symbol | Qty | Price | Reason | Sell on/after |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for r in rows:
+        out.append(
+            f"| {_md_escape(str(r.get('symbol', '')))} "
+            f"| {_fmt_num(r.get('quantity'), 0)} "
+            f"| {_fmt_num(r.get('reference_price'))} "
+            f"| {_md_escape(str(r.get('reason', '')))} "
+            f"| {_md_escape(str(r.get('earliest_sell_date', '-')))} |"
+        )
+    if not rows:
+        out.append("| _nothing to exit_ |  |  |  |  |")
+    return "\n".join(out)
+
+
+def do_not_touch_md(rows: list[dict]) -> str:
+    """Render the excluded symbols with their reasons.
+
+    A symbol missing from the report without explanation looks like an oversight;
+    a symbol listed here with "only 8 bars" is a fact the user can act on.
+    """
+    out = ["| Symbol | Why it was skipped |", "| --- | --- |"]
+    for r in rows:
+        out.append(
+            f"| {_md_escape(str(r.get('symbol', '')))} | {_md_escape(str(r.get('reason', '')))} |"
+        )
+    if not rows:
+        out.append("| _none — every requested symbol got a card_ |  |")
+    return "\n".join(out)
+
+
+def rashifal_md(result: dict) -> str:
+    """Render a whole advisor run as Markdown.
+
+    *result* is ``Rashifal.as_dict()``. Deliberately ordered worst-news-first for
+    the banner: if the AI layer degraded, the reader learns that before reading
+    anything it wrote.
+    """
+    cards = result.get("cards") or []
+    buys = [c for c in cards if c.get("action") == "accumulate"]
+    sections: list[str] = []
+
+    if result.get("banner"):
+        sections.append(f"> ⚠️ {_md_escape(str(result['banner']))}")
+
+    header_rows = [
+        ("Run date", str(result.get("run_date", "-"))),
+        ("Mode", str(result.get("mode", "-"))),
+        ("Connectivity", "online" if result.get("online") else "offline"),
+        ("Horizon", str(result.get("horizon", "-"))),
+        ("Market regime", str(result.get("regime", "-"))),
+        ("Sector of the day", str(result.get("sector_of_the_day", "-"))),
+        ("Equity assumed (NPR)", _fmt_num(result.get("equity"), 0)),
+        ("Cards", _fmt_num(len(cards), 0)),
+    ]
+    sections.append(
+        "\n".join(
+            ["| Field | Value |", "| --- | --- |"]
+            + [f"| {k} | {_md_escape(str(v))} |" for k, v in header_rows]
+        )
+    )
+
+    if result.get("thesis"):
+        sections.append("### This week's thesis\n\n" + str(result["thesis"]))
+
+    sections.append("### Buy candidates\n\n" + plan_cards_md(buys))
+
+    others = [c for c in cards if c.get("action") != "accumulate"]
+    if others:
+        sections.append("### Hold / reduce\n\n" + plan_cards_md(others))
+
+    sections.append("### Sell queue\n\n" + sell_queue_md(result.get("sell_queue") or []))
+    sections.append("### Do not touch\n\n" + do_not_touch_md(result.get("do_not_touch") or []))
+
+    notes = [c for c in cards if c.get("note")]
+    if notes:
+        body = "\n\n".join(
+            f"**{_md_escape(str(c.get('symbol', '')))}** — {str(c['note'])}" for c in notes
+        )
+        sections.append("### Commentary\n\n" + body)
+
+    sections.append(RASHIFAL_DISCLAIMER)
+    return "\n\n".join(sections)

@@ -265,6 +265,137 @@ def _m0004_ai(conn) -> None:
     """)
 
 
+def _m0005_advice(conn) -> None:
+    """Persisted advisor runs and the plan cards they produced.
+
+    Kept so a call can be scored against what actually happened afterwards —
+    the frontend's "past call vs outcome" view is a join of ``advice_cards``
+    against ``price_bars`` on the dates recorded here. Without persistence a
+    prescription is unfalsifiable, which is the fastest way to stop trusting it.
+
+    ``mode`` records whether the LLM narrative layer was involved and ``banner``
+    carries the degradation notice when AI mode was asked for but fell back to
+    deterministic-only. Every number in ``advice_cards`` comes from the
+    deterministic engine; nothing an LLM emitted is stored as a number here.
+
+    ``earliest_sell_date`` is the T+2 settlement date from the trading calendar,
+    stored explicitly because it is not derivable from ``run_date`` without the
+    holiday list that was in force at the time.
+    """
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS advice_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_date TEXT NOT NULL,
+            mode TEXT NOT NULL,
+            horizon TEXT NOT NULL,
+            online INTEGER NOT NULL DEFAULT 1,
+            regime TEXT,
+            sector_of_the_day TEXT,
+            banner TEXT,
+            equity REAL,
+            generated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_advice_runs_date ON advice_runs(run_date);
+
+        CREATE TABLE IF NOT EXISTS advice_cards (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER NOT NULL REFERENCES advice_runs(id) ON DELETE CASCADE,
+            symbol TEXT NOT NULL,
+            action TEXT NOT NULL,
+            reference_price REAL,
+            entry_low REAL,
+            entry_high REAL,
+            stop REAL,
+            target_1 REAL,
+            target_2 REAL,
+            quantity INTEGER NOT NULL DEFAULT 0,
+            horizon_days INTEGER,
+            earliest_sell_date TEXT,
+            gross_pnl REAL,
+            net_pnl REAL,
+            entry_cost REAL,
+            exit_cost REAL,
+            capital_gains_tax REAL,
+            conviction INTEGER,
+            rationale TEXT,
+            note TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_advice_cards_run ON advice_cards(run_id);
+        CREATE INDEX IF NOT EXISTS idx_advice_cards_symbol ON advice_cards(symbol);
+    """)
+
+
+def _m0006_meroshare(conn) -> None:
+    """Read-only mirror of the user's own MeroShare/CDSC account.
+
+    **No credential has a column here, by design.** Not the username, not the
+    password, not a session token, not a keyring reference. Credentials live in
+    env / .env / the OS keyring and are resolved per run — see
+    ``nepse_trader/meroshare/credentials.py``. Anything in these three tables is
+    account *content*, which the user already sees in the portal.
+
+    ``ms_holdings`` is keyed by (symbol, demat_number) so a re-sync upserts
+    rather than duplicates, and so a second demat under the same login stays
+    separate. ``current_balance`` is a share count (INTEGER, comparable to
+    ``Position.quantity``); ``wacc`` is the weighted average cost per share the
+    portal reports, in NPR (REAL, like every other money column in this schema).
+
+    ``ms_transactions`` uses a deterministic ``txn_id`` — a hash of the natural
+    key — because the portal exposes no stable row id. ``quantity`` is signed:
+    credits positive, debits negative.
+
+    ``ms_sync_log`` records one row per *attempt*, success or failure, so a
+    stale holdings table always has a visible reason next to it.
+    """
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS ms_holdings (
+            symbol TEXT NOT NULL,
+            demat_number TEXT NOT NULL DEFAULT '',
+            isin TEXT,
+            script_desc TEXT,
+            current_balance INTEGER NOT NULL DEFAULT 0,
+            previous_balance INTEGER,
+            pledged_balance INTEGER,
+            wacc REAL,
+            previous_closing_price REAL,
+            last_transaction_date TEXT,
+            dp_id TEXT,
+            source TEXT NOT NULL,
+            synced_at TEXT NOT NULL,
+            PRIMARY KEY (symbol, demat_number)
+        );
+        CREATE INDEX IF NOT EXISTS idx_ms_holdings_symbol ON ms_holdings(symbol);
+
+        CREATE TABLE IF NOT EXISTS ms_transactions (
+            txn_id TEXT PRIMARY KEY,
+            symbol TEXT NOT NULL,
+            demat_number TEXT NOT NULL DEFAULT '',
+            transaction_date TEXT NOT NULL,
+            transaction_type TEXT NOT NULL DEFAULT '',
+            description TEXT,
+            quantity INTEGER NOT NULL DEFAULT 0,
+            price REAL,
+            balance_after INTEGER,
+            reference TEXT,
+            source TEXT NOT NULL,
+            synced_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_ms_transactions_symbol_date
+            ON ms_transactions(symbol, transaction_date);
+
+        CREATE TABLE IF NOT EXISTS ms_sync_log (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            ran_at TEXT NOT NULL,
+            method TEXT NOT NULL,
+            status TEXT NOT NULL,
+            holdings INTEGER NOT NULL DEFAULT 0,
+            transactions INTEGER NOT NULL DEFAULT 0,
+            error TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_ms_sync_log_ran ON ms_sync_log(ran_at);
+    """)
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
@@ -272,6 +403,8 @@ MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0002_adjusted_close", _m0002_adjusted_close),
     ("0003_rag_documents", _m0003_rag_documents),
     ("0004_ai", _m0004_ai),
+    ("0005_advice", _m0005_advice),
+    ("0006_meroshare", _m0006_meroshare),
 ]
 
 
