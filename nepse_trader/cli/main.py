@@ -28,6 +28,7 @@ from nepse_trader.ingest.fundamentals import MeroLaganiFundamentalsClient
 from nepse_trader.logging_setup import run_logger
 from nepse_trader.models import CorporateAction, CorporateActionType, SourceName
 from nepse_trader.pipeline import DailyPipeline
+from nepse_trader.rag.corpus import ALL_KINDS
 from nepse_trader.reporting import (
     backtest_report,
     leaderboard_md,
@@ -682,6 +683,135 @@ def export_parquet_cmd(
         console.print(f"[green]Exported {len(written)} file(s) to {out_dir}/[/green]")
         for p in written:
             console.print(f"  • {p}")
+
+
+# ----------------------------------------------------------------------- rag
+rag_app = typer.Typer(
+    help="Retrieval corpus: index the database, then search it.", no_args_is_help=True
+)
+app.add_typer(rag_app, name="rag")
+
+
+@rag_app.command("index")
+@_safe_run
+def rag_index(
+    symbols: str = typer.Option(None, "--symbols", help="Comma-separated symbols (default: all)"),
+    recent_days: int = typer.Option(10, help="Price documents to keep per symbol"),
+    strategies: str = typer.Option("composite", help="Strategies to record signals for"),
+    news: bool = typer.Option(False, "--news", help="Also fetch news & announcements (network)"),
+) -> None:
+    """Build the searchable document corpus from what's already in the database.
+
+    Runs offline by default: everything indexed is derived from stored prices and
+    reconciled history. Pass ``--news`` to additionally fetch ShareSansar news and
+    announcements, which is the one part that needs the network.
+    """
+    from nepse_trader.rag import build_corpus, index_documents
+
+    pipe = DailyPipeline()
+    syms = [s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else None
+    strat_list = [s.strip() for s in strategies.split(",") if s.strip()]
+    target = syms or pipe.storage.symbols()
+    if not target:
+        console.print("[yellow]No symbols in the database yet — ingest + reconcile first.[/yellow]")
+        raise typer.Exit()
+
+    with progress_bars(console) as prog:
+        task = prog.add_task("Indexing...", total=len(target))
+
+        def _progress(i, _total, sym):
+            prog.update(task, completed=i, description=f"Indexing {sym}")
+
+        report = build_corpus(
+            pipe,
+            symbols=syms,
+            recent_days=recent_days,
+            strategies=strat_list,
+            on_progress=_progress,
+        )
+
+    console.print(
+        f"[green]Indexed {report.documents} document(s)[/green] "
+        f"across {report.symbols} symbol(s)."
+    )
+    if not report.uses_fts:
+        console.print(
+            "[yellow]This SQLite build has no FTS5 — search will use the slower "
+            "LIKE fallback.[/yellow]"
+        )
+    for kind, n in sorted(report.per_kind.items()):
+        console.print(f"  • {kind}: {n}")
+    if report.errors:
+        console.print(f"[yellow]{len(report.errors)} symbol(s) failed:[/yellow]")
+        for sym, err in list(report.errors.items())[:10]:
+            console.print(f"  • {sym}: {err}")
+
+    if news:
+        from nepse_trader.ingest.news import NewsClient
+
+        with progress_spinner(console, "Fetching news & announcements..."):
+            docs = NewsClient().fetch_all(set(pipe.storage.symbols()))
+            written = index_documents(pipe.storage, docs)
+        console.print(f"[green]Indexed {written} news/announcement document(s).[/green]")
+
+
+@rag_app.command("search")
+@_safe_run
+def rag_search(
+    query: str = typer.Argument(..., help="What to look for"),
+    limit: int = typer.Option(8, help="Max results"),
+    symbols: str = typer.Option(None, "--symbols", help="Restrict to these symbols"),
+    kinds: str = typer.Option(None, "--kinds", help=f"Restrict to kinds: {', '.join(ALL_KINDS)}"),
+    since: str = typer.Option(None, "--since", help="Only documents on/after YYYY-MM-DD"),
+    online: bool = typer.Option(
+        False, "--online/--offline", help="Also search the live web when local results are thin"
+    ),
+    full: bool = typer.Option(False, "--full", help="Print each document body in full"),
+) -> None:
+    """Search the document corpus and show the ranked evidence.
+
+    Offline by default. ``--online`` adds a live web leg, used only when the local
+    index returns fewer than three hits.
+    """
+    from nepse_trader.rag import DocumentIndex, build_evidence, build_retriever
+
+    settings = get_settings()
+    storage = Storage(settings.db_path)
+    index = DocumentIndex(storage._conn)
+    if index.count() == 0:
+        console.print("[yellow]The corpus is empty — run `rag index` first.[/yellow]")
+        raise typer.Exit()
+
+    retriever = build_retriever(index, settings, online=online)
+    hits = retriever.retrieve(
+        query,
+        limit=limit,
+        symbols=[s.strip().upper() for s in symbols.split(",") if s.strip()] if symbols else None,
+        kinds=[k.strip() for k in kinds.split(",") if k.strip()] if kinds else None,
+        since=_parse_date(since),
+    )
+    if not hits:
+        console.print(f"[yellow]No documents matched {query!r}.[/yellow]")
+        raise typer.Exit()
+
+    pack = build_evidence(
+        hits,
+        query=query,
+        max_documents=limit,
+        max_chars=settings.rag_max_evidence_chars,
+    )
+    console.print(
+        f"[dim]{len(pack)} of {pack.considered} hit(s); "
+        f"{'FTS5 bm25' if index.uses_fts else 'LIKE fallback'} ranking[/dim]\n"
+    )
+    if full:
+        console.print(pack.render())
+    else:
+        for item in pack.items:
+            doc = item.document
+            when = doc.business_date.isoformat() if doc.business_date else "—"
+            console.print(f"[bold]{item.marker}[/bold] {doc.title} [dim]({when})[/dim]")
+            console.print(f"    {doc.body[:220]}{'…' if len(doc.body) > 220 else ''}\n")
 
 
 if __name__ == "__main__":

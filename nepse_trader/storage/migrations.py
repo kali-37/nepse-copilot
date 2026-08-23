@@ -152,11 +152,79 @@ def _m0002_adjusted_close(conn) -> None:
         conn.execute("ALTER TABLE reconciled_prices ADD COLUMN adjusted_close REAL")
 
 
+def has_fts5(conn) -> bool:
+    """Probe whether this SQLite build has the FTS5 extension compiled in.
+
+    FTS5 ships with every mainstream CPython/SQLite build, but it is a compile
+    time option — so we check rather than assume. Callers fall back to LIKE
+    based search when it is missing (see ``nepse_trader.rag.index``).
+    """
+    try:
+        conn.execute("CREATE VIRTUAL TABLE IF NOT EXISTS _fts5_probe USING fts5(x)")
+        conn.execute("DROP TABLE IF EXISTS _fts5_probe")
+        return True
+    except Exception:  # noqa: BLE001 - any failure means "not available"
+        return False
+
+
+def _m0003_rag_documents(conn) -> None:
+    """Document corpus for retrieval, plus an FTS5 index over it when available.
+
+    ``documents`` is the source of truth and works on any SQLite build.
+    ``documents_fts`` is an external-content FTS5 index (it stores no copy of the
+    text, just the terms) kept in sync by triggers.
+    """
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS documents (
+            doc_id TEXT PRIMARY KEY,
+            kind TEXT NOT NULL,
+            symbol TEXT,
+            business_date TEXT,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            url TEXT,
+            source TEXT,
+            fetched_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_documents_kind ON documents(kind);
+        CREATE INDEX IF NOT EXISTS idx_documents_symbol_date
+            ON documents(symbol, business_date);
+    """)
+
+    if not has_fts5(conn):
+        log.warning("SQLite build lacks FTS5; RAG search will use the LIKE fallback")
+        return
+
+    conn.executescript("""
+        CREATE VIRTUAL TABLE IF NOT EXISTS documents_fts USING fts5(
+            title, body, symbol, kind,
+            content='documents', content_rowid='rowid',
+            tokenize='porter unicode61'
+        );
+
+        CREATE TRIGGER IF NOT EXISTS documents_ai AFTER INSERT ON documents BEGIN
+            INSERT INTO documents_fts(rowid, title, body, symbol, kind)
+            VALUES (new.rowid, new.title, new.body, new.symbol, new.kind);
+        END;
+        CREATE TRIGGER IF NOT EXISTS documents_ad AFTER DELETE ON documents BEGIN
+            INSERT INTO documents_fts(documents_fts, rowid, title, body, symbol, kind)
+            VALUES ('delete', old.rowid, old.title, old.body, old.symbol, old.kind);
+        END;
+        CREATE TRIGGER IF NOT EXISTS documents_au AFTER UPDATE ON documents BEGIN
+            INSERT INTO documents_fts(documents_fts, rowid, title, body, symbol, kind)
+            VALUES ('delete', old.rowid, old.title, old.body, old.symbol, old.kind);
+            INSERT INTO documents_fts(rowid, title, body, symbol, kind)
+            VALUES (new.rowid, new.title, new.body, new.symbol, new.kind);
+        END;
+    """)
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
     ("0001_corporate_actions", _m0001_corporate_actions),
     ("0002_adjusted_close", _m0002_adjusted_close),
+    ("0003_rag_documents", _m0003_rag_documents),
 ]
 
 
