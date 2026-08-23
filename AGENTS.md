@@ -50,26 +50,34 @@ nepse_trader/
     reconcile.py        — reconcile_bars() cross-source consensus
   analysis/
     __init__.py
-    strategies.py       — SMA Cross, RSI, MACD, Supertrend, Ichimoku,
-                          Donchian Breakout, Mean-reversion
+    strategies.py       — SMA Cross, RSI, MACD, Bollinger, Supertrend, Ichimoku,
+                          Donchian Breakout, Mean-reversion, Composite voting
+    indicators.py       — SMA, EMA, RSI, MACD, Bollinger, ATR, Supertrend,
+                          Donchian, Ichimoku (pure Python, no numpy)
     backtest.py         — Backtester (Nepal costs: broker/SEBON/DP/CGT)
+    portfolio.py        — Multi-symbol portfolio backtest
     screen.py           — Multi-symbol, multi-strategy backtest screening
     walkforward.py      — Walk-forward optimisation (expanding window)
-    costs.py            — CostEngine (broker 0.4%, SEBON, DP, CGT slabs)
+    costs.py            — CostEngine (broker slabs, SEBON, DP, CGT)
+    risk.py             — Position sizing, stops/targets, ±10% circuit clamp
     quant.py            — Sharpe, Sortino, VaR, skew, kurtosis
   trading/
     __init__.py
     portfolio.py        — PaperPortfolio (buy/sell, FIFO lots, realized PnL)
-    risk.py             — PositionSizer (Kelly, fixed-fraction, risk-per-trade)
   har/
     __init__.py
     analyzer.py         — HAR capture analysis & endpoint discovery
-  alerting/
+  web/
     __init__.py
-    notifier.py         — Telegram / Discord / SMTP alerts
+    api.py              — FastAPI app; serves the built React SPA from web/dist
 tests/
-  test_*.py             — 364 tests, 1 skipped
+  test_*.py             — 378 passing, 1 skipped
+web/
+  src/                  — React 19 + Vite + Tailwind v4 + recharts SPA
 ```
+
+Alerting lives in `reporting.py` (`Alerter`: Telegram / Discord / SMTP / generic
+webhook), not in a separate package.
 
 ## Recent Sprint Progress
 
@@ -101,10 +109,18 @@ tests/
 4.5 Dashboard command (symbols, date range, source coverage, reconciliation health, portfolio)
 
 ## Current State
-- **Tests:** 364 passing, 1 skipped
+- **Tests:** 378 passing, 1 skipped
 - **Lint:** ruff clean
 - **Schema:** sources.jsonc config validation shipped
-- **Last commit:** `feat: CLI dashboard command with DB & portfolio summary`
+- **Last commit:** `refactor: frontend design polish — indigo palette, Inter type, subtle animations`
+
+## In-flight work
+Building out the AI/advisor half of the product (plan:
+`~/.claude/plans/shimmying-painting-hopcroft.md`):
+RAG (SQLite FTS5 + live web), an LLM layer (OpenRouter free models for bulk work +
+local `claude -p` CLI for synthesis, with DB-backed token budgeting and caching),
+the "rashifal" daily trade-plan advisor, read-only MeroShare portfolio sync, an
+MCP server exposing the toolkit, and the matching API + React pages with tests.
 
 ## Key Design Decisions
 - **SQLite WAL** for concurrent reads during async ingestion
@@ -127,5 +143,6 @@ nepse-trader export csv        # dump tables
 
 ## Open Questions / Planned
 - Docker image for scheduled deployment
-- Broker API integration for real orders
-- Web UI dashboard
+- Postgres storage backend (SQLite-only today)
+- **No** broker API integration — NEPSE has no sanctioned retail trading API, so
+  execution stays manual. MeroShare access is read-only by design.

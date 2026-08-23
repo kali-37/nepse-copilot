@@ -12,7 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import yaml
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -55,6 +55,97 @@ class Settings(BaseSettings):
     # Optional curl_cffi TLS impersonation profile for the scrapling engine
     # (e.g. "chrome"). Empty = no impersonation (honest, plain client).
     scrapling_impersonate: str = ""
+
+    # ------------------------------------------------------------- run modes
+    # "normal" = deterministic only (indicators, backtested edge, cost model).
+    # "ai"     = the same deterministic numbers PLUS LLM narrative/ranking.
+    # AI mode never alters an entry, stop, target or size — see analysis_mode
+    # handling in nepse_trader/advisor/.
+    analysis_mode: str = "normal"
+    # Offline forbids every network call: no ingestion, no web retrieval, no
+    # LLM provider that needs the network (cached LLM output is still used).
+    online: bool = True
+    # Symbols the advisor looks at when none are given explicitly. Empty list
+    # means "whatever is in the DB", capped by advisor_max_symbols.
+    watchlist: list[str] = Field(default_factory=list)
+    advisor_max_symbols: int = 25
+
+    # ------------------------------------------------------------------- LLM
+    # Provider chain, tried in order per task tier. Known names:
+    # "claude_cli" (local `claude -p` subprocess — no API billing),
+    # "anthropic"  (ANTHROPIC_API_KEY via the Messages API),
+    # "openrouter" (OPENROUTER_API_KEY, free models for bulk work).
+    llm_bulk_providers: list[str] = Field(default_factory=lambda: ["openrouter", "claude_cli"])
+    llm_synthesis_providers: list[str] = Field(
+        default_factory=lambda: ["claude_cli", "anthropic", "openrouter"]
+    )
+    # Free OpenRouter models used for per-symbol bulk passes, tried in order.
+    openrouter_models: list[str] = Field(
+        default_factory=lambda: [
+            "meta-llama/llama-3.3-70b-instruct:free",
+            "qwen/qwen-2.5-72b-instruct:free",
+            "google/gemma-2-9b-it:free",
+        ]
+    )
+    openrouter_api_key: str = ""
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    # Path to the Claude Code CLI used by the claude_cli provider.
+    claude_cli_path: str = "claude"
+    claude_cli_model: str = ""  # empty = whatever the CLI defaults to
+    anthropic_api_key: str = ""
+    anthropic_model: str = "claude-opus-5"
+    llm_timeout: float = 180.0
+
+    # -------------------------------------------------------- token budgeting
+    # Hard ceilings. When a ceiling is hit the advisor degrades to normal mode
+    # with a visible banner rather than erroring or silently truncating.
+    llm_max_calls_per_day: int = 40
+    llm_max_tokens_per_day: int = 400_000
+    # The weekly deep pass (full evidence, synthesis model) runs at most this
+    # many times per ISO week; daily runs reuse its cached thesis.
+    llm_max_deep_passes_per_week: int = 2
+    # Reuse a cached LLM response when the evidence hash matches and the entry
+    # is younger than this. 0 disables the cache.
+    llm_cache_ttl_hours: int = 168  # one week
+
+    # ------------------------------------------------------------------- RAG
+    rag_max_documents: int = 8  # documents per retrieval
+    rag_max_evidence_chars: int = 12_000  # token-proxy ceiling on an evidence pack
+    # Live web retrieval (online mode only). Empty list disables it.
+    rag_web_search_urls: list[str] = Field(
+        default_factory=lambda: ["https://duckduckgo.com/html/?q={query}"]
+    )
+    rag_enable_web: bool = True
+
+    # ------------------------------------------------------------- MeroShare
+    # Reading YOUR OWN account with YOUR OWN credentials. Read-only: holdings,
+    # WACC and transaction history. No IPO/ASBA application, no order placement.
+    # Credentials come from env / .env / optional OS keyring and are never
+    # logged, never written to the DB. See nepse_trader/meroshare/credentials.py.
+    meroshare_enabled: bool = False
+    meroshare_base_url: str = "https://webbackend.cdsc.com.np/api"
+    meroshare_dp_id: str = ""
+    meroshare_username: str = ""
+    meroshare_password: str = ""
+    # Read the password from the OS keyring instead of env (service/user below).
+    meroshare_use_keyring: bool = False
+    meroshare_keyring_service: str = "nepse-trader-meroshare"
+
+    @field_validator("analysis_mode")
+    @classmethod
+    def _check_mode(cls, v: str) -> str:
+        mode = v.strip().lower()
+        if mode not in ("normal", "ai"):
+            raise ValueError("analysis_mode must be 'normal' or 'ai'")
+        return mode
+
+    @field_validator("watchlist", "openrouter_models", mode="before")
+    @classmethod
+    def _split_csv(cls, v: Any) -> Any:
+        """Accept a comma-separated string from env for list-valued settings."""
+        if isinstance(v, str) and not v.strip().startswith("["):
+            return [part.strip() for part in v.split(",") if part.strip()]
+        return v
 
 
 class EndpointSpec(BaseModel):
