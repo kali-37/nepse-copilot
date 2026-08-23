@@ -219,12 +219,59 @@ def _m0003_rag_documents(conn) -> None:
     """)
 
 
+def _m0004_ai(conn) -> None:
+    """LLM response cache and token-spend ledger.
+
+    ``ai_cache`` is what makes a re-run free: the key is a hash of the prompt
+    content, so identical evidence never pays twice. Provider and model are
+    stored as metadata rather than part of the key — a cached answer stays usable
+    when the chain falls through to a different provider tomorrow.
+
+    ``ai_budget_ledger`` is the audit trail behind the hard caps: one row per
+    call, with the ISO week alongside the day so the weekly deep-pass limit is a
+    plain query rather than date arithmetic. Cache hits are recorded too, flagged
+    ``cached=1``, so they show up in the accounting without spending budget.
+    """
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS ai_cache (
+            cache_key TEXT PRIMARY KEY,
+            task TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            response TEXT NOT NULL,
+            prompt_tokens INTEGER NOT NULL DEFAULT 0,
+            completion_tokens INTEGER NOT NULL DEFAULT 0,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_ai_cache_created ON ai_cache(created_at);
+
+        CREATE TABLE IF NOT EXISTS ai_budget_ledger (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            created_at TEXT NOT NULL,
+            day TEXT NOT NULL,
+            iso_week TEXT NOT NULL,
+            task TEXT NOT NULL,
+            provider TEXT NOT NULL,
+            model TEXT NOT NULL,
+            prompt_tokens INTEGER NOT NULL DEFAULT 0,
+            completion_tokens INTEGER NOT NULL DEFAULT 0,
+            cached INTEGER NOT NULL DEFAULT 0,
+            deep INTEGER NOT NULL DEFAULT 0,
+            ok INTEGER NOT NULL DEFAULT 1,
+            error TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_ai_ledger_day ON ai_budget_ledger(day);
+        CREATE INDEX IF NOT EXISTS idx_ai_ledger_week ON ai_budget_ledger(iso_week);
+    """)
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
     ("0001_corporate_actions", _m0001_corporate_actions),
     ("0002_adjusted_close", _m0002_adjusted_close),
     ("0003_rag_documents", _m0003_rag_documents),
+    ("0004_ai", _m0004_ai),
 ]
 
 

@@ -817,5 +817,128 @@ def rag_search(
             console.print(f"    {doc.body[:220]}{'…' if len(doc.body) > 220 else ''}\n")
 
 
+# ------------------------------------------------------------------------ ai
+ai_app = typer.Typer(
+    help="AI mode: provider status, token budget, connectivity check.", no_args_is_help=True
+)
+app.add_typer(ai_app, name="ai")
+
+
+def _router(online: bool | None = None):
+    """A router over the real database. Opens the DB; caller keeps the Storage."""
+    from nepse_trader.ai import LLMRouter
+
+    settings = get_settings()
+    storage = Storage(settings.db_path)
+    return LLMRouter(storage._conn, settings, online=online), storage
+
+
+@ai_app.command("models")
+@_safe_run
+def ai_models() -> None:
+    """Show each provider chain and which legs are actually usable."""
+    router, storage = _router()
+    try:
+        status = router.status()
+    finally:
+        storage.close()
+
+    console.print(f"[bold]Mode:[/bold] {'online' if status['online'] else 'offline'}")
+    for tier, legs in status["tiers"].items():
+        console.print(f"\n[bold]{tier}[/bold] chain:")
+        if not legs:
+            console.print("  [yellow](empty — nothing configured)[/yellow]")
+        for leg in legs:
+            if not leg["known"]:
+                mark, note = "[red]✗[/red]", "unknown provider name"
+            elif leg["available"]:
+                mark, note = "[green]✓[/green]", leg["model"]
+            else:
+                mark, note = "[yellow]–[/yellow]", "not configured"
+            console.print(f"  {mark} {leg['name']}  [dim]{note}[/dim]")
+    if not any(leg["available"] for legs in status["tiers"].values() for leg in legs):
+        console.print(
+            "\n[yellow]No provider is usable — AI mode will degrade to normal mode. "
+            "See .env.example for what to set.[/yellow]"
+        )
+
+
+@ai_app.command("budget")
+@_safe_run
+def ai_budget(
+    history: int = typer.Option(0, "--history", help="Also show the last N ledger rows"),
+) -> None:
+    """Today's LLM spend against the caps, plus cache size."""
+    router, storage = _router()
+    try:
+        summary = router.budget.summary()
+        cache = router.cache.stats()
+        rows = router.budget.history(limit=history) if history else []
+    finally:
+        storage.close()
+
+    console.print(f"[bold]{summary.day}[/bold]  (week {summary.week})")
+    console.print(f"  calls   {summary.calls}/{summary.max_calls}  [dim]({summary.calls_left} left)[/dim]")
+    console.print(
+        f"  tokens  {summary.tokens:,}/{summary.max_tokens:,}  "
+        f"[dim]({summary.tokens_left:,} left)[/dim]"
+    )
+    console.print(
+        f"  deep    {summary.deep_passes}/{summary.max_deep_passes} this week  "
+        f"[dim]({summary.deep_passes_left} left)[/dim]"
+    )
+    console.print(f"  [dim]served from cache: {summary.cached_calls}; failed: {summary.failed_calls}[/dim]")
+    if summary.exhausted:
+        console.print("[yellow]Budget exhausted — AI mode will degrade to normal mode today.[/yellow]")
+
+    state = "off" if not cache["enabled"] else f"{cache['ttl_hours']}h TTL"
+    console.print(f"\n[bold]Cache:[/bold] {cache['entries']} entry(ies), {state}")
+    if cache["newest"]:
+        console.print(f"  [dim]newest {cache['newest']}[/dim]")
+
+    for row in rows:
+        flag = "cache" if row["cached"] else ("ok" if row["ok"] else "fail")
+        tokens = row["prompt_tokens"] + row["completion_tokens"]
+        console.print(
+            f"  [dim]{row['created_at'][:19]}  {row['task']:<14} {row['provider']:<11} "
+            f"{flag:<5} {tokens:>7,}  {row['error'] or ''}[/dim]"
+        )
+
+
+@ai_app.command("test")
+@_safe_run
+def ai_test(
+    tier: str = typer.Option("synthesis", help="Which chain to exercise: bulk | synthesis"),
+) -> None:
+    """Send one tiny prompt through a chain and report what answered.
+
+    This spends real budget — a few tokens — because the only honest way to know a
+    provider works is to use it.
+    """
+    from nepse_trader.ai import TIERS, prompts
+
+    if tier not in TIERS:
+        raise typer.BadParameter(f"tier must be one of {', '.join(TIERS)}")
+
+    router, storage = _router(online=True)
+    try:
+        with progress_spinner(console, f"Asking the {tier} chain..."):
+            response = router.complete(
+                prompts.PING, task="ai_test", tier=tier, max_tokens=64, use_cache=False
+            )
+    finally:
+        storage.close()
+
+    if response.ok:
+        console.print(
+            f"[green]{response.provider}[/green] answered "
+            f"[dim]({response.model}, {response.total_tokens:,} tokens)[/dim]"
+        )
+        console.print(f"  {response.text.strip()[:200]}")
+    else:
+        console.print(f"[red]No provider answered.[/red] {response.error}")
+        raise typer.Exit(1)
+
+
 if __name__ == "__main__":
     app()
