@@ -28,6 +28,7 @@ from nepse_trader.ingest.fundamentals import MeroLaganiFundamentalsClient
 from nepse_trader.logging_setup import run_logger
 from nepse_trader.models import CorporateAction, CorporateActionType, SourceName
 from nepse_trader.pipeline import DailyPipeline
+from nepse_trader.rag.build import DEFAULT_STRATEGIES
 from nepse_trader.rag.corpus import ALL_KINDS
 from nepse_trader.reporting import (
     backtest_report,
@@ -697,7 +698,9 @@ app.add_typer(rag_app, name="rag")
 def rag_index(
     symbols: str = typer.Option(None, "--symbols", help="Comma-separated symbols (default: all)"),
     recent_days: int = typer.Option(10, help="Price documents to keep per symbol"),
-    strategies: str = typer.Option("composite", help="Strategies to record signals for"),
+    strategies: str = typer.Option(
+        ",".join(DEFAULT_STRATEGIES), help=f"Strategies to record signals for: {', '.join(STRATEGIES)}"
+    ),
     news: bool = typer.Option(False, "--news", help="Also fetch news & announcements (network)"),
 ) -> None:
     """Build the searchable document corpus from what's already in the database.
@@ -742,9 +745,9 @@ def rag_index(
     for kind, n in sorted(report.per_kind.items()):
         console.print(f"  • {kind}: {n}")
     if report.errors:
-        console.print(f"[yellow]{len(report.errors)} symbol(s) failed:[/yellow]")
-        for sym, err in list(report.errors.items())[:10]:
-            console.print(f"  • {sym}: {err}")
+        console.print(f"[yellow]{len(report.errors)} problem(s) during indexing:[/yellow]")
+        for key, err in list(report.errors.items())[:10]:
+            console.print(f"  • {key}: {err}")
 
     if news:
         from nepse_trader.ingest.news import NewsClient

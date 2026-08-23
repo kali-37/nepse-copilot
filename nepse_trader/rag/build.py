@@ -16,6 +16,7 @@ import logging
 from dataclasses import dataclass, field
 from datetime import date
 
+from nepse_trader.analysis.strategies import STRATEGIES
 from nepse_trader.rag.corpus import (
     Document,
     breadth_document,
@@ -27,6 +28,11 @@ from nepse_trader.rag.corpus import (
 from nepse_trader.rag.index import DocumentIndex
 
 log = logging.getLogger("nepse_trader.rag.build")
+
+# Strategies indexed when the caller names none. These are registry names that
+# build_strategy() can instantiate; "composite" is deliberately absent because it
+# needs sub-strategy instances and cannot be built from a name alone.
+DEFAULT_STRATEGIES = ("sma_cross", "rsi", "macd", "supertrend")
 
 
 @dataclass
@@ -77,16 +83,31 @@ def build_corpus(
         log.warning("indexing without FTS5; search will use the LIKE fallback")
 
     symbols = symbols or pipeline.storage.symbols()
-    strategies = strategies if strategies is not None else ["composite"]
+    strategies = list(strategies) if strategies is not None else list(DEFAULT_STRATEGIES)
+    unknown = [s for s in strategies if s not in STRATEGIES]
+    if unknown:
+        # Surfaced, not swallowed: a name that can never build would otherwise
+        # cost a signal document per symbol with nothing to show for it.
+        report.errors["strategies"] = (
+            f"unknown strategy name(s) {', '.join(unknown)}; known: {', '.join(sorted(STRATEGIES))}"
+        )
+        log.warning("skipping unknown strategies: %s", ", ".join(unknown))
+        strategies = [s for s in strategies if s in STRATEGIES]
     total = len(symbols)
 
     batch: list[Document] = []
+    strategy_failures: dict[str, str] = {}
     for i, symbol in enumerate(symbols, start=1):
         if on_progress is not None:
             on_progress(i, total, symbol)
         try:
             docs = _documents_for_symbol(
-                pipeline, symbol, recent_days=recent_days, strategies=strategies, min_bars=min_bars
+                pipeline,
+                symbol,
+                recent_days=recent_days,
+                strategies=strategies,
+                min_bars=min_bars,
+                failures=strategy_failures,
             )
         except Exception as exc:  # noqa: BLE001 - one bad symbol must not stop the run
             report.errors[symbol] = str(exc)
@@ -97,6 +118,11 @@ def build_corpus(
             batch.extend(docs)
         if len(batch) >= 500:
             _flush(index, batch, report)
+
+    # A strategy that failed on every symbol is a configuration problem, not
+    # noise; report it rather than leaving it in the debug log.
+    for name, message in strategy_failures.items():
+        report.errors[f"strategy:{name}"] = message
 
     if include_breadth:
         batch.extend(_breadth_documents(pipeline, report))
@@ -129,6 +155,7 @@ def _documents_for_symbol(
     recent_days: int,
     strategies: list[str],
     min_bars: int,
+    failures: dict[str, str] | None = None,
 ) -> list[Document]:
     bars = pipeline.reconciled_bars(symbol)
     if len(bars) < min_bars:
@@ -152,6 +179,8 @@ def _documents_for_symbol(
             signals = pipeline.signals_for(symbol, name)
         except Exception as exc:  # noqa: BLE001 - a strategy that can't run is not fatal
             log.debug("strategy %s failed on %s: %s", name, symbol, exc)
+            if failures is not None:
+                failures.setdefault(name, str(exc))
             continue
         if signals:
             docs.append(signal_document(signals[-1]))
