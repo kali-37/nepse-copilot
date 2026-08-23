@@ -215,22 +215,6 @@ class BaseClient:
             text=resp.text,
             headers=resp.headers,
         )
-        resp = self.engine.raw_request(url, method, params, headers, json_body)
-        # Honour rate-limit / forbidden signals by backing off — never bypass.
-        if resp.status_code in (429, 403):
-            raise RateLimitedError(
-                f"{resp.status_code} from {url}: backing off (we do not bypass limits)"
-            )
-        if resp.status_code >= 500:
-            raise httpx.TransportError(f"server error {resp.status_code} from {url}")
-        if resp.status_code >= 400:
-            raise FetchError(f"{resp.status_code} from {url}: {resp.text[:200]}")
-        return FetchResult(
-            url=resp.url,
-            status_code=resp.status_code,
-            text=resp.text,
-            headers=resp.headers,
-        )
 
     def _cache(self, url: str, result: FetchResult) -> None:
         try:
