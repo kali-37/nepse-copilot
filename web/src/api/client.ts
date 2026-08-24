@@ -14,6 +14,8 @@ import type {
   AuctionAdvice,
   AuctionAdviceRequest,
   DoseRun,
+  HealthReport,
+  HealthSnapshot,
   HoldingComparison,
   JournalEntry,
   MeroShareHolding,
@@ -208,6 +210,12 @@ export const api = {
   },
 
   aiBudget: () => fetchJson<AiBudget>('/ai/budget'),
+
+  healthReport: (record = false) =>
+    fetchJson<HealthReport>(`/health/report${record ? '?record=true' : ''}`),
+
+  healthHistory: (limit = 30) =>
+    fetchJson<HealthSnapshot[]>(`/health/history?limit=${limit}`),
 
   watchlist: () => fetchJson<WatchlistSettings>('/settings/watchlist'),
 

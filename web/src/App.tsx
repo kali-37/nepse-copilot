@@ -10,6 +10,7 @@ import { MeroSharePage } from './pages/MeroShare';
 import { ResearchPage } from './pages/Research';
 import { SettingsPage } from './pages/Settings';
 import { AuctionPage } from './pages/Auction';
+import { HealthPage } from './pages/Health';
 
 export default function App() {
   return (
@@ -25,6 +26,7 @@ export default function App() {
           <Route path="/auction" element={<AuctionPage />} />
           <Route path="/meroshare" element={<MeroSharePage />} />
           <Route path="/research" element={<ResearchPage />} />
+          <Route path="/health" element={<HealthPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>
       </RootLayout>

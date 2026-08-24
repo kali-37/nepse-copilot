@@ -15,6 +15,7 @@ import {
   Search,
   Settings,
   Gavel,
+  HeartPulse,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { to: '/auction', label: 'Auction', icon: Gavel },
   { to: '/meroshare', label: 'MeroShare', icon: Landmark },
   { to: '/research', label: 'Research', icon: Search },
+  { to: '/health', label: 'Health', icon: HeartPulse },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];
 

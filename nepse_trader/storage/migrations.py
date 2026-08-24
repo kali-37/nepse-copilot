@@ -871,6 +871,35 @@ def _m0012_meroshare_demat_privacy(conn) -> None:
     )
 
 
+def _m0013_health_snapshots(conn) -> None:
+    """Keep a history of health reports so degradation is visible over time.
+
+    A single report answers "is it healthy now"; a series answers "when did it
+    stop being healthy", which is the question you actually have at 22:00 when
+    the advice looks wrong. ``report`` is the whole JSON document, so adding a
+    check does not need another migration, and the flat status columns exist so
+    a trend query does not have to parse JSON.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS health_snapshots (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            captured_at TEXT NOT NULL,
+            status TEXT NOT NULL,
+            ok INTEGER NOT NULL DEFAULT 0,
+            warn INTEGER NOT NULL DEFAULT 0,
+            fail INTEGER NOT NULL DEFAULT 0,
+            off INTEGER NOT NULL DEFAULT 0,
+            report TEXT NOT NULL
+        )
+        """
+    )
+    conn.execute(
+        "CREATE INDEX IF NOT EXISTS idx_health_snapshots_captured "
+        "ON health_snapshots(captured_at DESC)"
+    )
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
@@ -886,6 +915,7 @@ MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0010_meroshare_privacy", _m0010_meroshare_privacy),
     ("0011_app_settings", _m0011_app_settings),
     ("0012_meroshare_demat_privacy", _m0012_meroshare_demat_privacy),
+    ("0013_health_snapshots", _m0013_health_snapshots),
 ]
 
 

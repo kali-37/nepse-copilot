@@ -55,6 +55,7 @@ from nepse_trader.analysis.backtest import Backtester
 from nepse_trader.analysis.screen import RANKABLE
 from nepse_trader.analysis.strategies import build_strategy
 from nepse_trader.config import Settings, get_settings
+from nepse_trader.health import problems, system_health
 from nepse_trader.mcp_server.protocol import (
     INVALID_PARAMS,
     Dispatcher,
@@ -556,6 +557,30 @@ class MCPServer:
                 handler=self._tool_database_stats,
             ),
             ToolSpec(
+                name="system_health",
+                description=(
+                    "Whole-system health report: schema migrations applied, how many trading "
+                    "days behind the newest reconciled close is, recent ingest error rate, "
+                    "which sources are effectively enabled, document-corpus size, LLM budget "
+                    "left, MeroShare mirror state and prediction-journal backlog. Each check "
+                    "returns ok/warn/fail/off with a one-sentence explanation. Call this before "
+                    "concluding that a number is wrong — a stale database and a bad calculation "
+                    "look identical from a single query. Read-only: nothing is fetched, spent, "
+                    "or written. Contains no credential and no account identifier."
+                ),
+                input_schema={
+                    "type": "object",
+                    "properties": {
+                        "problems_only": {
+                            "type": "boolean",
+                            "description": "Return only the warn/fail checks. Default false.",
+                        },
+                    },
+                    "additionalProperties": False,
+                },
+                handler=self._tool_system_health,
+            ),
+            ToolSpec(
                 name="backtest",
                 description=(
                     "Run one local, historical strategy backtest for a symbol with Nepal "
@@ -805,6 +830,13 @@ class MCPServer:
 
     def _tool_database_stats(self, args: dict[str, Any]) -> dict[str, Any]:
         return self.storage.db_stats()
+
+    def _tool_system_health(self, args: dict[str, Any]) -> dict[str, Any]:
+        report = system_health(self.storage, self.settings)
+        if _optional_bool(args, "problems_only", False):
+            checks = problems(report)
+            return {**report, "checks": checks, "problems_only": True}
+        return report
 
     def _tool_backtest(self, args: dict[str, Any]) -> dict[str, Any]:
         symbol = _require_str(args, "symbol").upper()

@@ -11,6 +11,17 @@ import * as fx from './fixtures';
 export const handlers = [
   http.get('*/api/health', () => HttpResponse.json({ status: 'ok' })),
 
+  // The bare probe above and the full report below are deliberately separate
+  // endpoints: polling liveness must never run ten checks.
+  http.get('*/api/health/report', ({ request }) => {
+    const record = new URL(request.url).searchParams.get('record') === 'true';
+    return HttpResponse.json(
+      record ? { ...fx.healthReport, snapshot_id: 3 } : fx.healthReport
+    );
+  }),
+
+  http.get('*/api/health/history', () => HttpResponse.json(fx.healthHistory)),
+
   http.get('*/api/dashboard', () => HttpResponse.json(fx.dashboardStats)),
 
   http.get('*/api/market-breadth', () => HttpResponse.json(fx.marketBreadth)),

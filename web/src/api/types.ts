@@ -437,3 +437,30 @@ export interface WatchlistSettings {
   updated_at: string | null;
   max_symbols: number;
 }
+
+export type HealthStatus = 'ok' | 'warn' | 'fail' | 'off';
+
+export interface HealthCheck {
+  name: string;
+  status: HealthStatus;
+  detail: string;
+  metrics: Record<string, unknown>;
+}
+
+export interface HealthReport {
+  status: HealthStatus;
+  generated_at: string;
+  counts: Record<string, number>;
+  checks: HealthCheck[];
+  snapshot_id?: number;
+}
+
+export interface HealthSnapshot {
+  id: number;
+  captured_at: string;
+  status: HealthStatus;
+  ok: number;
+  warn: number;
+  fail: number;
+  off: number;
+}

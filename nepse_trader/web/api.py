@@ -37,6 +37,7 @@ from nepse_trader.analysis.backtest import Backtester
 from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.analysis.strategies import STRATEGIES, build_strategy
 from nepse_trader.config import Settings, get_settings
+from nepse_trader.health import record_snapshot, snapshot_history, system_health
 from nepse_trader.ingest.fundamentals import MeroLaganiFundamentalsClient
 from nepse_trader.meroshare import (
     MeroShareClient,
@@ -267,6 +268,27 @@ def _advisor_run_response(run: Any) -> dict[str, Any]:
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
+
+
+@app.get("/api/health/report")
+def health_report(record: bool = Query(False)):
+    """The full multi-check system report.
+
+    ``/api/health`` stays a bare liveness probe so a load balancer polling it
+    cannot be made expensive; this is the diagnostic view. ``?record=true`` is
+    the only way it writes, so ordinary polling never grows the database.
+    """
+    storage = _storage()
+    report = system_health(storage, _settings())
+    if record:
+        report["snapshot_id"] = record_snapshot(storage._conn, report)
+    return report
+
+
+@app.get("/api/health/history")
+def health_history(limit: int = Query(30, ge=1, le=365)):
+    """Recorded snapshots, newest first — the trend behind the current report."""
+    return snapshot_history(_storage()._conn, limit=limit)
 
 
 # ---------------------------------------------------------------------------

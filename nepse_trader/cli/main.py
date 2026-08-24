@@ -107,6 +107,15 @@ app.add_typer(mcp_app, name="mcp")
 console = Console()
 PAPER_CASH_DEFAULT = 100_000.0
 
+# How each health verdict renders. "off" is a feature nobody turned on, so it is
+# grey rather than red — it is information, not a problem.
+_HEALTH_MARKS = {
+    "ok": "[green]ok[/green]",
+    "warn": "[yellow]warn[/yellow]",
+    "fail": "[red]FAIL[/red]",
+    "off": "[dim]off[/dim]",
+}
+
 
 def _parse_date(value: str | None) -> date | None:
     if not value:
@@ -1267,6 +1276,73 @@ def har_to_config(har_file: str, source: str = typer.Option(..., help="Source na
     """Emit a sources.yaml snippet for the top endpoints in a HAR."""
     har = analyzer.load_har(har_file)
     console.print(analyzer.to_config_snippet(har, source))
+
+
+@app.command()
+@_safe_run
+def health(
+    json_out: bool = typer.Option(False, "--json", help="Emit the whole report as JSON"),
+    problems_only: bool = typer.Option(
+        False, "--problems", help="Print only the warnings and failures"
+    ),
+    record: bool = typer.Option(
+        False, "--record", help="Store this report in health_snapshots for trend tracking"
+    ),
+    history: int = typer.Option(
+        0, "--history", help="Instead of checking, show the last N recorded snapshots"
+    ),
+) -> None:
+    """Check every moving part: schema, data freshness, sources, RAG, AI, MeroShare.
+
+    Read-only and offline — no source is fetched and no provider is called. Exits
+    non-zero when any check fails, so cron can alert on it.
+    """
+    from nepse_trader import health as health_mod
+
+    storage = Storage(get_settings().db_path)
+    try:
+        if history:
+            rows = health_mod.snapshot_history(storage._conn, limit=history)
+            if json_out:
+                console.print_json(json.dumps(rows, default=str))
+                return
+            if not rows:
+                console.print("[yellow]No snapshots recorded yet — run 'health --record'.[/yellow]")
+                return
+            for row in rows:
+                mark = _HEALTH_MARKS.get(row["status"], row["status"])
+                console.print(
+                    f"{mark} [dim]{row['captured_at']}[/dim]  "
+                    f"ok={row['ok']} warn={row['warn']} fail={row['fail']} off={row['off']}"
+                )
+            return
+
+        report = health_mod.system_health(storage, get_settings())
+        if record:
+            report["snapshot_id"] = health_mod.record_snapshot(storage._conn, report)
+    finally:
+        storage.close()
+
+    if json_out:
+        console.print_json(json.dumps(report, default=str))
+    else:
+        shown = health_mod.problems(report) if problems_only else report["checks"]
+        counts = report["counts"]
+        console.print(
+            f"[bold]Overall:[/bold] {_HEALTH_MARKS.get(report['status'], report['status'])}  "
+            f"[dim]{counts.get('ok', 0)} ok, {counts.get('warn', 0)} warn, "
+            f"{counts.get('fail', 0)} fail, {counts.get('off', 0)} off[/dim]"
+        )
+        if problems_only and not shown:
+            console.print("[green]Nothing needs attention.[/green]")
+        for check in shown:
+            mark = _HEALTH_MARKS.get(check["status"], check["status"])
+            console.print(f"\n{mark} [bold]{check['name']}[/bold]\n  {check['detail']}")
+        if record:
+            console.print(f"\n[dim]recorded as snapshot {report['snapshot_id']}[/dim]")
+
+    if report["status"] == "fail":
+        raise typer.Exit(1)
 
 
 @app.command()

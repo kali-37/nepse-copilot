@@ -12,6 +12,8 @@ import type {
   AiBudget,
   AuctionAdvice,
   DoseRun,
+  HealthReport,
+  HealthSnapshot,
   JournalEntry,
   MeroShareHolding,
   MeroShareStatus,
@@ -401,3 +403,92 @@ export const meroshareSetting = {
   env_enabled: false,
   updated_at: '2026-08-22T10:00:00Z',
 };
+
+export const healthReport: HealthReport = {
+  status: 'warn',
+  generated_at: '2026-08-24T04:30:00+00:00',
+  counts: { ok: 6, warn: 2, fail: 0, off: 2 },
+  checks: [
+    {
+      name: 'schema',
+      status: 'ok',
+      detail: 'all 14 migrations applied (0013_health_snapshots)',
+      metrics: { applied: 14, missing: [], unknown: [], tables: 31 },
+    },
+    {
+      name: 'database',
+      status: 'ok',
+      detail: '248 symbols, 154,320 reconciled rows, 42.5 MB',
+      metrics: { symbols: 248, reconciled_rows: 154_320 },
+    },
+    {
+      name: 'freshness',
+      status: 'warn',
+      detail: '2026-08-14 is 6 trading days behind 2026-08-23 — the daily job may not be running',
+      metrics: { latest_reconciled_date: '2026-08-14', trading_days_behind: 6 },
+    },
+    {
+      name: 'ingest',
+      status: 'ok',
+      detail: '0 errors over the last 20 attempts',
+      metrics: { attempts: 20, errors: 0, failing_sources: [] },
+    },
+    {
+      name: 'config',
+      status: 'ok',
+      detail: '1 effective source(s): sharesansar; mode=normal, online',
+      metrics: { effective_sources: ['sharesansar'], schema_errors: [] },
+    },
+    {
+      name: 'rag',
+      status: 'ok',
+      detail: '1,250 documents indexed, FTS5 ranking active',
+      metrics: { documents: 1250, uses_fts: true },
+    },
+    {
+      name: 'ai',
+      status: 'off',
+      detail: "analysis mode is 'normal' — no provider is consulted",
+      metrics: { mode: 'normal' },
+    },
+    {
+      name: 'meroshare',
+      status: 'warn',
+      detail: 'enabled but credentials are incomplete',
+      metrics: { enabled: true, missing_credentials: ['password'], toggle_source: 'database' },
+    },
+    {
+      name: 'journal',
+      status: 'ok',
+      detail: '12 predictions, 0 past their deadline',
+      metrics: { total: 12, overdue_open: 0 },
+    },
+    {
+      name: 'paper',
+      status: 'off',
+      detail: 'no paper trades recorded',
+      metrics: { trades: 0 },
+    },
+  ],
+};
+
+export const healthHistory: HealthSnapshot[] = [
+  {
+    id: 2,
+    captured_at: '2026-08-24T04:00:00+00:00',
+    status: 'warn',
+    ok: 6,
+    warn: 2,
+    fail: 0,
+    off: 2,
+  },
+  {
+    id: 1,
+    captured_at: '2026-08-23T04:00:00+00:00',
+    status: 'ok',
+    ok: 8,
+    warn: 0,
+    fail: 0,
+    off: 2,
+  },
+];
