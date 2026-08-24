@@ -85,5 +85,5 @@ DISCOVERY on these public sites — **not** to bypass protections:
   one file under `logs/cli/`; the daily pipeline summary lands under `logs/pipeline/`;
   each test run writes `logs/tests/<...>-pytest.log`. Tree is tracked (`.gitkeep`),
   the `.log` files are git-ignored. Override the root with `NEPSE_LOG_DIR`.
-- Docs: `README.md`, `how_to_use.md`, `how_it_works.md`, `developerguide.md`,
+- Docs: `README.md`, `how_to_use.md`, `how_it_works.md`, `developers_guide.md`,
   `docs/RUNBOOK.md`.

@@ -109,7 +109,7 @@ webhook), not in a separate package.
 4.5 Dashboard command (symbols, date range, source coverage, reconciliation health, portfolio)
 
 ## Current State
-- **Tests:** 1224 passing, 1 skipped (Python); 85 passing (frontend)
+- **Tests:** 1283 passing, 1 skipped (Python); 96 passing (frontend)
 - **Lint:** ruff clean
 - **Schema:** sources.jsonc config validation shipped
 - **Last commit:** `refactor: frontend design polish — indigo palette, Inter type, subtle animations`

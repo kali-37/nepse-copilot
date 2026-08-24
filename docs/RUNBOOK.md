@@ -6,7 +6,8 @@ ethics/scope note first — this tool reads **public** data politely and does
 
 ## 1. Daily lifecycle
 
-NEPSE (2026 schedule) trades **Mon–Fri, 11:00–15:00 NPT** (UTC+5:45). EOD data on
+NEPSE trades **Sunday–Thursday, 11:00–15:00 NPT** (UTC+5:45); Friday and
+Saturday are non-trading days (`nepse_trader/calendar.py`). EOD data on
 ShareSansar finalizes roughly **17:45 NPT**. So the daily job should run in the
 early evening NPT.
 
@@ -39,8 +40,8 @@ emit signals or backtest meaningfully.
 limit on the in-app scheduler does **not** apply to system cron.
 
 ```cron
-# Example: server in UTC. 18:00 NPT = 12:15 UTC. Mon–Fri.
-15 12 * * 1-5  cd /path/to/nepse-trader && .venv/bin/python -m nepse_trader.cli.main run-daily --report data/$(date +\%F).md >> data/cron.log 2>&1
+# Example: server in UTC. 18:00 NPT = 12:15 UTC. Sunday–Thursday (cron 0-4).
+15 12 * * 0-4  cd /path/to/nepse-trader && .venv/bin/python -m nepse_trader.cli.main run-daily --report data/$(date +\%F).md >> data/cron.log 2>&1
 ```
 
 A non-trading day (weekend/holiday) simply ingests 0 rows and the job is a no-op —
@@ -127,11 +128,79 @@ FROM reconciled_prices WHERE business_date = '2026-06-09' AND confidence < 1.0;
 
 ## 8. Health checks
 
+### 8.1 The `health` command
+
+`health` runs ten checks over the local installation. It is read-only, makes no
+network call, and contacts no LLM provider — safe to run at any time, including
+from cron.
+
 ```bash
-.venv/bin/python -m pytest -q          # 162 tests, all offline
+$PY -m nepse_trader.cli.main health              # ten checks, human-readable
+$PY -m nepse_trader.cli.main health --problems   # warnings and failures only
+$PY -m nepse_trader.cli.main health --json       # machine-readable
+$PY -m nepse_trader.cli.main health --record     # store in health_snapshots
+$PY -m nepse_trader.cli.main health --history 10 # last 10 recorded verdicts
+```
+
+Checks run in a fixed order and each answers one question:
+
+| Check | Question | `warn` when | `fail` when |
+|-------|----------|-------------|-------------|
+| `schema` | Are all migrations applied and nothing unknown? | unknown version applied | a registered migration is missing |
+| `database` | Does the DB open and hold price rows? | zero price rows | file missing or unreadable |
+| `freshness` | How stale is the newest reconciled close? | > 3 trading days behind | no reconciled rows at all |
+| `ingest` | Recent per-source error rate | some sources failing | every recent attempt failed |
+| `config` | Does YAML parse; is a source enabled? | no source enabled | YAML invalid against schema |
+| `rag` | Corpus size, per-kind coverage, FTS5 availability | thin corpus / missing kinds | FTS5 search unavailable |
+| `ai` | Could AI mode actually answer? | budget nearly spent | configured but no usable leg |
+| `meroshare` | Toggle, credential completeness, last sync | mirror stale | enabled with incomplete credentials |
+| `journal` | Open and scored-but-unreviewed backlog | backlog growing | — |
+| `paper` | The replay-derived paper account | replay inconsistency | — |
+
+The overall verdict is worst-wins across the ten. Two invariants are test-locked
+and worth knowing before you interpret a report:
+
+- **`off` ranks *below* `ok`** in `_SEVERITY` (`off:0, ok:1, warn:2, fail:3`).
+  A feature you never enabled reports `off` and can never drag the overall
+  verdict down. An `ok` report with several `off` rows is healthy.
+- **A check that raises fails only itself.** `_guarded` converts an exception
+  into a `fail` row for that check; the other nine still run and still report.
+
+`health` exits non-zero when any check failed, which makes it a usable cron
+gate. `--problems` prints nothing on a healthy system, so cron only mails you
+when something is actually wrong:
+
+```cron
+# Health gate 20 minutes before the daily run
+55 11 * * 0-4  cd /path/to/nepse-trader && .venv/bin/python -m nepse_trader.cli.main health --problems --record >> data/health.log 2>&1
+```
+
+Recording is opt-in on every surface (CLI `--record`, API `?record=true`, the
+web Health page). Nothing is written to `health_snapshots` otherwise. Once a few
+snapshots exist, `--history` surfaces slow rot — a corpus quietly shrinking, a
+source failing a little more each week — that a single point-in-time report
+cannot show.
+
+Credentials never reach the report. Two tests plant a known secret and assert it
+appears in neither an individual check's raw numbers nor `repr(report)`.
+
+### 8.2 API surface
+
+`/api/health` is a bare liveness probe — deliberately cheap, safe for an uptime
+monitor to poll. The ten-check report lives at `/api/health/report`, and
+`/api/health/history` returns recorded snapshots.
+
+### 8.3 Verifying the installation itself
+
+```bash
+.venv/bin/python -m pytest -q          # 1284 tests, all offline
 .venv/bin/ruff check .                 # lint
 $PY -m nepse_trader.cli.main sources   # confirm config loads
 ```
+
+Never pass `-p no:logging` to pytest — it disables the `caplog` fixture and
+`tests/test_meroshare.py` errors at setup. That is a pytest invocation problem,
+not a code defect.
 
 ## 9. Advisor operations
 

@@ -1,7 +1,7 @@
 # How It Works — NEPSE Trader Internals
 
 This explains the algorithms and design decisions behind every stage. It pairs
-with [`developerguide.md`](developerguide.md) (how to extend) and
+with [`developers_guide.md`](developers_guide.md) (how to extend) and
 [`how_to_use.md`](how_to_use.md) (how to operate). File references point at the
 real modules under `nepse_trader/`.
 

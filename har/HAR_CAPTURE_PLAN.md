@@ -44,7 +44,7 @@ nepse-trader har redact har/captures/chukul.har    # writes *.redacted.har
 ### 1. ShareSansar — `sharesansar.har` (PRIMARY)
 Goal: confirm the EOD price page + the DataTables JSON feeds.
 - Visit `https://www.sharesansar.com/today-share-price` → change the date picker
-  to a recent **trading day** (Mon–Fri) → let the table load. (This is a
+  to a recent **trading day** (Sunday–Thursday) → let the table load. (This is a
   server-rendered HTML doc, not XHR — capture it from the **Doc** filter.)
 - Visit `https://www.sharesansar.com/floorsheet`, page through it once → you'll
   see an **XHR** to `/floorsheet` returning JSON (`draw`, `data`, `recordsTotal`).

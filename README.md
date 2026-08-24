@@ -32,7 +32,7 @@ verify each site's real data endpoints from your own browser captures.
 |-----|-----|
 | [`how_to_use.md`](how_to_use.md) | Operators — every command, with examples |
 | [`how_it_works.md`](how_it_works.md) | The algorithms & design decisions, stage by stage |
-| [`developerguide.md`](developerguide.md) | Contributors — contracts and extension recipes |
+| [`developers_guide.md`](developers_guide.md) | Contributors — contracts and extension recipes |
 | [`it's_capiblity.md`](it's_capiblity.md) | What it can / cannot do (capability matrix) |
 | [`what_to_add_next.md`](what_to_add_next.md) | Prioritized feature roadmap |
 | [`make_evenBetter.md`](make_evenBetter.md) | Engineering-quality upgrades |
@@ -196,12 +196,13 @@ Worked example (individual, short-term): BUY 100 @ 1000 → cash out **Rs 100,37
 
 ## Daily automation
 
-NEPSE trades **Mon–Fri, 11:00–15:00 NPT** (2026 schedule). Schedule the daily run
-after close (data finalizes ~17:45 NPT). Example cron (system local time):
+NEPSE trades **Sunday–Thursday, 11:00–15:00 NPT**; Friday and Saturday are
+non-trading days. Schedule the daily run after close (data finalizes ~17:45 NPT).
+Example cron (system local time):
 
 ```cron
-# 18:15 NPT, Mon–Fri  (adjust to your server's timezone)
-15 18 * * 1-5  cd /path/to/nepse-trader && .venv/bin/python -m nepse_trader.cli.main run-daily --report data/$(date +\%F).md
+# 18:15 NPT, Sunday–Thursday  (adjust to your server's timezone)
+15 18 * * 0-4  cd /path/to/nepse-trader && .venv/bin/python -m nepse_trader.cli.main run-daily --report data/$(date +\%F).md
 ```
 
 Add `--advisor` to `run-daily` to append and save the deterministic prescription;

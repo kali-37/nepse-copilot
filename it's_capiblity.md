@@ -42,6 +42,7 @@ What the system can and cannot do, stated precisely. For how to operate it see
 | **Auction advice** | Fee-aware bid ceiling and walk-away price; manual only | ✅ |
 | **Modes** | Normal/offline default; AI/live retrieval explicit opt-ins | ✅ |
 | **MCP** | Bounded read-only local tools over stdio | ✅ |
+| **System health** | Ten read-only checks, recorded snapshots, non-zero exit for cron | ✅ |
 | **Live order placement** | — | ❌ by design (no sanctioned API) |
 
 ---
@@ -122,10 +123,15 @@ logging/alerting. One command, scheduled once a day.
   identifiers. CSV import works without portal credentials.
 - **AI mode** may add prose and citations only. Normal mode and offline mode
   make no network calls; live retrieval is an explicit opt-in.
+- **System health** answers ten questions (schema, database, freshness, ingest,
+  config, RAG, AI, MeroShare, journal, paper) read-only and offline, with a
+  worst-wins overall verdict. A deliberately disabled feature reports `off`,
+  which ranks *below* `ok` so it can never degrade the overall verdict. Snapshot
+  recording is opt-in on every surface, and credentials never reach the report.
 
 ## 8. Quality & correctness guarantees
 
-- **1224 Python tests + 85 frontend tests, all offline**, plus `ruff` and
+- **1284 Python tests + 96 frontend tests, all offline**, plus `ruff` and
   frontend lint clean.
 - Adversarially reviewed (multi-dimension, each finding independently verified);
   five confirmed defects fixed with regression tests.
