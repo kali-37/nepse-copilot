@@ -18,3 +18,11 @@ build/
 .build_workflow.js
 .review_workflow.js
 web/dist
+
+# graphify: track the graph and report; ignore regenerable bulk.
+graphify-out/cache/
+graphify-out/graph.html
+graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
+graphify-out/.graphify_analysis.json
+# Stray per-package graph caches (regenerable, not the project graph).
+nepse_trader/**/graphify-out/
