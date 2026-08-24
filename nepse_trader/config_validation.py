@@ -16,8 +16,12 @@ _HOLIDAYS_SCHEMA: dict[str, Any] = {
     "$schema": "http://json-schema.org/draft-07/schema#",
     "type": "object",
     "properties": {
+        # ``null`` is valid for both lists: a key whose entries are all commented
+        # out parses as null, and ``load_holidays`` already reads that as "empty"
+        # (``raw.get(...) or []``). Rejecting it here would fail the file this
+        # repository ships.
         "holidays": {
-            "type": "array",
+            "type": ["array", "null"],
             "items": {
                 "type": "object",
                 "required": ["name", "month", "day"],
@@ -29,7 +33,7 @@ _HOLIDAYS_SCHEMA: dict[str, Any] = {
             },
         },
         "ranges": {
-            "type": "array",
+            "type": ["array", "null"],
             "items": {
                 "type": "object",
                 "properties": {
