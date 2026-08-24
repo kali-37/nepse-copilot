@@ -71,6 +71,13 @@ verify each site's real data endpoints from your own browser captures.
                                └─────┬─────┘
                                      ▼
                         reporting (rich + markdown) + Alerter (Telegram, Discord, SMTP)
+
+                         advisor layer (offline by default)
+                         Rashifal -> plan cards -> journal -> outcomes/calibration
+                                  |- day / week / month / year doses
+                                  |- fee-aware auction bid advice (manual only)
+                                  |- read-only MeroShare mirror + real/paper compare
+                                  `- local RAG + optional AI prose / MCP read tools
 ```
 
 Key modules:
@@ -149,6 +156,25 @@ $PY -m nepse_trader.cli.main run-daily --report data/$(date +%F).md
 $PY -m nepse_trader.cli.main har analyze har/captures/sharesansar.har
 $PY -m nepse_trader.cli.main har to-config har/captures/chukul.har --source chukul
 $PY -m nepse_trader.cli.main har redact har/captures/nepsealpha.har
+
+# 9. Generate the four nested investment doses (offline, deterministic)
+$PY -m nepse_trader.cli.main rashifal --equity 100000 --report data/rashifal.md
+$PY -m nepse_trader.cli.main doses --latest
+
+# 10. Review the prediction journal lifecycle
+$PY -m nepse_trader.cli.main journal history --status open
+$PY -m nepse_trader.cli.main journal calibration
+
+# 11. Read-only MeroShare mirror (CSV is the no-credential fallback)
+$PY -m nepse_trader.cli.main meroshare import --file holdings.csv
+$PY -m nepse_trader.cli.main meroshare holdings
+$PY -m nepse_trader.cli.main meroshare toggle off
+
+# 12. Manual auction advice; no bid is ever submitted
+$PY -m nepse_trader.cli.main auction advise NABIL --units 100 --min-bid-price 480 --market-price 500 --expected-exit-price 600
+
+# 13. Optional local MCP stdio server
+$PY -m nepse_trader.cli.main mcp serve
 ```
 
 The console script `nepse-trader` is also installed (equivalent to
@@ -177,6 +203,37 @@ after close (data finalizes ~17:45 NPT). Example cron (system local time):
 # 18:15 NPT, Mon–Fri  (adjust to your server's timezone)
 15 18 * * 1-5  cd /path/to/nepse-trader && .venv/bin/python -m nepse_trader.cli.main run-daily --report data/$(date +\%F).md
 ```
+
+Add `--advisor` to `run-daily` to append and save the deterministic prescription;
+`--advisor-mode ai` adds prose only. Live retrieval is opt-in with
+`--advisor-online`; the default is offline.
+
+## Advisor, journal and MeroShare
+
+The advisor produces four disjoint doses over one capital pool: day (3 trading
+days, 10%), week (10, 20%), month (22, 30%) and year (250, 40%). Every card is
+assigned to exactly one dose and all expected PnL is net of the same Nepal
+`CostEngine` used by paper trading. Confidence is a 0-1 value with a visible
+band; market forecasts are capped below certainty and the `0.95-0.99` wording is
+“still money in the bank”. It is a forecast, never a guarantee.
+
+Each saved call follows `open -> scored -> reviewed -> retired`. Scoring checks a
+stop before a target on a bar that touches both; only `TARGET_HIT` counts as a
+hit. Retired rows remain as calibration evidence while distilled lessons enter
+the local RAG corpus.
+
+MeroShare is a read-only mirror of holdings, WACC and transaction history. It
+cannot apply for IPOs, place orders, or submit auction bids. Credentials come
+from `NEPSE_MEROSHARE_*` environment variables, `.env`, or the optional OS
+keyring; they are never logged, returned by the API, or stored in SQLite. Use
+`meroshare toggle on|off` to switch the integration, or import a CSV export
+without credentials. The web UI masks account identifiers to their last four
+digits.
+
+Normal mode is deterministic and offline. AI mode may add narrative and RAG
+evidence, but cannot change prices, stops, targets, quantities, costs, taxes or
+confidence; unavailable providers degrade with a visible banner. Copy
+`.mcp.json.example` to `.mcp.json` for the bounded, read-only MCP tools.
 
 ## Data sources & reliability
 

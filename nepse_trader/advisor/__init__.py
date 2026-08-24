@@ -1,25 +1,53 @@
-"""The advisor: a daily, actionable prescription instead of a table of facts.
+"""Public advisor API: deterministic plans, confidence, doses and review."""
 
-The existing daily report answers "what happened". This package answers "what
-should I do" — for each symbol, an entry zone, a stop, targets, a lot-rounded
-quantity, a horizon in trading days, and the earliest date the shares can
-legally be sold again.
-
-Two modules:
-
-* :mod:`nepse_trader.advisor.plan` — the deterministic engine. Every number in
-  a plan card is computed here from price history and the existing risk and
-  cost primitives. It needs no network and no LLM.
-* :mod:`nepse_trader.advisor.rashifal` — composes the cards into the daily
-  report: market regime, sector of the day, buy cards, sell queue, do-not-touch
-  list, and (in AI mode only) narrative commentary.
-
-The invariant that separates the two: **AI adds commentary, never numbers.**
-The engine owns every price, stop, target, size and date. When the LLM layer is
-offline, out of budget, or simply wrong, the advisor drops to Normal mode with a
-visible banner and the numbers are unchanged.
-"""
-
+from nepse_trader.advisor.auction import (
+    AuctionAdvice,
+    advise_auction,
+    advise_from_plan,
+    auction_advice_history,
+    build_auction_advice,
+    latest_auction_advice,
+    save_auction_advice,
+)
+from nepse_trader.advisor.confidence import (
+    BANDS,
+    MARKET_CEILING,
+    Confidence,
+    blend,
+    certain,
+    confidence_from_history,
+    market,
+)
+from nepse_trader.advisor.doses import (
+    DOSE_ALLOCATION,
+    DOSE_HORIZONS,
+    Dose,
+    DoseRun,
+    build_dose_run,
+    build_doses,
+    dose_history,
+    latest_dose_run,
+    render_doses,
+    save_doses,
+)
+from nepse_trader.advisor.journal import (
+    Prediction,
+    confidence_for_prediction,
+    distill_lesson,
+    journal_history,
+    log_plan_cards,
+    record_review,
+    record_score,
+    retire_prediction,
+    review_queue,
+)
+from nepse_trader.advisor.outcomes import (
+    Outcome,
+    OutcomeResult,
+    persist_score,
+    score_outcome,
+    score_predictions,
+)
 from nepse_trader.advisor.plan import (
     PlanCard,
     Skipped,
@@ -35,13 +63,51 @@ from nepse_trader.advisor.rashifal import (
 )
 
 __all__ = [
+    "BANDS",
+    "DOSE_ALLOCATION",
+    "DOSE_HORIZONS",
+    "MARKET_CEILING",
+    "AuctionAdvice",
+    "Confidence",
+    "Dose",
+    "DoseRun",
+    "Outcome",
+    "OutcomeResult",
     "PlanCard",
+    "Prediction",
+    "Rashifal",
     "Skipped",
+    "advise_auction",
+    "advise_from_plan",
+    "auction_advice_history",
+    "blend",
+    "build_auction_advice",
+    "build_dose_run",
+    "build_doses",
     "build_plan_card",
     "build_plan_cards",
-    "Rashifal",
     "build_rashifal",
-    "save_rashifal",
+    "certain",
+    "confidence_for_prediction",
+    "confidence_from_history",
+    "distill_lesson",
+    "dose_history",
+    "journal_history",
+    "latest_auction_advice",
+    "latest_dose_run",
     "latest_run",
+    "log_plan_cards",
+    "market",
+    "persist_score",
+    "record_review",
+    "record_score",
+    "render_doses",
+    "retire_prediction",
+    "review_queue",
     "run_history",
+    "save_auction_advice",
+    "save_doses",
+    "save_rashifal",
+    "score_outcome",
+    "score_predictions",
 ]

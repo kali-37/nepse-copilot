@@ -12,6 +12,7 @@ from decimal import Decimal
 
 import pytest
 
+from nepse_trader.advisor.confidence import market
 from nepse_trader.advisor.plan import (
     ACCUMULATE,
     AVOID,
@@ -215,6 +216,38 @@ class TestCardNumbers:
 
     def test_note_starts_empty_because_the_engine_never_writes_prose(self, card):
         assert card.note == ""
+
+    def test_every_card_has_labeled_forecast_confidence(self, card):
+        assert 0.0 <= card.confidence.value <= 0.90
+        assert card.confidence.band
+        assert card.confidence.basis
+        assert card.as_dict()["confidence"]["value"] == card.confidence.value
+
+    def test_history_callback_supplies_confidence_without_crossing_market_ceiling(self):
+        calls = []
+
+        def confidence_for(**context):
+            calls.append(context)
+            return market(0.84, "18 comparable calls", sample_size=18)
+
+        result = build_plan_card(
+            "NABIL",
+            _bars(),
+            [BUY],
+            equity=1_000_000,
+            confidence_for=confidence_for,
+        )
+        assert isinstance(result, PlanCard)
+        assert result.confidence.value == 0.84
+        assert result.confidence.sample_size == 18
+        assert calls == [
+            {
+                "symbol": "NABIL",
+                "action": "accumulate",
+                "horizon_days": 10,
+                "conviction": 2,
+            }
+        ]
 
 
 class TestSettlement:

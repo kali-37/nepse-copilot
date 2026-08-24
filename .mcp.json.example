@@ -1,0 +1,39 @@
+{
+  "//": "Example MCP client config for nepse-trader. Copy to `.mcp.json` in the repo root (Claude Code picks it up automatically for this project) or merge the `mcpServers` entry into your Claude Desktop config: ~/.config/Claude/claude_desktop_config.json on Linux, ~/Library/Application Support/Claude/claude_desktop_config.json on macOS. Replace /home/kali_37/nepse-trader with your absolute checkout path -- MCP clients do not expand ~ and do not inherit your shell's cwd.",
+
+  "mcpServers": {
+    "nepse-trader": {
+      "//": "Runs the module directly with the project venv's interpreter. Use an absolute path to .venv/bin/python: the client spawns this without a shell, so no PATH lookup or venv activation happens.",
+      "command": "/home/kali_37/nepse-trader/.venv/bin/python",
+      "args": ["-m", "nepse_trader.mcp_server.server"],
+      "cwd": "/home/kali_37/nepse-trader",
+      "env": {
+        "//": "NEPSE_DB_PATH overrides which SQLite file is served. Omit it to use the default from config.py (data/nepse.db under the project root). All tools are read-only, but pointing at a copy is still the safest way to try this out.",
+        "NEPSE_DB_PATH": "/home/kali_37/nepse-trader/data/nepse.db"
+      }
+    },
+
+    "//alternative": "If nepse-trader is installed on PATH (pip install -e .) and the CLI exposes an `mcp serve` subcommand, this equivalent entry avoids hard-coding the interpreter path: { \"command\": \"nepse-trader\", \"args\": [\"mcp\", \"serve\"], \"cwd\": \"/home/kali_37/nepse-trader\" }"
+  },
+
+  "//tools": [
+    "list_symbols      - every symbol with price data in the local DB (bounded substring filter)",
+    "price_history     - bounded reconciled daily OHLCV for one symbol",
+    "market_breadth    - advancers/decliners/turnover/confidence for a trading day",
+    "top_movers        - bounded top gainers and losers for a trading day",
+    "latest_signals    - most recent BUY/SELL/HOLD per symbol from one strategy",
+    "quant_stats       - return, volatility, Sharpe, Sortino, drawdown, VaR per symbol",
+    "search_documents  - bounded full-text search over the local RAG corpus",
+    "database_stats    - row counts, date coverage and reconciliation quality",
+    "backtest          - one local strategy backtest with Nepal costs",
+    "screen            - bounded multi-symbol strategy leaderboard",
+    "portfolio         - paper portfolio plus optional real-vs-paper comparison",
+    "meroshare_holdings - masked, locally stored read-only MeroShare mirror",
+    "rashifal          - deterministic/AI-prose prescription and journal entry",
+    "doses             - latest disjoint day/week/month/year dose report"
+  ],
+
+  "//readonly": "Every tool is read-only. The server constructs its pipeline with no source clients, so there is no code path from a tool call to the network, to an order, to an IPO application, or to a market-data write.",
+
+  "//debug": "Sanity-check the stdio path without a client: printf '%s\\n' '{\"jsonrpc\":\"2.0\",\"id\":1,\"method\":\"initialize\",\"params\":{}}' '{\"jsonrpc\":\"2.0\",\"id\":2,\"method\":\"tools/list\"}' | .venv/bin/python -m nepse_trader.mcp_server.server   -- expect exactly two JSON lines on stdout. Logs and diagnostics go to stderr; anything else on stdout would corrupt the protocol stream."
+}

@@ -52,7 +52,15 @@ def test_run_pending_creates_tables() -> None:
             "SELECT name FROM sqlite_master WHERE type='table'"
         ).fetchall()
     }
-    for tbl in ("price_bars", "reconciled_prices", "signals", "paper_trades", "ingest_log", "schema_version"):
+    for tbl in (
+        "price_bars",
+        "reconciled_prices",
+        "signals",
+        "paper_trades",
+        "ingest_log",
+        "schema_version",
+        "app_settings",
+    ):
         assert tbl in tables, f"missing table {tbl}"
 
     conn.close()

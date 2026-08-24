@@ -14,7 +14,7 @@ early evening NPT.
 PY=.venv/bin/python
 
 # Full loop for today (ingest -> reconcile -> signals -> markdown report)
-$PY -m nepse_trader.cli.main run-daily --strategy sma_cross --report data/$(date +%F).md
+$PY -m nepse_trader.cli.main run-daily --strategies sma_cross --report data/$(date +%F).md
 
 # Or step by step (useful when debugging a single stage):
 $PY -m nepse_trader.cli.main ingest --date 2026-06-09
@@ -132,3 +132,38 @@ FROM reconciled_prices WHERE business_date = '2026-06-09' AND confidence < 1.0;
 .venv/bin/ruff check .                 # lint
 $PY -m nepse_trader.cli.main sources   # confirm config loads
 ```
+
+## 9. Advisor operations
+
+The safe scheduled path is deterministic and offline:
+
+```bash
+$PY -m nepse_trader.cli.main run-daily --advisor --advisor-offline --report data/$(date +%F).md
+$PY -m nepse_trader.cli.main journal history --status open
+$PY -m nepse_trader.cli.main journal calibration
+```
+
+Use `--advisor-mode ai` only when prose is useful; add `--advisor-online` only
+when live RAG/provider access is intended. A missing provider or spent budget
+must produce a visible degradation banner, not change the deterministic card.
+Review and retire calls only after the outcome and lesson are recorded.
+
+## 10. MeroShare and auction safety
+
+MeroShare sync is strictly read-only. Set `NEPSE_MEROSHARE_ENABLED=true` and
+credentials in env/`.env` or an optional OS keyring, then use `meroshare sync`.
+For a credential-free path, use `meroshare import --file holdings.csv`. Toggle
+the integration with `meroshare toggle on|off`. Credentials are never logged or
+stored, failed syncs do not clear the last good holdings, and web/API/MCP output
+only exposes a masked demat suffix.
+
+Auction advice reports a fee-aware recommended bid and walk-away price. It is a
+calculation for manual decision-making; there is no bid-placement code.
+
+## 11. MCP setup
+
+Copy `.mcp.json.example` to `.mcp.json`, replace the checkout path if needed,
+and point the client at the project `.venv/bin/python`. The server reads the
+local SQLite database without source clients, keeps all diagnostics on stderr,
+and exposes bounded read-only tools (`backtest`, `screen`, `portfolio`,
+`meroshare_holdings`, `rashifal`, `doses`, plus market/history/search tools).

@@ -22,10 +22,12 @@ Three design choices worth stating:
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import date
 from decimal import Decimal
 
+from nepse_trader.advisor.confidence import DEFAULT_PRIOR, Confidence, market
 from nepse_trader.analysis import indicators
 from nepse_trader.analysis.costs import CostEngine, _to_money
 from nepse_trader.analysis.risk import size_position, stop_loss_price, take_profit_price
@@ -74,6 +76,12 @@ class PlanCard:
     earliest_sell_date: date
     conviction: int
     rationale: str
+    confidence: Confidence = field(
+        default_factory=lambda: market(
+            DEFAULT_PRIOR,
+            "no resolved comparable predictions; house prior",
+        )
+    )
     # Expected outcome at target_1, net of the full Nepal cost stack.
     gross_pnl: Decimal = Decimal("0.00")
     net_pnl: Decimal = Decimal("0.00")
@@ -110,6 +118,7 @@ class PlanCard:
             "earliest_sell_date": self.earliest_sell_date.isoformat(),
             "conviction": self.conviction,
             "rationale": self.rationale,
+            "confidence": self.confidence.as_dict(),
             "gross_pnl": float(self.gross_pnl),
             "net_pnl": float(self.net_pnl),
             "entry_cost": float(self.entry_cost),
@@ -209,6 +218,8 @@ def build_plan_card(
     horizon_days: int = 10,
     atr_multiple: float = 2.0,
     risk_reward: float = 2.0,
+    confidence: Confidence | float | None = None,
+    confidence_for: Callable[..., Confidence | float] | None = None,
 ) -> PlanCard | Skipped:
     """Build one symbol's card, or explain why it can't be built.
 
@@ -229,6 +240,27 @@ def build_plan_card(
 
     action, conviction, reasons = _decide(signals)
     trade_date = today or last.business_date
+
+    if confidence_for is not None:
+        confidence = confidence_for(
+            symbol=symbol,
+            action=action,
+            horizon_days=horizon_days,
+            conviction=conviction,
+        )
+    if isinstance(confidence, Confidence):
+        forecast_confidence = market(
+            confidence.value,
+            confidence.basis,
+            sample_size=confidence.sample_size,
+        )
+    elif confidence is not None:
+        forecast_confidence = market(float(confidence), "caller-supplied forecast confidence")
+    else:
+        forecast_confidence = market(
+            DEFAULT_PRIOR,
+            "no resolved comparable predictions; house prior",
+        )
 
     stop = stop_loss_price(price, atr=atr, atr_multiple=atr_multiple)
     if stop is None:
@@ -288,6 +320,7 @@ def build_plan_card(
         earliest_sell_date=add_trading_days(trade_date, SETTLEMENT_TRADING_DAYS),
         conviction=conviction,
         rationale=rationale,
+        confidence=forecast_confidence,
         signals=reasons,
         **outcome,
     )

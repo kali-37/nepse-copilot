@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import json
 import logging
+import re
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from typing import Any
 
 import typer
 from rich.console import Console
@@ -35,6 +37,7 @@ from nepse_trader.reporting import (
     leaderboard_md,
     portfolio_summary,
     quant_md,
+    rashifal_md,
     reconciliation_report,
     signals_table,
     write_markdown_report,
@@ -86,6 +89,20 @@ app.add_typer(paper_app, name="paper")
 app.add_typer(ca_app, name="corporate-actions")
 fund_app = typer.Typer(help="Company fundamentals (EPS, PE, PB, etc.).", no_args_is_help=True)
 app.add_typer(fund_app, name="fundamentals")
+# Advisor/portfolio groups are deliberately separate from the existing paper
+# commands.  The groups expose read/review actions only; nothing in this file
+# can submit a broker order, an auction bid, or an IPO/ASBA application.
+journal_app = typer.Typer(help="Prediction journal lifecycle and calibration.", no_args_is_help=True)
+auction_app = typer.Typer(help="Auction bid advice (manual, never submitted).", no_args_is_help=True)
+meroshare_app = typer.Typer(
+    help="Read-only MeroShare mirror (credentials stay out of logs and the DB).",
+    no_args_is_help=True,
+)
+mcp_app = typer.Typer(help="Expose the local toolkit over MCP stdio.", no_args_is_help=True)
+app.add_typer(journal_app, name="journal")
+app.add_typer(auction_app, name="auction")
+app.add_typer(meroshare_app, name="meroshare")
+app.add_typer(mcp_app, name="mcp")
 
 console = Console()
 PAPER_CASH_DEFAULT = 100_000.0
@@ -111,6 +128,221 @@ def _strategy_kwargs(fast, slow, period, signal) -> dict:
     if signal is not None:
         kw["signal"] = signal
     return kw
+
+
+def _normalise_symbols(value: str | None, fallback: list[str]) -> list[str]:
+    """Return distinct upper-case tickers from an option or the stored default."""
+    raw = value.split(",") if value else fallback
+    symbols: list[str] = []
+    for item in raw:
+        symbol = str(item).strip().upper()
+        if symbol and symbol not in symbols:
+            symbols.append(symbol)
+    return symbols
+
+
+def _advisor_mode(value: str) -> str:
+    mode = value.strip().lower()
+    if mode not in {"normal", "ai"}:
+        raise ValueError("mode must be 'normal' or 'ai'")
+    return mode
+
+
+def _advisor_horizon(value: str) -> str:
+    from nepse_trader.advisor.doses import DOSE_HORIZONS
+
+    horizon = value.strip().lower()
+    if horizon not in DOSE_HORIZONS:
+        raise ValueError(f"horizon must be one of {', '.join(DOSE_HORIZONS)}")
+    return horizon
+
+
+def _latest_strategy_panel(pipe: DailyPipeline, symbol: str) -> list[Any]:
+    """Generate one current vote per strategy without writing derived signals."""
+    bars = pipe.reconciled_bars(symbol)
+    panel: list[Any] = []
+    for name in STRATEGIES:
+        signals = build_strategy(name).generate(bars)
+        if signals:
+            panel.append(signals[-1])
+    return panel
+
+
+def _journal_confidence(conn, **context: Any):
+    """Look up the comparable, already-resolved history for one plan card."""
+    from nepse_trader.advisor.confidence import market
+    from nepse_trader.advisor.doses import DOSE_HORIZONS
+    from nepse_trader.advisor.journal import confidence_for_prediction
+
+    horizon_days = int(context.get("horizon_days") or 0)
+    horizon = next((name for name, days in DOSE_HORIZONS.items() if days == horizon_days), "")
+    try:
+        return confidence_for_prediction(
+            conn,
+            symbol=str(context.get("symbol") or ""),
+            action=str(context.get("action") or ""),
+            horizon=horizon,
+            horizon_days=horizon_days,
+        )
+    except Exception:
+        # A confidence lookup must not make a deterministic prescription fail.
+        return market(0.45, "journal confidence unavailable; house prior")
+
+
+def _advisor_evidence(conn, settings, online: bool):
+    """Build the optional AI-only evidence callback over local RAG and live web."""
+    from nepse_trader.rag import DocumentIndex, build_evidence, build_retriever
+
+    index = DocumentIndex(conn)
+    retriever = build_retriever(index, settings, online=online)
+
+    def evidence_for(symbol: str) -> str:
+        query = symbol or "NEPSE market breadth regime"
+        hits = retriever.retrieve(
+            query,
+            limit=settings.rag_max_documents,
+            symbols=[symbol] if symbol else None,
+        )
+        return build_evidence(
+            hits,
+            query=query,
+            max_documents=settings.rag_max_documents,
+            max_chars=settings.rag_max_evidence_chars,
+        ).render()
+
+    return evidence_for
+
+
+def _advisor_positions(pipe: DailyPipeline, equity: float) -> dict[str, int]:
+    """Prefer the local read-only MeroShare mirror, then the paper portfolio."""
+    from nepse_trader.meroshare import stored_holdings
+
+    mirror = stored_holdings(pipe.storage._conn)
+    if mirror:
+        positions: dict[str, int] = {}
+        for holding in mirror:
+            positions[holding.symbol] = positions.get(holding.symbol, 0) + holding.current_balance
+        return positions
+    return {position.symbol: position.quantity for position in pipe.replay_portfolio(equity).holdings()}
+
+
+def _build_advisor_result(
+    pipe: DailyPipeline,
+    *,
+    symbols: str | None,
+    equity: float,
+    run_date: date | None,
+    mode: str,
+    online: bool,
+    horizon: str,
+):
+    """Compose a prescription from local data; callers choose whether to save it."""
+    from nepse_trader.advisor.rashifal import build_rashifal
+
+    mode = _advisor_mode(mode)
+    horizon = _advisor_horizon(horizon)
+    run_date = run_date or pipe.storage.latest_reconciled_date()
+    if run_date is None:
+        raise ValueError("no reconciled prices are available; ingest and reconcile data first")
+    if equity <= 0:
+        raise ValueError("equity must be positive")
+
+    candidates = _normalise_symbols(
+        symbols,
+        pipe.settings.watchlist or pipe.storage.symbols(),
+    )[: max(1, pipe.settings.advisor_max_symbols)]
+    if not candidates:
+        raise ValueError("no symbols are available; ingest and reconcile data first")
+
+    analyst = None
+    evidence_for = None
+    if mode == "ai":
+        from nepse_trader.ai import Analyst
+
+        analyst = Analyst(pipe.storage._conn, pipe.settings, online=online)
+        evidence_for = _advisor_evidence(pipe.storage._conn, pipe.settings, online)
+
+    return build_rashifal(
+        symbols=candidates,
+        bars_for=pipe.reconciled_bars,
+        signals_for=lambda symbol: _latest_strategy_panel(pipe, symbol),
+        equity=equity,
+        run_date=run_date,
+        mode=mode,
+        horizon=horizon,
+        online=online,
+        breadth=pipe.market_breadth(run_date),
+        positions=_advisor_positions(pipe, equity),
+        analyst=analyst,
+        evidence_for=evidence_for,
+        cost_engine=pipe.cost_engine,
+        confidence_for=lambda **context: _journal_confidence(pipe.storage._conn, **context),
+        max_symbols=pipe.settings.advisor_max_symbols,
+    )
+
+
+def _advisor_sections(result: Any) -> dict[str, str]:
+    """Markdown sections shared by the direct advisor command and run-daily."""
+    from nepse_trader.advisor.doses import render_doses
+
+    payload = result.as_dict()
+    doses = result.doses
+    return {
+        "Daily investment prescription": rashifal_md(payload),
+        "Investment doses": render_doses(doses) if doses is not None else "No dose data available.",
+    }
+
+
+def _safe_holding_payload(holding: Any) -> dict[str, Any]:
+    """Render a mirror row without exposing its full demat identifier."""
+    demat = str(
+        getattr(holding, "demat_last4", "")
+        or getattr(holding, "demat_number", "")
+        or ""
+    )
+    return {
+        "symbol": holding.symbol,
+        "current_balance": holding.current_balance,
+        "previous_balance": holding.previous_balance,
+        "pledged_balance": holding.pledged_balance,
+        "wacc": holding.wacc,
+        "previous_closing_price": holding.previous_closing_price,
+        "cost_basis": holding.cost_basis,
+        "market_value": holding.market_value,
+        "isin": holding.isin,
+        "script_desc": holding.script_desc,
+        "demat_last4": demat[-4:] if demat else None,
+        "last_transaction_date": (
+            holding.last_transaction_date.isoformat() if holding.last_transaction_date else None
+        ),
+        "source": holding.source,
+    }
+
+
+_MEROSHARE_ENABLED_LINE = re.compile(r"^(\s*(?:export\s+)?NEPSE_MEROSHARE_ENABLED\s*=).*$", re.I)
+
+
+def _set_meroshare_enabled(enabled: bool, env_path: Path = Path(".env")) -> Path:
+    """Change only the integration toggle in the local .env file."""
+    value = "true" if enabled else "false"
+    text = env_path.read_text(encoding="utf-8") if env_path.exists() else ""
+    lines = text.splitlines(keepends=True)
+    changed = False
+    for index, line in enumerate(lines):
+        match = _MEROSHARE_ENABLED_LINE.match(line.rstrip("\r\n"))
+        if match is None:
+            continue
+        ending = "\r\n" if line.endswith("\r\n") else "\n" if line.endswith("\n") else ""
+        lines[index] = f"{match.group(1)}{value}{ending}"
+        changed = True
+        break
+    if not changed:
+        if lines and not lines[-1].endswith(("\n", "\r")):
+            lines.append("\n")
+        lines.append(f"NEPSE_MEROSHARE_ENABLED={value}\n")
+    env_path.write_text("".join(lines), encoding="utf-8")
+    get_settings.cache_clear()
+    return env_path
 
 
 @app.callback()
@@ -329,6 +561,18 @@ def run_daily(
     all_sources: bool = typer.Option(
         True, "--all-sources/--enabled-only", help="Scrape every site (default) or only enabled"
     ),
+    advisor: bool = typer.Option(
+        False,
+        "--advisor/--no-advisor",
+        help="Also generate and save the deterministic/AI investment prescription",
+    ),
+    advisor_mode: str = typer.Option("normal", "--advisor-mode", help="normal or ai"),
+    advisor_horizon: str = typer.Option("week", "--advisor-horizon", help="day, week, month or year"),
+    advisor_online: bool = typer.Option(
+        False,
+        "--advisor-online/--advisor-offline",
+        help="Allow live RAG/LLM retrieval for the advisor (offline by default)",
+    ),
 ) -> None:
     """The once-a-day run: ingest (all sources) → reconcile → full analytics report.
 
@@ -373,6 +617,463 @@ def run_daily(
     if report:
         write_markdown_report(report, sections)
         console.print(f"\n[green]Full report written:[/green] {report}")
+
+    if advisor:
+        try:
+            result = _build_advisor_result(
+                pipe,
+                symbols=None,
+                equity=cash,
+                run_date=bd,
+                mode=advisor_mode,
+                online=advisor_online,
+                horizon=advisor_horizon,
+            )
+            from nepse_trader.advisor.rashifal import save_rashifal
+
+            save_rashifal(pipe.storage._conn, result)
+            advisor_sections = _advisor_sections(result)
+            console.print("\n[bold]Daily investment prescription[/bold]\n" + advisor_sections[
+                "Daily investment prescription"
+            ])
+            if report:
+                # Re-write with the advisor sections included. Existing report
+                # content is preserved and the advisor becomes an auditable
+                # appendix rather than changing the daily summary contract.
+                write_markdown_report(report, {**sections, **advisor_sections})
+        except (ValueError, RuntimeError) as exc:
+            console.print(f"[yellow]Advisor skipped:[/yellow] {exc}")
+
+
+# --------------------------------------------------------------------- advisor
+@app.command("advise")
+@app.command("rashifal")
+@_safe_run
+def rashifal(
+    symbols: str = typer.Option(None, "--symbols", help="Comma-separated symbols (default: watchlist or stored)"),
+    equity: float = typer.Option(100_000.0, help="Capital shared by all four doses (NPR)"),
+    date_: str = typer.Option(None, "--date", help="Trading date YYYY-MM-DD (default: latest reconciled)"),
+    mode: str = typer.Option("normal", "--mode", help="normal or ai; AI can add prose only"),
+    online: bool = typer.Option(
+        False,
+        "--online/--offline",
+        help="Allow live RAG/LLM retrieval in AI mode (offline by default)",
+    ),
+    horizon: str = typer.Option("week", "--horizon", help="Primary card horizon: day, week, month or year"),
+    save: bool = typer.Option(True, "--save/--no-save", help="Log this prescription for later scoring"),
+    report: str = typer.Option(None, "--report", help="Write the prescription as a Markdown report"),
+) -> None:
+    """Generate a four-horizon, fee-aware investment prescription.
+
+    The report is advisory only. It never places an order, and AI mode can add
+    narrative but cannot change a price, stop, target, quantity, or confidence.
+    """
+    settings = get_settings()
+    storage = Storage(settings.db_path)
+    try:
+        pipe = DailyPipeline(settings=settings, storage=storage, clients=[])
+        result = _build_advisor_result(
+            pipe,
+            symbols=symbols,
+            equity=equity,
+            run_date=_parse_date(date_),
+            mode=mode,
+            online=online,
+            horizon=horizon,
+        )
+        if save:
+            from nepse_trader.advisor.rashifal import save_rashifal
+
+            save_rashifal(storage._conn, result)
+        sections = _advisor_sections(result)
+        console.print(sections["Daily investment prescription"])
+        console.print("\n[bold]Investment doses[/bold]\n" + sections["Investment doses"])
+        if report:
+            write_markdown_report(report, sections)
+            console.print(f"\n[green]Prescription report written:[/green] {report}")
+    finally:
+        storage.close()
+
+
+@app.command()
+@_safe_run
+def doses(
+    symbols: str = typer.Option(None, "--symbols", help="Comma-separated symbols (default: watchlist or stored)"),
+    equity: float = typer.Option(100_000.0, help="Capital shared by all four doses (NPR)"),
+    date_: str = typer.Option(None, "--date", help="Trading date YYYY-MM-DD (default: latest reconciled)"),
+    mode: str = typer.Option("normal", "--mode", help="normal or ai; AI can add prose only"),
+    online: bool = typer.Option(
+        False,
+        "--online/--offline",
+        help="Allow live RAG/LLM retrieval in AI mode (offline by default)",
+    ),
+    horizon: str = typer.Option("week", "--horizon", help="Primary card horizon: day, week, month or year"),
+    latest: bool = typer.Option(False, "--latest", help="Show the most recently saved prescription"),
+    save: bool = typer.Option(False, "--save/--no-save", help="Save a newly generated prescription"),
+) -> None:
+    """Show all day/week/month/year doses over one shared capital pool."""
+    from nepse_trader.advisor.doses import latest_dose_run, render_doses
+    from nepse_trader.advisor.rashifal import save_rashifal
+
+    settings = get_settings()
+    storage = Storage(settings.db_path)
+    try:
+        if latest:
+            result = latest_dose_run(storage._conn)
+            if result is None:
+                console.print("[yellow]No saved dose prescription yet — run rashifal first.[/yellow]")
+                raise typer.Exit(code=1)
+            console.print(render_doses(result))
+            return
+
+        pipe = DailyPipeline(settings=settings, storage=storage, clients=[])
+        result = _build_advisor_result(
+            pipe,
+            symbols=symbols,
+            equity=equity,
+            run_date=_parse_date(date_),
+            mode=mode,
+            online=online,
+            horizon=horizon,
+        )
+        if save:
+            save_rashifal(storage._conn, result)
+        if result.doses is None:
+            raise ValueError("the prescription did not produce a dose report")
+        console.print(render_doses(result.doses))
+    finally:
+        storage.close()
+
+
+# --------------------------------------------------------------------- journal
+@journal_app.command("history")
+@_safe_run
+def journal_history_cmd(
+    symbol: str = typer.Option(None, "--symbol", help="Filter by symbol"),
+    status: str = typer.Option(None, "--status", help="Filter: open, scored, reviewed or retired"),
+    limit: int = typer.Option(100, help="Maximum rows"),
+) -> None:
+    """List recorded predictions and their current lifecycle state."""
+    from nepse_trader.advisor.journal import journal_history
+
+    storage = Storage(get_settings().db_path)
+    try:
+        rows = journal_history(storage._conn, symbol=symbol, status=status, limit=limit)
+        console.print_json(json.dumps(rows, default=str))
+    finally:
+        storage.close()
+
+
+@journal_app.command("score")
+@_safe_run
+def journal_score_cmd(
+    prediction_id: str = typer.Argument(None, help="One prediction id (default: all open predictions)"),
+    as_of: str = typer.Option(None, "--as-of", help="Score only through YYYY-MM-DD"),
+    limit: int = typer.Option(100, help="Maximum open predictions to score"),
+) -> None:
+    """Score open calls against reconciled bars; stop is checked before target."""
+    from nepse_trader.advisor.journal import record_score
+    from nepse_trader.advisor.outcomes import score_predictions
+
+    storage = Storage(get_settings().db_path)
+    try:
+        if prediction_id:
+            rows = storage._conn.execute(
+                "SELECT * FROM predictions WHERE (prediction_id=? OR CAST(id AS TEXT)=?) AND status='open'",
+                (prediction_id, prediction_id),
+            ).fetchall()
+            if not rows:
+                raise ValueError("no open prediction matched that id")
+        else:
+            rows = storage._conn.execute(
+                "SELECT * FROM predictions WHERE status='open' ORDER BY made_on, id LIMIT ?",
+                (max(1, limit),),
+            ).fetchall()
+        pipe = DailyPipeline(settings=get_settings(), storage=storage, clients=[])
+        results = score_predictions(
+            list(rows),
+            pipe.reconciled_bars,
+            cost_engine=pipe.cost_engine,
+            as_of=_parse_date(as_of),
+        )
+        for result in results:
+            record_score(storage._conn, result.prediction_id, result)
+        console.print_json(json.dumps([result.as_dict() for result in results], default=str))
+    finally:
+        storage.close()
+
+
+@journal_app.command("review")
+@_safe_run
+def journal_review_cmd(
+    prediction_id: str = typer.Argument(..., help="Prediction id"),
+    text: str = typer.Option(..., "--text", help="Human or AI review of the scored outcome"),
+) -> None:
+    """Attach a review to a scored prediction."""
+    from nepse_trader.advisor.journal import record_review
+
+    storage = Storage(get_settings().db_path)
+    try:
+        prediction = record_review(storage._conn, prediction_id, text)
+        console.print_json(json.dumps(prediction.as_dict(), default=str))
+    finally:
+        storage.close()
+
+
+@journal_app.command("distill")
+@_safe_run
+def journal_distill_cmd(
+    prediction_id: str = typer.Argument(..., help="Prediction id"),
+    lesson: str = typer.Option(..., "--lesson", help="Durable lesson to index for future RAG"),
+) -> None:
+    """Distill a reviewed prediction into a RAG-searchable lesson."""
+    from nepse_trader.advisor.journal import distill_lesson
+
+    storage = Storage(get_settings().db_path)
+    try:
+        lesson_id = distill_lesson(storage._conn, prediction_id, lesson)
+        console.print_json(json.dumps({"prediction_id": prediction_id, "lesson_id": lesson_id}))
+    finally:
+        storage.close()
+
+
+@journal_app.command("retire")
+@_safe_run
+def journal_retire_cmd(
+    prediction_id: str = typer.Argument(..., help="Prediction id"),
+) -> None:
+    """Retire a reviewed prediction after its lesson is saved."""
+    from nepse_trader.advisor.journal import retire_prediction
+
+    storage = Storage(get_settings().db_path)
+    try:
+        prediction = retire_prediction(storage._conn, prediction_id)
+        console.print_json(json.dumps(prediction.as_dict(), default=str))
+    finally:
+        storage.close()
+
+
+@journal_app.command("calibration")
+@_safe_run
+def journal_calibration_cmd(
+    symbol: str = typer.Option(None, "--symbol", help="Filter by symbol"),
+    horizon: str = typer.Option(None, "--horizon", help="Filter by dose horizon"),
+) -> None:
+    """Show the materialised hit-rate and realised-vs-expected calibration."""
+    storage = Storage(get_settings().db_path)
+    try:
+        clauses: list[str] = []
+        params: list[str] = []
+        if symbol:
+            clauses.append("subject=?")
+            params.append(symbol.strip().upper())
+        if horizon:
+            clauses.append("horizon=?")
+            params.append(_advisor_horizon(horizon))
+        where = " WHERE " + " AND ".join(clauses) if clauses else ""
+        rows = storage._conn.execute(
+            "SELECT * FROM calibration" + where + " ORDER BY subject, horizon", params
+        ).fetchall()
+        console.print_json(json.dumps([dict(row) for row in rows], default=str))
+    finally:
+        storage.close()
+
+
+# --------------------------------------------------------------------- auction
+@auction_app.command("advise")
+@_safe_run
+def auction_advise_cmd(
+    symbol: str = typer.Argument(..., help="NEPSE symbol"),
+    auction_date: str = typer.Option(None, "--auction-date", help="Auction date YYYY-MM-DD (default: today)"),
+    units: int = typer.Option(..., "--units", help="Units offered in the auction"),
+    min_bid_price: float = typer.Option(..., "--min-bid-price", help="Auction minimum bid price (NPR)"),
+    market_price: float = typer.Option(..., "--market-price", help="Current market price (NPR)"),
+    expected_exit_price: float = typer.Option(None, "--expected-exit-price", help="Explicit future exit assumption (NPR)"),
+    horizon_days: int = typer.Option(10, "--horizon-days", help="Holding horizon in trading days"),
+    quantity: int = typer.Option(None, "--quantity", help="Units to evaluate (default: all offered)"),
+    confidence: float = typer.Option(None, "--confidence", min=0.0, max=1.0, help="0 to 1 market confidence"),
+    edge_buffer_pct: float = typer.Option(0.10, "--edge-buffer-pct", help="Conservative margin under fee-neutral bid"),
+) -> None:
+    """Calculate a fee-aware manual bid ceiling; this never submits a bid."""
+    from nepse_trader.advisor.auction import build_auction_advice, save_auction_advice
+
+    advice = build_auction_advice(
+        symbol,
+        auction_date=_parse_date(auction_date) or date.today(),
+        units=units,
+        min_bid_price=min_bid_price,
+        market_price=market_price,
+        expected_exit_price=expected_exit_price,
+        horizon_days=horizon_days,
+        quantity=quantity,
+        confidence=confidence,
+        edge_buffer_pct=edge_buffer_pct,
+    )
+    storage = Storage(get_settings().db_path)
+    try:
+        save_auction_advice(storage._conn, advice)
+        storage._conn.commit()
+    finally:
+        storage.close()
+    console.print_json(json.dumps(advice.as_dict(), default=str))
+    console.print("[dim]Manual advice only. No auction bid was submitted.[/dim]")
+
+
+@auction_app.command("list")
+@_safe_run
+def auction_list_cmd(
+    symbol: str = typer.Option(None, "--symbol", help="Filter by symbol"),
+    limit: int = typer.Option(50, help="Maximum rows"),
+) -> None:
+    """List saved manual auction advice, newest first."""
+    from nepse_trader.advisor.auction import auction_advice_history
+
+    storage = Storage(get_settings().db_path)
+    try:
+        rows = auction_advice_history(storage._conn, symbol=symbol, limit=limit)
+        console.print_json(json.dumps(rows, default=str))
+    finally:
+        storage.close()
+
+
+# ------------------------------------------------------------------- meroshare
+@meroshare_app.command("connect")
+def meroshare_connect_cmd(
+    yes: bool = typer.Option(False, "--yes", help="Confirm the disclosed read-only CDSC login"),
+) -> None:
+    """Show the data disclosure, then test one read-only MeroShare connection."""
+    from nepse_trader.meroshare import connect, connection_disclosure
+
+    settings = get_settings()
+    console.print(connection_disclosure(settings))
+    if not yes:
+        console.print("\n[yellow]No connection was made. Re-run with --yes to confirm.[/yellow]")
+        return
+    try:
+        result = connect(settings)
+    except Exception:
+        console.print("[red]MeroShare connection failed. No account changes were made.[/red]")
+        raise typer.Exit(code=1) from None
+    if result.ok:
+        console.print("[green]Read-only MeroShare connection completed. No account data was changed.[/green]")
+        return
+    console.print("[red]MeroShare connection failed. No account changes were made.[/red]")
+    raise typer.Exit(code=1)
+
+
+@meroshare_app.command("sync")
+def meroshare_sync_cmd(
+    yes: bool = typer.Option(False, "--yes", help="Confirm the disclosed read-only CDSC login"),
+    transactions: bool = typer.Option(
+        True,
+        "--transactions/--holdings-only",
+        help="Also mirror transaction history when CDSC makes it available",
+    ),
+) -> None:
+    """Read and mirror holdings only; no MeroShare-side action is available."""
+    from nepse_trader.meroshare import MeroShareClient, ensure_enabled, sync_from_client
+
+    if not yes:
+        console.print("[yellow]No portal request was made. Re-run with --yes to confirm.[/yellow]")
+        return
+    storage = Storage(get_settings().db_path)
+    client = None
+    try:
+        settings = ensure_enabled(get_settings())
+        client = MeroShareClient(settings)
+        result = sync_from_client(storage._conn, client, with_transactions=transactions)
+    except Exception:
+        console.print("[red]MeroShare sync could not complete. Existing mirrored holdings were left unchanged.[/red]")
+        raise typer.Exit(code=1) from None
+    finally:
+        if client is not None:
+            try:
+                client.close()
+            except Exception:
+                pass
+        storage.close()
+    if not result.ok:
+        console.print("[red]MeroShare sync could not complete. Existing mirrored holdings were left unchanged.[/red]")
+        raise typer.Exit(code=1)
+    console.print(
+        f"[green]Mirrored {result.holdings} holding(s) and {result.transactions} transaction(s).[/green]"
+    )
+
+
+@meroshare_app.command("import")
+def meroshare_import_cmd(
+    file: Path = typer.Option(..., "--file", help="CSV export to mirror locally"),
+) -> None:
+    """Import a MeroShare CSV export without using any portal credential."""
+    from nepse_trader.meroshare import sync_from_csv
+
+    storage = Storage(get_settings().db_path)
+    try:
+        result = sync_from_csv(storage._conn, file, is_path=True)
+    except Exception:
+        console.print("[red]MeroShare CSV import could not complete. Existing mirrored holdings were left unchanged.[/red]")
+        raise typer.Exit(code=1) from None
+    finally:
+        storage.close()
+    if not result.ok:
+        console.print("[red]MeroShare CSV import could not complete. Existing mirrored holdings were left unchanged.[/red]")
+        raise typer.Exit(code=1)
+    console.print(f"[green]Imported {result.holdings} holding(s) into the local read-only mirror.[/green]")
+
+
+@meroshare_app.command("holdings")
+def meroshare_holdings_cmd() -> None:
+    """Show locally mirrored holdings. This command makes no portal request."""
+    from nepse_trader.meroshare import stored_holdings, sync_status
+
+    storage = Storage(get_settings().db_path)
+    try:
+        payload = {
+            "status": {key: value for key, value in sync_status(storage._conn).items() if key != "last_error"},
+            "holdings": [_safe_holding_payload(holding) for holding in stored_holdings(storage._conn)],
+            "source": "local mirror only; no CDSC request was made",
+        }
+        console.print_json(json.dumps(payload, default=str))
+    finally:
+        storage.close()
+
+
+@meroshare_app.command("status")
+def meroshare_status_cmd() -> None:
+    """Show local mirror freshness without displaying any credential or raw error."""
+    from nepse_trader.meroshare import sync_status
+
+    storage = Storage(get_settings().db_path)
+    try:
+        payload = {key: value for key, value in sync_status(storage._conn).items() if key != "last_error"}
+        payload["enabled"] = get_settings().meroshare_enabled
+        console.print_json(json.dumps(payload, default=str))
+    finally:
+        storage.close()
+
+
+@meroshare_app.command("toggle")
+@_safe_run
+def meroshare_toggle_cmd(
+    state: str = typer.Argument(..., help="on or off"),
+    env_file: Path = typer.Option(Path(".env"), "--env-file", help="Settings file to update"),
+) -> None:
+    """Turn the optional MeroShare integration on or off in one local setting."""
+    wanted = state.strip().lower()
+    if wanted not in {"on", "off"}:
+        raise ValueError("state must be 'on' or 'off'")
+    path = _set_meroshare_enabled(wanted == "on", env_file)
+    console.print(f"[green]MeroShare integration set to {wanted} in {path}.[/green]")
+
+
+# ------------------------------------------------------------------------ mcp
+@mcp_app.command("serve")
+def mcp_serve_cmd() -> None:
+    """Serve the local, read-only MCP toolkit over stdio."""
+    from nepse_trader.mcp_server.server import serve_stdio
+
+    # stdout is the JSON-RPC transport. Do not print before entering the server.
+    serve_stdio()
 
 
 # --------------------------------------------------------------------- paper

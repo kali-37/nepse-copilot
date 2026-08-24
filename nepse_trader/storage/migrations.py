@@ -7,6 +7,7 @@ migrations in order, exactly once.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -328,7 +329,7 @@ def _m0005_advice(conn) -> None:
 def _m0006_meroshare(conn) -> None:
     """Read-only mirror of the user's own MeroShare/CDSC account.
 
-    **No credential has a column here, by design.** Not the username, not the
+    **No credential has a column here, by design.** Not the DP/client id, username, not the
     password, not a session token, not a keyring reference. Credentials live in
     env / .env / the OS keyring and are resolved per run — see
     ``nepse_trader/meroshare/credentials.py``. Anything in these three tables is
@@ -359,7 +360,6 @@ def _m0006_meroshare(conn) -> None:
             wacc REAL,
             previous_closing_price REAL,
             last_transaction_date TEXT,
-            dp_id TEXT,
             source TEXT NOT NULL,
             synced_at TEXT NOT NULL,
             PRIMARY KEY (symbol, demat_number)
@@ -396,6 +396,481 @@ def _m0006_meroshare(conn) -> None:
     """)
 
 
+def _m0007_journal(conn) -> None:
+    """The prediction journal: every call logged, scored, reviewed, then retired.
+
+    The advisor is only worth trusting if its past calls can be checked, so each
+    prediction is written down *before* the outcome is known — expected price,
+    stop, target, quantity, expected net PnL, and the confidence attached to it.
+    Later, ``advisor/outcomes.py`` fills in what actually happened. The gap
+    between ``expected_net_pnl`` and ``realized_net_pnl`` is the only honest
+    measure of whether any of this works.
+
+    **Five-step lifecycle**, tracked by ``status``:
+
+    1. ``open`` — logged at run time, outcome unknown.
+    2. ``scored`` — resolved against real bars; ``outcome``/``hit`` set.
+    3. ``reviewed`` — an AI pass wrote ``review`` explaining the miss or hit.
+    4. ``retired`` — the lesson has been distilled into ``prediction_lessons``
+       and indexed for RAG, so the verbose row is no longer needed. It is kept
+       with ``retired_at`` set rather than deleted: hit-rates are computed from
+       these rows and deleting them would silently reset every calibration.
+    5. Retired rows are excluded from the review queue but still counted.
+
+    ``hit`` is deliberately narrow — 1 only when ``outcome`` is ``TARGET_HIT``.
+    A call that merely drifted up without reaching its target is ``EXPIRED_UP``:
+    a partial, not a win. Counting partials as hits would inflate every
+    Wilson bound the confidence scale rests on, which is precisely the failure
+    mode this table exists to prevent.
+
+    ``UNRESOLVED`` and ``NO_DATA`` are recorded but excluded from calibration —
+    "we don't know" must never be laundered into evidence either way.
+
+    ``prediction_lessons`` holds the distilled, durable takeaway. ``superseded_at``
+    rather than deletion, so a lesson that later proved wrong leaves a trace.
+
+    ``calibration`` is a materialised roll-up keyed by (scope, subject, horizon).
+    It is derived data — safe to rebuild from ``predictions`` at any time — and
+    exists so a report does not have to aggregate the whole journal per symbol.
+    """
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS predictions (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            prediction_id TEXT NOT NULL UNIQUE,
+            run_id INTEGER REFERENCES advice_runs(id) ON DELETE SET NULL,
+            kind TEXT NOT NULL DEFAULT 'plan',
+            symbol TEXT NOT NULL,
+            made_on TEXT NOT NULL,
+            horizon TEXT NOT NULL DEFAULT '',
+            horizon_days INTEGER NOT NULL DEFAULT 0,
+            deadline TEXT NOT NULL,
+            action TEXT NOT NULL DEFAULT '',
+            reference_price REAL,
+            entry_low REAL,
+            entry_high REAL,
+            stop REAL,
+            target_1 REAL,
+            target_2 REAL,
+            quantity INTEGER NOT NULL DEFAULT 0,
+            expected_net_pnl REAL,
+            confidence REAL NOT NULL DEFAULT 0.0,
+            confidence_band TEXT NOT NULL DEFAULT '',
+            confidence_basis TEXT NOT NULL DEFAULT '',
+            rationale TEXT,
+            status TEXT NOT NULL DEFAULT 'open',
+            outcome TEXT,
+            resolved_on TEXT,
+            realized_exit_price REAL,
+            realized_net_pnl REAL,
+            mfe REAL,
+            mae REAL,
+            hit INTEGER,
+            bars_seen INTEGER NOT NULL DEFAULT 0,
+            scored_at TEXT,
+            review TEXT,
+            lesson TEXT,
+            lesson_id TEXT,
+            reviewed_at TEXT,
+            retired_at TEXT,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_predictions_symbol ON predictions(symbol);
+        CREATE INDEX IF NOT EXISTS idx_predictions_status ON predictions(status);
+        CREATE INDEX IF NOT EXISTS idx_predictions_made_on ON predictions(made_on);
+        CREATE INDEX IF NOT EXISTS idx_predictions_kind_symbol ON predictions(kind, symbol);
+
+        CREATE TABLE IF NOT EXISTS prediction_lessons (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            lesson_id TEXT NOT NULL UNIQUE,
+            scope TEXT NOT NULL DEFAULT 'global',
+            subject TEXT NOT NULL DEFAULT '',
+            horizon TEXT NOT NULL DEFAULT '',
+            lesson TEXT NOT NULL,
+            sample_size INTEGER NOT NULL DEFAULT 0,
+            hits INTEGER NOT NULL DEFAULT 0,
+            hit_rate REAL,
+            source TEXT NOT NULL DEFAULT 'deterministic',
+            created_at TEXT NOT NULL,
+            superseded_at TEXT
+        );
+        CREATE INDEX IF NOT EXISTS idx_prediction_lessons_scope
+            ON prediction_lessons(scope, subject);
+
+        CREATE TABLE IF NOT EXISTS calibration (
+            scope TEXT NOT NULL,
+            subject TEXT NOT NULL DEFAULT '',
+            horizon TEXT NOT NULL DEFAULT '',
+            hits INTEGER NOT NULL DEFAULT 0,
+            resolved INTEGER NOT NULL DEFAULT 0,
+            hit_rate REAL,
+            wilson_lower REAL,
+            mean_expected_pnl REAL,
+            mean_realized_pnl REAL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (scope, subject, horizon)
+        );
+    """)
+
+
+def _m0008_doses_auction(conn) -> None:
+    """Nested dose prescriptions, and advice on auction bids.
+
+    **Doses.** One ``dose_runs`` row per prescription, four ``doses`` rows under
+    it — day, week, month, year. They are *nested over the same capital*, so
+    ``allocation_pct`` across the four must sum to at most 1.0 and every plan
+    card belongs to exactly one dose. Storing them as separate rows with a
+    UNIQUE (dose_run_id, horizon) makes double-counting a constraint violation
+    rather than a silently inflated headline earnings figure — which would be
+    the most dangerous possible bug in this whole system.
+
+    ``reading`` holds the horoscope-shaped prose for that horizon. It is prose
+    only; every number next to it comes from the deterministic engine.
+
+    **Auction advice.** NEPSE auctions sell defaulted/unclaimed shares to the
+    highest bidders, and the trap is bidding above what the position can
+    actually clear after commission, SEBON fee, DP charge and CGT.
+    ``breakeven_price`` is the price the share must reach just to return the
+    bid net of the full cost stack; ``walk_away_price`` is the bid above which
+    the expected edge disappears. ``verdict`` is 'bid' or 'skip'.
+
+    This table records *advice*. No bid is ever placed by this software —
+    consistent with the read-only rule that governs the MeroShare integration.
+    """
+    conn.executescript("""
+        CREATE TABLE IF NOT EXISTS dose_runs (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            run_id INTEGER REFERENCES advice_runs(id) ON DELETE CASCADE,
+            run_date TEXT NOT NULL,
+            mode TEXT NOT NULL DEFAULT 'normal',
+            capital REAL NOT NULL DEFAULT 0.0,
+            deployed_capital REAL NOT NULL DEFAULT 0.0,
+            expected_net_pnl REAL,
+            confidence REAL NOT NULL DEFAULT 0.0,
+            confidence_band TEXT NOT NULL DEFAULT '',
+            banner TEXT,
+            generated_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_dose_runs_date ON dose_runs(run_date);
+
+        CREATE TABLE IF NOT EXISTS doses (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            dose_run_id INTEGER NOT NULL REFERENCES dose_runs(id) ON DELETE CASCADE,
+            horizon TEXT NOT NULL,
+            horizon_days INTEGER NOT NULL DEFAULT 0,
+            allocation_pct REAL NOT NULL DEFAULT 0.0,
+            allocated_capital REAL NOT NULL DEFAULT 0.0,
+            deployed_capital REAL NOT NULL DEFAULT 0.0,
+            symbols TEXT NOT NULL DEFAULT '',
+            card_count INTEGER NOT NULL DEFAULT 0,
+            expected_gross_pnl REAL,
+            expected_net_pnl REAL,
+            expected_return_pct REAL,
+            expected_costs REAL,
+            expected_tax REAL,
+            confidence REAL NOT NULL DEFAULT 0.0,
+            confidence_band TEXT NOT NULL DEFAULT '',
+            confidence_basis TEXT NOT NULL DEFAULT '',
+            earliest_sell_date TEXT,
+            reading TEXT,
+            UNIQUE (dose_run_id, horizon)
+        );
+        CREATE INDEX IF NOT EXISTS idx_doses_run ON doses(dose_run_id);
+
+        CREATE TABLE IF NOT EXISTS auction_advice (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            advice_id TEXT NOT NULL UNIQUE,
+            symbol TEXT NOT NULL,
+            auction_date TEXT NOT NULL,
+            units INTEGER NOT NULL DEFAULT 0,
+            min_bid_price REAL,
+            market_price REAL,
+            recommended_bid REAL,
+            max_sensible_bid REAL,
+            walk_away_price REAL,
+            breakeven_price REAL,
+            quantity INTEGER NOT NULL DEFAULT 0,
+            outlay REAL,
+            expected_exit_price REAL,
+            expected_gross_pnl REAL,
+            expected_net_pnl REAL,
+            expected_return_pct REAL,
+            horizon_days INTEGER NOT NULL DEFAULT 0,
+            earliest_sell_date TEXT,
+            confidence REAL NOT NULL DEFAULT 0.0,
+            confidence_band TEXT NOT NULL DEFAULT '',
+            confidence_basis TEXT NOT NULL DEFAULT '',
+            verdict TEXT NOT NULL DEFAULT '',
+            rationale TEXT,
+            created_at TEXT NOT NULL
+        );
+        CREATE INDEX IF NOT EXISTS idx_auction_advice_symbol
+            ON auction_advice(symbol, auction_date);
+    """)
+
+
+def _m0009_advisor_confidence(conn) -> None:
+    """Add the per-card confidence fields without rewriting old advice rows."""
+    columns = {
+        str(row[1]) for row in conn.execute("PRAGMA table_info(advice_cards)").fetchall()
+    }
+    for name, ddl in (
+        ("confidence", "ALTER TABLE advice_cards ADD COLUMN confidence REAL NOT NULL DEFAULT 0.45"),
+        ("confidence_band", "ALTER TABLE advice_cards ADD COLUMN confidence_band TEXT NOT NULL DEFAULT 'COIN_FLIP'"),
+        ("confidence_basis", "ALTER TABLE advice_cards ADD COLUMN confidence_basis TEXT NOT NULL DEFAULT ''"),
+        ("prediction_id", "ALTER TABLE advice_cards ADD COLUMN prediction_id TEXT"),
+    ):
+        if name not in columns:
+            conn.execute(ddl)
+
+
+def _m0010_meroshare_privacy(conn) -> None:
+    """Remove the legacy DP/client-id column from the local mirror.
+
+    SQLite cannot drop a column on every version we support, so rebuild the
+    table from explicit, non-credential columns. The DDL is transactional: a
+    failure leaves the old table untouched.
+    """
+    columns = {str(row[1]) for row in conn.execute("PRAGMA table_info(ms_holdings)")}
+    # Older development schemas used a few spellings for the account's
+    # client/DP identifier.  Rebuild whenever *any* of those columns remain,
+    # not only the first ``dp_id`` variant; otherwise a legacy ``client_id``
+    # column could survive indefinitely in a user's local database.
+    sensitive_columns = {
+        "dp_id",
+        "client_id",
+        "client_code",
+        "clientid",
+        "clientcode",
+        "dpid",
+    }
+    if not {name.casefold() for name in columns} & sensitive_columns:
+        return
+    # A database may already have the post-0012 hashed shape (for example a
+    # caller invoking this legacy helper directly during an upgrade test).  In
+    # that case preserve the safe columns while dropping only the newly found
+    # legacy identifiers; there is no raw ``demat_number`` to copy.
+    if "demat_number" not in columns and "demat_hash" in columns:
+        conn.execute("DROP TABLE IF EXISTS ms_holdings_private")
+        conn.execute("""
+            CREATE TABLE ms_holdings_private (
+                symbol TEXT NOT NULL,
+                demat_hash TEXT NOT NULL DEFAULT '',
+                demat_last4 TEXT NOT NULL DEFAULT '',
+                isin TEXT,
+                script_desc TEXT,
+                current_balance INTEGER NOT NULL DEFAULT 0,
+                previous_balance INTEGER,
+                pledged_balance INTEGER,
+                wacc REAL,
+                previous_closing_price REAL,
+                last_transaction_date TEXT,
+                source TEXT NOT NULL,
+                synced_at TEXT NOT NULL,
+                PRIMARY KEY (symbol, demat_hash)
+            )
+        """)
+        conn.execute("""
+            INSERT INTO ms_holdings_private (
+                symbol, demat_hash, demat_last4, isin, script_desc,
+                current_balance, previous_balance, pledged_balance, wacc,
+                previous_closing_price, last_transaction_date, source, synced_at
+            )
+            SELECT symbol, demat_hash, demat_last4, isin, script_desc,
+                   current_balance, previous_balance, pledged_balance, wacc,
+                   previous_closing_price, last_transaction_date, source, synced_at
+            FROM ms_holdings
+        """)
+        conn.execute("DROP TABLE ms_holdings")
+        conn.execute("ALTER TABLE ms_holdings_private RENAME TO ms_holdings")
+        conn.execute("CREATE INDEX idx_ms_holdings_symbol ON ms_holdings(symbol)")
+        return
+    conn.execute("""
+        CREATE TABLE ms_holdings_private (
+            symbol TEXT NOT NULL,
+            demat_number TEXT NOT NULL DEFAULT '',
+            isin TEXT,
+            script_desc TEXT,
+            current_balance INTEGER NOT NULL DEFAULT 0,
+            previous_balance INTEGER,
+            pledged_balance INTEGER,
+            wacc REAL,
+            previous_closing_price REAL,
+            last_transaction_date TEXT,
+            source TEXT NOT NULL,
+            synced_at TEXT NOT NULL,
+            PRIMARY KEY (symbol, demat_number)
+        )
+    """)
+    conn.execute("""
+        INSERT INTO ms_holdings_private (
+            symbol, demat_number, isin, script_desc, current_balance,
+            previous_balance, pledged_balance, wacc, previous_closing_price,
+            last_transaction_date, source, synced_at
+        )
+        SELECT
+            symbol, demat_number, isin, script_desc, current_balance,
+            previous_balance, pledged_balance, wacc, previous_closing_price,
+            last_transaction_date, source, synced_at
+        FROM ms_holdings
+    """)
+    conn.execute("DROP TABLE ms_holdings")
+    conn.execute("ALTER TABLE ms_holdings_private RENAME TO ms_holdings")
+    conn.execute("CREATE INDEX idx_ms_holdings_symbol ON ms_holdings(symbol)")
+
+
+def _m0011_app_settings(conn) -> None:
+    """Persist small, runtime-editable application settings.
+
+    Values are deliberately generic JSON strings so adding a toggle does not
+    require another schema migration.  Secrets never belong in this table;
+    MeroShare credentials remain environment/keyring-only.
+    """
+    conn.execute(
+        """
+        CREATE TABLE IF NOT EXISTS app_settings (
+            key TEXT PRIMARY KEY,
+            value TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        )
+        """
+    )
+
+
+def _m0012_meroshare_demat_privacy(conn) -> None:
+    """Replace raw demat identifiers with a stable hash and masked suffix.
+
+    ``0006`` originally stored ``demat_number`` to keep multiple demats under
+    one login distinct.  That identifier is account data and must not survive
+    in a database dump.  This rebuild preserves the same cardinality and
+    upsert semantics using a domain-separated SHA-256 key plus the final four
+    characters for display.  Empty demats remain a single empty bucket.
+    """
+
+    holding_columns = {
+        str(row[1]) for row in conn.execute("PRAGMA table_info(ms_holdings)")
+    }
+    transaction_columns = {
+        str(row[1]) for row in conn.execute("PRAGMA table_info(ms_transactions)")
+    }
+    if "demat_number" not in holding_columns and "demat_number" not in transaction_columns:
+        return
+
+    namespace = b"nepse-trader/meroshare/demat/v1:"
+
+    def safe_parts(value: object) -> tuple[str, str]:
+        raw = str(value or "").strip()
+        if not raw:
+            return "", ""
+        return hashlib.sha256(namespace + raw.encode("utf-8")).hexdigest(), raw[-4:]
+
+    conn.execute("DROP TABLE IF EXISTS ms_holdings_private")
+    conn.execute("""
+        CREATE TABLE ms_holdings_private (
+            symbol TEXT NOT NULL,
+            demat_hash TEXT NOT NULL DEFAULT '',
+            demat_last4 TEXT NOT NULL DEFAULT '',
+            isin TEXT,
+            script_desc TEXT,
+            current_balance INTEGER NOT NULL DEFAULT 0,
+            previous_balance INTEGER,
+            pledged_balance INTEGER,
+            wacc REAL,
+            previous_closing_price REAL,
+            last_transaction_date TEXT,
+            source TEXT NOT NULL,
+            synced_at TEXT NOT NULL,
+            PRIMARY KEY (symbol, demat_hash)
+        )
+    """)
+    for row in conn.execute("SELECT * FROM ms_holdings").fetchall():
+        raw = row["demat_number"] if hasattr(row, "keys") else row[1]
+        digest, last4 = safe_parts(raw)
+        conn.execute(
+            """INSERT INTO ms_holdings_private (
+                   symbol, demat_hash, demat_last4, isin, script_desc,
+                   current_balance, previous_balance, pledged_balance, wacc,
+                   previous_closing_price, last_transaction_date, source, synced_at
+               ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+               ON CONFLICT(symbol, demat_hash) DO UPDATE SET
+                   demat_last4=excluded.demat_last4, isin=excluded.isin,
+                   script_desc=excluded.script_desc,
+                   current_balance=excluded.current_balance,
+                   previous_balance=excluded.previous_balance,
+                   pledged_balance=excluded.pledged_balance, wacc=excluded.wacc,
+                   previous_closing_price=excluded.previous_closing_price,
+                   last_transaction_date=excluded.last_transaction_date,
+                   source=excluded.source, synced_at=excluded.synced_at""",
+            (
+                row["symbol"] if hasattr(row, "keys") else row[0],
+                digest,
+                last4,
+                row["isin"] if hasattr(row, "keys") else row[2],
+                row["script_desc"] if hasattr(row, "keys") else row[3],
+                row["current_balance"] if hasattr(row, "keys") else row[4],
+                row["previous_balance"] if hasattr(row, "keys") else row[5],
+                row["pledged_balance"] if hasattr(row, "keys") else row[6],
+                row["wacc"] if hasattr(row, "keys") else row[7],
+                row["previous_closing_price"] if hasattr(row, "keys") else row[8],
+                row["last_transaction_date"] if hasattr(row, "keys") else row[9],
+                row["source"] if hasattr(row, "keys") else row[10],
+                row["synced_at"] if hasattr(row, "keys") else row[11],
+            ),
+        )
+    conn.execute("DROP TABLE ms_holdings")
+    conn.execute("ALTER TABLE ms_holdings_private RENAME TO ms_holdings")
+    conn.execute("CREATE INDEX idx_ms_holdings_symbol ON ms_holdings(symbol)")
+
+    conn.execute("DROP TABLE IF EXISTS ms_transactions_private")
+    conn.execute("""
+        CREATE TABLE ms_transactions_private (
+            txn_id TEXT PRIMARY KEY,
+            symbol TEXT NOT NULL,
+            demat_hash TEXT NOT NULL DEFAULT '',
+            demat_last4 TEXT NOT NULL DEFAULT '',
+            transaction_date TEXT NOT NULL,
+            transaction_type TEXT NOT NULL DEFAULT '',
+            description TEXT,
+            quantity INTEGER NOT NULL DEFAULT 0,
+            price REAL,
+            balance_after INTEGER,
+            reference TEXT,
+            source TEXT NOT NULL,
+            synced_at TEXT NOT NULL
+        )
+    """)
+    for row in conn.execute("SELECT * FROM ms_transactions").fetchall():
+        raw = row["demat_number"] if hasattr(row, "keys") else row[2]
+        digest, last4 = safe_parts(raw)
+        conn.execute(
+            """INSERT INTO ms_transactions_private (
+                   txn_id, symbol, demat_hash, demat_last4, transaction_date,
+                   transaction_type, description, quantity, price, balance_after,
+                   reference, source, synced_at
+               ) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+            (
+                row["txn_id"] if hasattr(row, "keys") else row[0],
+                row["symbol"] if hasattr(row, "keys") else row[1],
+                digest,
+                last4,
+                row["transaction_date"] if hasattr(row, "keys") else row[3],
+                row["transaction_type"] if hasattr(row, "keys") else row[4],
+                row["description"] if hasattr(row, "keys") else row[5],
+                row["quantity"] if hasattr(row, "keys") else row[6],
+                row["price"] if hasattr(row, "keys") else row[7],
+                row["balance_after"] if hasattr(row, "keys") else row[8],
+                row["reference"] if hasattr(row, "keys") else row[9],
+                row["source"] if hasattr(row, "keys") else row[10],
+                row["synced_at"] if hasattr(row, "keys") else row[11],
+            ),
+        )
+    conn.execute("DROP TABLE ms_transactions")
+    conn.execute("ALTER TABLE ms_transactions_private RENAME TO ms_transactions")
+    conn.execute(
+        "CREATE INDEX idx_ms_transactions_symbol_date "
+        "ON ms_transactions(symbol, transaction_date)"
+    )
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
@@ -405,6 +880,12 @@ MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0004_ai", _m0004_ai),
     ("0005_advice", _m0005_advice),
     ("0006_meroshare", _m0006_meroshare),
+    ("0007_journal", _m0007_journal),
+    ("0008_doses_auction", _m0008_doses_auction),
+    ("0009_advisor_confidence", _m0009_advisor_confidence),
+    ("0010_meroshare_privacy", _m0010_meroshare_privacy),
+    ("0011_app_settings", _m0011_app_settings),
+    ("0012_meroshare_demat_privacy", _m0012_meroshare_demat_privacy),
 ]
 
 

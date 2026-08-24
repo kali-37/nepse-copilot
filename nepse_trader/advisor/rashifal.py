@@ -32,6 +32,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
+from nepse_trader.advisor.doses import (
+    DOSE_HORIZONS,
+    DoseReport,
+    build_doses,
+    save_doses,
+)
+from nepse_trader.advisor.journal import log_plan_cards
 from nepse_trader.advisor.plan import (
     ACCUMULATE,
     REDUCE,
@@ -41,7 +48,7 @@ from nepse_trader.advisor.plan import (
 )
 
 # Horizons the CLI exposes, expressed in trading days.
-HORIZONS = {"day": 3, "week": 10, "month": 22}
+HORIZONS = dict(DOSE_HORIZONS)
 
 
 @dataclass
@@ -83,6 +90,7 @@ class Rashifal:
     sell_queue: list[SellCandidate] = field(default_factory=list)
     do_not_touch: list[Skipped] = field(default_factory=list)
     breadth: dict = field(default_factory=dict)
+    doses: DoseReport | None = None
     banner: str = ""
     thesis: str = ""
     generated_at: datetime | None = None
@@ -110,6 +118,7 @@ class Rashifal:
             "sell_queue": [s.as_dict() for s in self.sell_queue],
             "do_not_touch": [{"symbol": s.symbol, "reason": s.reason} for s in self.do_not_touch],
             "breadth": dict(self.breadth),
+            "doses": self.doses.as_dict() if self.doses is not None else None,
             "banner": self.banner,
             "thesis": self.thesis,
             "degraded": self.degraded,
@@ -215,6 +224,8 @@ def build_rashifal(
     analyst: object | None = None,
     evidence_for: object | None = None,
     cost_engine: object | None = None,
+    confidence_for: object | None = None,
+    dose_allocations: dict[str, float] | None = None,
     max_symbols: int = 25,
     **plan_kwargs,
 ) -> Rashifal:
@@ -236,6 +247,7 @@ def build_rashifal(
         today=run_date,
         cost_engine=cost_engine,
         horizon_days=horizon_days,
+        confidence_for=confidence_for,
         **plan_kwargs,
     )
     cards.sort(key=lambda c: (-c.conviction, c.symbol))
@@ -255,6 +267,34 @@ def build_rashifal(
         generated_at=datetime.now(UTC),
     )
 
+    # The selected horizon remains the primary card deck. The dose report is a
+    # four-way partition over the same capital, so build the other three decks
+    # with identical deterministic inputs and put every generated card in one
+    # (and only one) horizon. The selected cards are reused, not rebuilt.
+    dose_cards = list(cards)
+    for _dose_horizon, dose_days in HORIZONS.items():
+        if dose_days == horizon_days:
+            continue
+        other_cards, _ = build_plan_cards(
+            chosen,
+            bars_for,
+            signals_for,
+            equity=equity,
+            today=run_date,
+            cost_engine=cost_engine,
+            horizon_days=dose_days,
+            confidence_for=confidence_for,
+            **plan_kwargs,
+        )
+        dose_cards.extend(other_cards)
+    result.doses = build_doses(
+        cards=dose_cards,
+        equity=equity,
+        run_date=run_date,
+        allocation=dose_allocations,
+        cost_engine=cost_engine,
+    )
+
     if positions:
         result.sell_queue = build_sell_queue(
             positions,
@@ -262,6 +302,14 @@ def build_rashifal(
             settlement_date_for=lambda s: (
                 by_symbol[s].earliest_sell_date if s in by_symbol else run_date
             ),
+        )
+        result.doses = build_doses(
+            cards=dose_cards,
+            equity=equity,
+            run_date=run_date,
+            sell_queue=result.sell_queue,
+            allocation=dose_allocations,
+            cost_engine=cost_engine,
         )
 
     if mode != "ai":
@@ -337,6 +385,7 @@ def _render_plan(card: PlanCard) -> str:
         f"quantity: {card.quantity} shares over {card.horizon_days} trading days",
         f"earliest legal sell date (T+2): {card.earliest_sell_date.isoformat()}",
         f"expected net PnL at first target: {card.net_pnl}",
+        f"confidence: {card.confidence.value:.2f} ({card.confidence.label})",
         f"strategy votes: {card.rationale}",
     ]
     return "\n".join(lines)
@@ -414,15 +463,17 @@ def save_rashifal(conn, result: Rashifal) -> int:
         ),
     )
     run_id = int(cur.lastrowid)
+    advice_card_ids: dict[tuple[str, int], int] = {}
     for card in result.cards:
-        conn.execute(
+        cur = conn.execute(
             """
             INSERT INTO advice_cards
                 (run_id, symbol, action, reference_price, entry_low, entry_high,
                  stop, target_1, target_2, quantity, horizon_days,
                  earliest_sell_date, gross_pnl, net_pnl, entry_cost, exit_cost,
-                 capital_gains_tax, conviction, rationale, note)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                 capital_gains_tax, conviction, rationale, note, confidence,
+                 confidence_band, confidence_basis)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 run_id,
@@ -445,8 +496,50 @@ def save_rashifal(conn, result: Rashifal) -> int:
                 card.conviction,
                 card.rationale,
                 card.note or None,
+                card.confidence.value,
+                card.confidence.band,
+                card.confidence.basis,
             ),
         )
+        advice_card_ids[(card.symbol, card.horizon_days)] = int(cur.lastrowid)
+
+    # Journal entries are written while every call is still unknown. The dose
+    # deck contains the selected horizon too, so logging the four disjoint dose
+    # groups records each forecast exactly once.
+    if result.doses is not None:
+        for dose in result.doses.doses:
+            predictions = log_plan_cards(
+                conn,
+                list(dose.cards),
+                made_on=result.run_date,
+                horizon=dose.horizon,
+                run_id=run_id,
+                commit=False,
+            )
+            for card, prediction in zip(dose.cards, predictions, strict=True):
+                card_id = advice_card_ids.get((card.symbol, card.horizon_days))
+                if card_id is not None:
+                    conn.execute(
+                        "UPDATE advice_cards SET prediction_id=? WHERE id=?",
+                        (prediction.prediction_id, card_id),
+                    )
+        save_doses(conn, result.doses, run_id=run_id)
+    else:
+        predictions = log_plan_cards(
+            conn,
+            result.cards,
+            made_on=result.run_date,
+            horizon=result.horizon,
+            run_id=run_id,
+            commit=False,
+        )
+        for card, prediction in zip(result.cards, predictions, strict=True):
+            card_id = advice_card_ids.get((card.symbol, card.horizon_days))
+            if card_id is not None:
+                conn.execute(
+                    "UPDATE advice_cards SET prediction_id=? WHERE id=?",
+                    (prediction.prediction_id, card_id),
+                )
     conn.commit()
     result.run_id = run_id
     return run_id
@@ -482,6 +575,21 @@ def latest_run(conn) -> dict | None:
             (row["id"],),
         ).fetchall()
     ]
+    dose_row = conn.execute(
+        "SELECT * FROM dose_runs WHERE run_id=? ORDER BY id DESC LIMIT 1",
+        (row["id"],),
+    ).fetchone()
+    if dose_row is not None:
+        out["doses"] = dict(dose_row)
+        out["doses"]["doses"] = [
+            dict(dose)
+            for dose in conn.execute(
+                "SELECT * FROM doses WHERE dose_run_id=? ORDER BY id",
+                (dose_row["id"],),
+            ).fetchall()
+        ]
+    else:
+        out["doses"] = None
     return out
 
 

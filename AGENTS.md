@@ -109,18 +109,19 @@ webhook), not in a separate package.
 4.5 Dashboard command (symbols, date range, source coverage, reconciliation health, portfolio)
 
 ## Current State
-- **Tests:** 378 passing, 1 skipped
+- **Tests:** 1224 passing, 1 skipped (Python); 85 passing (frontend)
 - **Lint:** ruff clean
 - **Schema:** sources.jsonc config validation shipped
 - **Last commit:** `refactor: frontend design polish — indigo palette, Inter type, subtle animations`
 
-## In-flight work
-Building out the AI/advisor half of the product (plan:
-`~/.claude/plans/shimmying-painting-hopcroft.md`):
-RAG (SQLite FTS5 + live web), an LLM layer (OpenRouter free models for bulk work +
-local `claude -p` CLI for synthesis, with DB-backed token budgeting and caching),
-the "rashifal" daily trade-plan advisor, read-only MeroShare portfolio sync, an
-MCP server exposing the toolkit, and the matching API + React pages with tests.
+## Completed advisor scope
+The AI/advisor half is shipped: SQLite FTS5 RAG with optional live retrieval, the
+LLM router with local `claude -p` synthesis and DB-backed budgets/cache, the
+four-horizon rashifal/dose advisor, the open -> scored -> reviewed -> retired
+prediction journal, read-only/toggleable MeroShare mirroring with CSV fallback,
+fee-aware manual auction advice, a bounded read-only MCP server, and matching
+FastAPI/React surfaces with tests. Normal/offline mode is the safe default; AI
+and live retrieval are explicit opt-ins.
 
 ## Key Design Decisions
 - **SQLite WAL** for concurrent reads during async ingestion

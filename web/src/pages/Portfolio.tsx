@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import type { PortfolioSummary } from '../api/types';
+import type { HoldingComparison, PortfolioSummary } from '../api/types';
 import { Card } from '../components/ui/Card';
 import { StatCard } from '../components/ui/StatCard';
 import { DataTable } from '../components/ui/DataTable';
@@ -10,12 +10,19 @@ import { Wallet, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
 
 export function PortfolioPage() {
   const [data, setData] = useState<PortfolioSummary | null>(null);
+  const [comparison, setComparison] = useState<HoldingComparison[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.portfolio()
-      .then(setData)
+    Promise.all([
+      api.portfolio(),
+      api.meroshareCompare().catch(() => ({ rows: [], summary: {} })),
+    ])
+      .then(([portfolio, realVsPaper]) => {
+        setData(portfolio);
+        setComparison(realVsPaper.rows);
+      })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, []);
@@ -106,6 +113,40 @@ export function PortfolioPage() {
             ]}
             data={data.positions}
           />
+        )}
+      </Card>
+
+      <Card title="Real versus paper">
+        {comparison.length === 0 ? (
+          <p className="py-6 text-center text-sm text-text-tertiary">
+            No MeroShare comparison data yet.
+          </p>
+        ) : (
+          <div className="divide-y divide-border">
+            {comparison.map((row) => (
+              <div
+                key={row.symbol}
+                className="grid grid-cols-[1fr_auto_auto] items-center gap-3 py-3"
+              >
+                <div>
+                  <div className="font-semibold text-text-primary">{row.symbol}</div>
+                  <div className="text-xs text-text-secondary">
+                    Real {row.real_quantity} · Paper {row.paper_quantity}
+                  </div>
+                </div>
+                <div className="text-right text-xs text-text-secondary">
+                  {row.quantity_delta === 0
+                    ? 'Quantity aligned'
+                    : `${row.quantity_delta > 0 ? '+' : ''}${row.quantity_delta} real`}
+                </div>
+                <span
+                  className={row.agrees ? 'text-xs font-semibold text-positive' : 'text-xs font-semibold text-warning'}
+                >
+                  {row.agrees ? 'Match' : 'Review'}
+                </span>
+              </div>
+            ))}
+          </div>
         )}
       </Card>
 

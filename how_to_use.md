@@ -256,3 +256,68 @@ A weekend/holiday simply ingests 0 rows — safe to leave scheduled year-round.
 - **SSL error vs nepalstock** → NEPSE ships an incomplete cert chain; use the
   `nepse-scraper` library which handles it.
 - **Where's my data?** → `data/nepse.db` (SQLite) and `data/raw/` (cached responses).
+
+## 10. Advisor workflow
+
+Run the deterministic prescription locally, with one capital pool partitioned
+into four nested horizons:
+
+```bash
+$PY -m nepse_trader.cli.main rashifal --equity 100000 --save --report data/rashifal.md
+$PY -m nepse_trader.cli.main doses --latest
+```
+
+The horizons are day (3 trading days), week (10), month (22), and year (250).
+Cards belong to one horizon only; allocations are 10%, 20%, 30%, and 40% by
+default. Every price, stop, quantity, fee, tax, and expected net outcome is
+deterministic. `--mode ai` can add RAG/LLM prose only. Use `--online` as an
+explicit opt-in; normal/offline mode makes no network calls.
+
+Confidence is shown on every prediction from 0 to 1. `1.00` is reserved for
+arithmetic, not a market forecast; `0.95-0.99` is labelled “still money in the
+bank”. Treat all directional cards as forecasts, not guarantees.
+
+### Prediction journal
+
+Every saved card is auditable before its result is known:
+
+```bash
+$PY -m nepse_trader.cli.main journal history --status open
+$PY -m nepse_trader.cli.main journal score PREDICTION_ID
+$PY -m nepse_trader.cli.main journal review PREDICTION_ID --text "..."
+$PY -m nepse_trader.cli.main journal distill PREDICTION_ID --lesson "..."
+$PY -m nepse_trader.cli.main journal retire PREDICTION_ID
+$PY -m nepse_trader.cli.main journal calibration
+```
+
+The lifecycle is `open -> scored -> reviewed -> retired`. Outcome scoring checks
+the stop before the target, counts only `TARGET_HIT` as a hit, and excludes
+`UNRESOLVED`/`NO_DATA` from calibration. Retired evidence remains available for
+hit-rate history; distilled lessons are indexed for local RAG.
+
+### MeroShare mirror
+
+MeroShare is read-only: holdings, WACC and transaction history may be mirrored,
+but no IPO/ASBA application, order, or auction bid is implemented. Configure
+`NEPSE_MEROSHARE_ENABLED=true` plus credentials in env/`.env` or the optional OS
+keyring, then run:
+
+```bash
+$PY -m nepse_trader.cli.main meroshare toggle on
+$PY -m nepse_trader.cli.main meroshare sync
+$PY -m nepse_trader.cli.main meroshare holdings
+$PY -m nepse_trader.cli.main meroshare status
+$PY -m nepse_trader.cli.main meroshare import --file holdings.csv  # no credentials
+$PY -m nepse_trader.cli.main meroshare toggle off
+```
+
+Credentials and full demat identifiers never appear in logs, API responses, or
+SQLite. The web UI/API expose only a masked last-four identifier.
+
+### Auction advice and MCP
+
+`auction advise` computes a fee-aware break-even and walk-away price. It is
+manual advice only; the software never submits a bid. Copy `.mcp.json.example`
+to `.mcp.json` and point its absolute interpreter/path at this checkout to use
+the bounded read-only MCP tools over stdio. MCP diagnostics go to stderr so
+stdout remains valid JSON-RPC.

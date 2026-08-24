@@ -274,3 +274,43 @@ The pipeline assumes the open web is flaky and adversarial-by-accident:
   or a layout change can't take down the run.
 - The audit cache and reconciliation confidence give you the tools to *detect* when
   a source has silently started returning wrong data, rather than trusting it blindly.
+
+## 13. Advisor and confidence
+
+`advisor/plan.py` computes entry zones, ATR stops, targets, lot-rounded quantity,
+T+2 settlement and fee/tax-aware expected net PnL. `advisor/rashifal.py` composes
+the selected card horizon with a four-way `advisor/doses.py` partition over the
+same capital. The dose contract is `3/10/22/250` trading days and allocations
+must sum to at most one; a card is assigned once, never copied into multiple
+headline totals.
+
+`advisor/confidence.py` owns the public scale. Market forecasts are capped below
+certainty; only `certain()` may produce `1.0` for arithmetic facts. Historical
+confidence uses a prior plus Wilson lower-bound shrinkage, and `blend()` takes
+the weakest link. Longer dose horizons receive an explicit confidence haircut.
+AI providers can write prose and citations only; deterministic numbers are
+already persisted before narrative is attached.
+
+## 14. Prediction journal and outcomes
+
+`save_rashifal()` writes each call before it can be resolved. The journal then
+transitions `open -> scored -> reviewed -> retired`. `advisor/outcomes.py` scans
+reconciled bars and checks the stop before the target when both occur on one bar;
+only `TARGET_HIT` contributes a hit. `UNRESOLVED` and `NO_DATA` remain visible but
+never enter calibration. Realized net PnL uses the same `CostEngine` path as
+expected PnL, so the journal compares like with like. Distilled lessons are
+stored in `prediction_lessons` and indexed into the local SQLite FTS5 corpus.
+
+## 15. MeroShare, auction and modes
+
+`meroshare/` is a read-only mirror. Credentials are resolved from env/`.env` or
+an optional keyring, redacted at every boundary, and never persisted. The API
+and MCP mask demat identifiers; CSV import is the credential-free fallback. The
+integration is explicitly toggleable and failed syncs are atomic, leaving the
+last good mirror intact. `advisor/auction.py` calculates bid ceilings and
+break-even after Nepal fees; it has no placement path.
+
+Normal mode constructs a local-only pipeline with no network leg. AI mode adds
+optional local Claude CLI/OpenRouter/Anthropic providers and RAG evidence; if a
+provider or budget is unavailable, the deterministic report survives with a
+degradation banner. MCP exposes bounded read-only tools over JSON-RPC stdio.

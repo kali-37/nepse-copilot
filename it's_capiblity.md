@@ -36,6 +36,12 @@ What the system can and cannot do, stated precisely. For how to operate it see
 | | Webhook alerts (off unless configured) | ✅ |
 | **HAR toolkit** | Analyze captures, emit config, redact secrets | ✅ |
 | **Automation** | Single `run-daily` command for cron | ✅ |
+| **Advisor** | Rashifal plan cards and disjoint day/week/month/year doses | ✅ |
+| **Prediction journal** | Open -> scored -> reviewed -> retired, calibration and RAG lessons | ✅ |
+| **MeroShare** | Toggleable read-only mirror, CSV fallback, real/paper comparison | ✅ |
+| **Auction advice** | Fee-aware bid ceiling and walk-away price; manual only | ✅ |
+| **Modes** | Normal/offline default; AI/live retrieval explicit opt-ins | ✅ |
+| **MCP** | Bounded read-only local tools over stdio | ✅ |
 | **Live order placement** | — | ❌ by design (no sanctioned API) |
 
 ---
@@ -99,9 +105,28 @@ logging/alerting. One command, scheduled once a day.
 
 ---
 
-## 7. Quality & correctness guarantees
+## 7. Advisor, mirror and MCP details
 
-- **191 automated tests, all offline**, plus `ruff` lint clean.
+- **Rashifal prescriptions** use one capital pool partitioned into day (3
+  trading days), week (10), month (22), and year (250). Cards belong to one
+  horizon only, and expected net PnL uses the same Nepal `CostEngine` as paper
+  trading.
+- **Confidence** is a visible 0-1 value. `1.0` is reserved for arithmetic;
+  market forecasts are capped below certainty. The 0.95-0.99 band is labelled
+  “still money in the bank”, but no forecast is a guarantee.
+- **Journal scoring** checks stop before target, counts only `TARGET_HIT`, and
+  excludes `UNRESOLVED`/`NO_DATA` from calibration. Retired rows stay as audit
+  evidence; distilled lessons feed local RAG.
+- **MeroShare** never applies for IPO/ASBA, places an order, or submits an
+  auction bid. Credentials are never logged or stored; API/UI/MCP mask demat
+  identifiers. CSV import works without portal credentials.
+- **AI mode** may add prose and citations only. Normal mode and offline mode
+  make no network calls; live retrieval is an explicit opt-in.
+
+## 8. Quality & correctness guarantees
+
+- **1224 Python tests + 85 frontend tests, all offline**, plus `ruff` and
+  frontend lint clean.
 - Adversarially reviewed (multi-dimension, each finding independently verified);
   five confirmed defects fixed with regression tests.
 - The headline cost worked example is pinned to the paisa.
@@ -110,7 +135,7 @@ logging/alerting. One command, scheduled once a day.
 
 ---
 
-## 8. Explicit non-capabilities (by design)
+## 9. Explicit non-capabilities (by design)
 
 - **No live order placement.** NEPSE has no sanctioned retail trading API; this is
   a research/paper tool only. Nothing here is financial advice.
@@ -127,7 +152,7 @@ logging/alerting. One command, scheduled once a day.
 
 ---
 
-## 9. Performance characteristics
+## 10. Performance characteristics
 
 - Pure-Python, dependency-light; indicators/stats are O(n) over a symbol's history.
 - SQLite (WAL) storage; a full-universe daily ingest + reconcile + report runs in

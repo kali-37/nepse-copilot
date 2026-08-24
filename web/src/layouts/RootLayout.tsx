@@ -10,6 +10,11 @@ import {
   Menu,
   X,
   LineChart,
+  Sparkles,
+  Landmark,
+  Search,
+  Settings,
+  Gavel,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -17,6 +22,11 @@ const NAV_ITEMS = [
   { to: '/symbols', label: 'Symbols', icon: BarChart3 },
   { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
   { to: '/backtest', label: 'Backtest', icon: FlaskConical },
+  { to: '/rashifal', label: 'Rashifal', icon: Sparkles },
+  { to: '/auction', label: 'Auction', icon: Gavel },
+  { to: '/meroshare', label: 'MeroShare', icon: Landmark },
+  { to: '/research', label: 'Research', icon: Search },
+  { to: '/settings', label: 'Settings', icon: Settings },
 ];
 
 interface Props {
