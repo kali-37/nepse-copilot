@@ -10,16 +10,26 @@ import type {
   ScreenRow,
   Signal,
   AiBudget,
+  AiModelsResponse,
+  AiTestResult,
   AuctionAdvice,
+  BulkSignalsResponse,
+  BulkStatsResponse,
+  CorporateActionRow,
   DoseRun,
   HealthReport,
   HealthSnapshot,
+  Job,
   JournalEntry,
   MeroShareHolding,
   MeroShareStatus,
+  PaperTradeRow,
   RagSearchResponse,
   RagStats,
   RashifalRun,
+  SourcesResponse,
+  TablePage,
+  TableSummary,
   WatchlistSettings,
 } from '../api/types';
 
@@ -491,4 +501,216 @@ export const healthHistory: HealthSnapshot[] = [
     fail: 0,
     off: 2,
   },
+];
+
+// ------------------------------------------------------------------ operations
+/** A finished `reconcile` job — the shape POST /api/jobs and GET /api/jobs/:id return. */
+export const doneJob: Job = {
+  id: 'job-done-1',
+  kind: 'reconcile',
+  params: { business_date: '2026-08-22' },
+  status: 'done',
+  stages: [
+    {
+      name: 'reconcile',
+      label: 'Cross-check sources',
+      status: 'ok',
+      detail: '244 symbols, 3 flagged',
+      current: 244,
+      total: 244,
+    },
+  ],
+  result: { business_date: '2026-08-22', reconciled: 244, flagged: 3, rows: [] },
+  error: null,
+  created_at: '2026-08-22T10:00:00Z',
+  started_at: '2026-08-22T10:00:01Z',
+  finished_at: '2026-08-22T10:00:09Z',
+  cancel_requested: false,
+  log: ['10:00:01  reconciled 244 symbols; 3 low-confidence/disputed'],
+};
+
+/** A job mid-flight, with one stage done and one counting. */
+export const runningJob: Job = {
+  id: 'job-running-1',
+  kind: 'run-daily',
+  params: {},
+  status: 'running',
+  stages: [
+    { name: 'ingest', label: 'Download from sources', status: 'ok', detail: '484 bars', current: 0, total: 0 },
+    { name: 'reconcile', label: 'Cross-check sources', status: 'running', detail: 'NABIL', current: 12, total: 244 },
+    { name: 'analyse', label: 'Signals, stats and backtests', status: 'pending', detail: '', current: 0, total: 0 },
+  ],
+  result: null,
+  error: null,
+  created_at: '2026-08-22T10:05:00Z',
+  started_at: '2026-08-22T10:05:00Z',
+  finished_at: null,
+  cancel_requested: false,
+  log: ['10:05:00  ingesting from 2 source(s)'],
+};
+
+export const failedJob: Job = {
+  ...doneJob,
+  id: 'job-failed-1',
+  kind: 'screen',
+  status: 'failed',
+  stages: [
+    {
+      name: 'screen',
+      label: 'Backtest every strategy',
+      status: 'failed',
+      detail: 'No symbols in the database yet',
+      current: 0,
+      total: 0,
+    },
+  ],
+  result: null,
+  error: 'No symbols in the database yet — ingest and reconcile first.',
+  log: ['10:00:01  failed: No symbols in the database yet'],
+};
+
+export const sources: SourcesResponse = {
+  enabled_in_settings: ['merolagani', 'nepalipaisa'],
+  sources: [
+    {
+      name: 'merolagani',
+      enabled: true,
+      base_url: 'https://merolagani.com',
+      access_method: 'scrape',
+      confidence: 'high',
+      endpoints: [{ name: 'today_price', path: '/LatestMarket.aspx', method: 'GET' }],
+    },
+    {
+      name: 'chukul',
+      enabled: false,
+      base_url: 'https://chukul.com',
+      access_method: 'api',
+      confidence: 'medium',
+      endpoints: [],
+    },
+  ],
+};
+
+export const tableSummaries: TableSummary[] = [
+  { name: 'price_bars', rows: 4880 },
+  { name: 'reconciled_prices', rows: 2440 },
+  { name: 'signals', rows: 0 },
+];
+
+export const tablePage: TablePage = {
+  name: 'price_bars',
+  columns: ['symbol', 'business_date', 'close', 'volume'],
+  rows: [
+    { symbol: 'NABIL', business_date: '2026-08-22', close: 1180.25, volume: 4200 },
+    { symbol: 'HBL', business_date: '2026-08-22', close: 545.5, volume: 1800 },
+  ],
+  total: 4880,
+  limit: 100,
+  offset: 0,
+};
+
+export const corporateActions: CorporateActionRow[] = [
+  {
+    symbol: 'NABIL',
+    ex_date: '2026-08-01',
+    action_type: 'bonus',
+    ratio_numerator: 1,
+    ratio_denominator: 10,
+    factor: 0.909091,
+    source: 'manual',
+    notes: 'AGM decision',
+    description: 'bonus 1:10',
+  },
+];
+
+export const paperTrades: PaperTradeRow[] = [
+  {
+    trade_id: 'trade-2',
+    symbol: 'NABIL',
+    side: 'BUY',
+    business_date: '2026-08-22',
+    quantity: 10,
+    price: 1180.25,
+    gross_amount: 11802.5,
+    broker_commission: 42.49,
+    sebon_fee: 1.77,
+    dp_charge: 25,
+    cgt: 0,
+    net_amount: 11871.76,
+    strategy: null,
+  },
+  {
+    trade_id: 'trade-1',
+    symbol: 'HBL',
+    side: 'SELL',
+    business_date: '2026-08-20',
+    quantity: 5,
+    price: 545.5,
+    gross_amount: 2727.5,
+    broker_commission: 9.82,
+    sebon_fee: 0.41,
+    dp_charge: 25,
+    cgt: 18.2,
+    net_amount: 2674.07,
+    strategy: 'sma_cross',
+  },
+];
+
+export const bulkStats: BulkStatsResponse = {
+  symbols: ['NABIL', 'HBL'],
+  periods_per_year: 252,
+  rows: [
+    { symbol: 'NABIL', bars: 240, cagr_pct: 18.4321, sharpe: 1.2345, max_drawdown_pct: -12.5 },
+    { symbol: 'HBL', bars: 230, cagr_pct: -4.21, sharpe: -0.33, max_drawdown_pct: -22.75 },
+  ],
+};
+
+export const bulkSignals: BulkSignalsResponse = {
+  strategy: 'sma_cross',
+  count: 3,
+  rows: [
+    { symbol: 'NABIL', business_date: '2026-08-22', strategy: 'sma_cross', action: 'BUY', strength: 0.72, reason: 'fast SMA crossed above slow SMA', price: 1180.25 },
+    { symbol: 'HBL', business_date: '2026-08-22', strategy: 'sma_cross', action: 'SELL', strength: 0.41, reason: 'fast SMA crossed below slow SMA', price: 545.5 },
+    { symbol: 'SCB', business_date: '2026-08-22', strategy: 'sma_cross', action: 'HOLD', strength: null, reason: '', price: 610 },
+  ],
+};
+
+export const aiModels: AiModelsResponse = {
+  online: true,
+  tiers: {
+    bulk: [
+      { name: 'groq', known: true, available: true, model: 'llama-3.3-70b' },
+      { name: 'gemini', known: true, available: false, model: 'gemini-2.0-flash' },
+    ],
+    synthesis: [{ name: 'anthropic', known: true, available: true, model: 'claude-sonnet-5' }],
+  },
+  usable_legs: 2,
+  banner: null,
+  budget: {
+    day: '2026-08-22', week: '2026-W34', calls: 2, max_calls: 20, calls_left: 18,
+    tokens: 1000, max_tokens: 10000, tokens_left: 9000, deep_passes: 0, max_deep_passes: 2,
+    deep_passes_left: 2, cached_calls: 1, failed_calls: 0, exhausted: false,
+  },
+  cache: {
+    entries: 7,
+    oldest: '2026-08-21T09:00:00Z',
+    newest: '2026-08-22T09:00:00Z',
+    ttl_hours: 24,
+    enabled: true,
+  },
+};
+
+export const aiTestOk: AiTestResult = {
+  ok: true,
+  tier: 'synthesis',
+  provider: 'anthropic',
+  model: 'claude-sonnet-5',
+  total_tokens: 42,
+  text: 'pong',
+  error: null,
+};
+
+export const journalCalibration: Array<Record<string, unknown>> = [
+  { band: 'LIKELY', predictions: 12, hits: 9, hit_rate_pct: 75, mean_confidence: 0.72 },
+  { band: 'COIN_FLIP', predictions: 8, hits: 3, hit_rate_pct: 37.5, mean_confidence: 0.48 },
 ];

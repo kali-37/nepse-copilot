@@ -16,17 +16,27 @@ import {
   Settings,
   Gavel,
   HeartPulse,
+  Bot,
+  BookMarked,
+  Database,
+  Radar,
+  Terminal,
 } from 'lucide-react';
 
 const NAV_ITEMS = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
   { to: '/symbols', label: 'Symbols', icon: BarChart3 },
+  { to: '/signals', label: 'Signals', icon: Radar },
   { to: '/portfolio', label: 'Portfolio', icon: Briefcase },
   { to: '/backtest', label: 'Backtest', icon: FlaskConical },
   { to: '/rashifal', label: 'Rashifal', icon: Sparkles },
+  { to: '/journal', label: 'Journal', icon: BookMarked },
   { to: '/auction', label: 'Auction', icon: Gavel },
   { to: '/meroshare', label: 'MeroShare', icon: Landmark },
   { to: '/research', label: 'Research', icon: Search },
+  { to: '/data', label: 'Data', icon: Database },
+  { to: '/ai', label: 'AI', icon: Bot },
+  { to: '/operations', label: 'Operations', icon: Terminal },
   { to: '/health', label: 'Health', icon: HeartPulse },
   { to: '/settings', label: 'Settings', icon: Settings },
 ];

@@ -3,11 +3,16 @@ import { RootLayout } from './layouts/RootLayout';
 import { DashboardPage } from './pages/Dashboard';
 import { SymbolsPage } from './pages/Symbols';
 import { SymbolDetailPage } from './pages/SymbolDetail';
+import { SignalsPage } from './pages/Signals';
 import { PortfolioPage } from './pages/Portfolio';
 import { BacktestPage } from './pages/Backtest';
 import { RashifalPage } from './pages/Rashifal';
+import { JournalPage } from './pages/Journal';
 import { MeroSharePage } from './pages/MeroShare';
 import { ResearchPage } from './pages/Research';
+import { DataPage } from './pages/Data';
+import { AiPage } from './pages/Ai';
+import { OperationsPage } from './pages/Operations';
 import { SettingsPage } from './pages/Settings';
 import { AuctionPage } from './pages/Auction';
 import { HealthPage } from './pages/Health';
@@ -20,12 +25,17 @@ export default function App() {
           <Route path="/" element={<DashboardPage />} />
           <Route path="/symbols" element={<SymbolsPage />} />
           <Route path="/symbols/:symbol" element={<SymbolDetailPage />} />
+          <Route path="/signals" element={<SignalsPage />} />
           <Route path="/portfolio" element={<PortfolioPage />} />
           <Route path="/backtest" element={<BacktestPage />} />
           <Route path="/rashifal" element={<RashifalPage />} />
+          <Route path="/journal" element={<JournalPage />} />
           <Route path="/auction" element={<AuctionPage />} />
           <Route path="/meroshare" element={<MeroSharePage />} />
           <Route path="/research" element={<ResearchPage />} />
+          <Route path="/data" element={<DataPage />} />
+          <Route path="/ai" element={<AiPage />} />
+          <Route path="/operations" element={<OperationsPage />} />
           <Route path="/health" element={<HealthPage />} />
           <Route path="/settings" element={<SettingsPage />} />
         </Routes>

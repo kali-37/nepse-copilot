@@ -464,3 +464,167 @@ export interface HealthSnapshot {
   fail: number;
   off: number;
 }
+
+// --------------------------------------------------------------- background jobs
+export type JobKind = 'ingest' | 'reconcile' | 'run-daily' | 'rag-index' | 'screen';
+
+export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
+
+export type JobStageStatus = 'pending' | 'running' | 'ok' | 'failed' | 'skipped';
+
+export interface JobStage {
+  name: string;
+  label: string;
+  status: JobStageStatus;
+  detail: string;
+  /** Items processed. 0/0 means the stage cannot count its work. */
+  current: number;
+  total: number;
+}
+
+export interface Job {
+  id: string;
+  kind: JobKind;
+  params: Record<string, unknown>;
+  status: JobStatus;
+  stages: JobStage[];
+  result: Record<string, unknown> | null;
+  error: string | null;
+  created_at: string;
+  started_at: string | null;
+  finished_at: string | null;
+  cancel_requested: boolean;
+  /** Absent on the list endpoint, which omits log bodies. */
+  log?: string[];
+}
+
+export interface JobList {
+  jobs: Job[];
+  running: string | null;
+  kinds: string[];
+}
+
+// ------------------------------------------------------------------ operations
+export interface SourceEndpoint {
+  name: string;
+  path: string;
+  method: string;
+}
+
+export interface SourceInfo {
+  name: string;
+  enabled: boolean;
+  base_url: string;
+  access_method: string;
+  confidence: string | null;
+  endpoints: SourceEndpoint[];
+}
+
+export interface SourcesResponse {
+  enabled_in_settings: string[];
+  sources: SourceInfo[];
+}
+
+export interface TableSummary {
+  name: string;
+  rows: number;
+}
+
+export interface TablePage {
+  name: string;
+  columns: string[];
+  rows: Array<Record<string, unknown>>;
+  total: number;
+  limit: number;
+  offset: number;
+}
+
+export interface CorporateActionRow {
+  symbol: string;
+  ex_date: string;
+  action_type: string;
+  ratio_numerator: number;
+  ratio_denominator: number;
+  factor: number;
+  source: string;
+  notes: string;
+  description: string;
+}
+
+export interface PaperTradeRow {
+  trade_id: string;
+  symbol: string;
+  side: string;
+  business_date: string;
+  quantity: number;
+  price: number;
+  gross_amount: number;
+  broker_commission: number;
+  sebon_fee: number;
+  dp_charge: number;
+  cgt: number;
+  net_amount: number;
+  strategy: string | null;
+}
+
+export interface PaperTradeResult {
+  trade: Omit<PaperTradeRow, 'trade_id' | 'strategy'>;
+  portfolio: PortfolioSummary;
+}
+
+export interface BulkStatsResponse {
+  symbols: string[];
+  periods_per_year?: number;
+  rows: Array<Record<string, unknown>>;
+}
+
+export interface BulkSignalRow {
+  symbol: string;
+  business_date: string;
+  strategy: string;
+  action: string;
+  strength: number | null;
+  reason: string;
+  price: number | null;
+}
+
+export interface BulkSignalsResponse {
+  strategy: string;
+  count: number;
+  rows: BulkSignalRow[];
+}
+
+export interface AiProviderLeg {
+  name: string;
+  known: boolean;
+  available: boolean;
+  model: string | null;
+}
+
+export interface AiCacheStats {
+  entries: number;
+  oldest: string | null;
+  newest: string | null;
+  ttl_hours: number;
+  enabled: boolean;
+}
+
+export interface AiModelsResponse {
+  online: boolean;
+  tiers: Record<string, AiProviderLeg[]>;
+  usable_legs: number;
+  banner: string | null;
+  /** The same caps as `/ai/budget`, without the ledger rows. */
+  budget: Omit<AiBudget, 'history'>;
+  cache: AiCacheStats;
+}
+
+export interface AiTestResult {
+  ok: boolean;
+  tier: string;
+  provider: string | null;
+  model: string | null;
+  total_tokens: number;
+  text: string;
+  error: string | null;
+}

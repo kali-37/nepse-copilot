@@ -15,6 +15,8 @@ interface Props<T> {
   sortKey?: string;
   sortDir?: 'asc' | 'desc';
   onSort?: (key: string) => void;
+  /** Accessible name. Worth setting when a page shows more than one table. */
+  label?: string;
 }
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -29,10 +31,11 @@ export function DataTable<T extends object>({
   sortKey,
   sortDir,
   onSort,
+  label,
 }: Props<T>) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-sm">
+      <table className="w-full text-sm" aria-label={label}>
         <thead>
           <tr className="border-b border-border">
             {columns.map((col) => (

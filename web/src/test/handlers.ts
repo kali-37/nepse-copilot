@@ -75,4 +75,59 @@ export const handlers = [
   http.get('*/api/ai/budget', () => HttpResponse.json(fx.aiBudget)),
   http.get('*/api/settings/watchlist', () => HttpResponse.json(fx.watchlist)),
   http.put('*/api/settings/watchlist', () => HttpResponse.json(fx.watchlist)),
+
+  // ------------------------------------------------------------- operations
+  // The default is an idle server: no job running, none in history. Tests that
+  // care about a live job override with `server.use(...)`.
+  http.get('*/api/jobs', () =>
+    HttpResponse.json({
+      jobs: [],
+      running: null,
+      kinds: ['ingest', 'rag-index', 'reconcile', 'run-daily', 'screen'],
+    })
+  ),
+  http.post('*/api/jobs', () => HttpResponse.json(fx.doneJob)),
+  http.get('*/api/jobs/:id', () => HttpResponse.json(fx.doneJob)),
+  http.post('*/api/jobs/:id/cancel', () =>
+    HttpResponse.json({ ...fx.runningJob, cancel_requested: true })
+  ),
+
+  http.get('*/api/sources', () => HttpResponse.json(fx.sources)),
+  http.get('*/api/strategies', () =>
+    HttpResponse.json({
+      strategies: ['bollinger', 'donchian', 'ichimoku', 'macd', 'mean_reversion', 'rsi', 'sma_cross', 'supertrend'],
+    })
+  ),
+
+  http.get('*/api/tables', () => HttpResponse.json({ tables: fx.tableSummaries })),
+  http.get('*/api/tables/:name', ({ params, request }) => {
+    const offset = Number(new URL(request.url).searchParams.get('offset') ?? 0);
+    return HttpResponse.json({ ...fx.tablePage, name: String(params.name), offset });
+  }),
+
+  http.get('*/api/corporate-actions', () => HttpResponse.json(fx.corporateActions)),
+  http.post('*/api/corporate-actions', () => HttpResponse.json(fx.corporateActions[0])),
+
+  http.get('*/api/paper/trades', () => HttpResponse.json(fx.paperTrades)),
+  http.post('*/api/paper/trades', () =>
+    HttpResponse.json({ trade: fx.paperTrades[0], portfolio: fx.portfolio })
+  ),
+
+  http.get('*/api/stats', () => HttpResponse.json(fx.bulkStats)),
+  http.get('*/api/signals', () => HttpResponse.json(fx.bulkSignals)),
+
+  http.get('*/api/ai/models', () => HttpResponse.json(fx.aiModels)),
+  http.post('*/api/ai/test', () => HttpResponse.json(fx.aiTestOk)),
+
+  // ---------------------------------------------------------------- journal
+  http.get('*/api/journal/review-queue', () => HttpResponse.json([fx.journalHistory[1]])),
+  http.get('*/api/journal/calibration', () => HttpResponse.json(fx.journalCalibration)),
+  http.post('*/api/journal/score', () => HttpResponse.json([])),
+  http.post('*/api/journal/:id/review', () => HttpResponse.json(fx.journalHistory[0])),
+  http.post('*/api/journal/:id/distill', ({ params }) =>
+    HttpResponse.json({ prediction_id: String(params.id), lesson_id: 4 })
+  ),
+  http.post('*/api/journal/:id/retire', () =>
+    HttpResponse.json({ ...fx.journalHistory[1], status: 'retired' })
+  ),
 ];
