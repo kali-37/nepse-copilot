@@ -1,16 +1,121 @@
 import { useEffect, useState } from 'react';
 import { api } from '../api/client';
-import type { HoldingComparison, PortfolioSummary } from '../api/types';
+import type { HoldingComparison, PaperTradeResult, PaperTradeRow, PortfolioSummary } from '../api/types';
 import { Card } from '../components/ui/Card';
 import { StatCard } from '../components/ui/StatCard';
 import { DataTable } from '../components/ui/DataTable';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
-import { Wallet, TrendingUp, TrendingDown, DollarSign } from 'lucide-react';
+import { Wallet, TrendingUp, TrendingDown, DollarSign, ShoppingCart } from 'lucide-react';
+
+/** A simulated fill. Every Nepal cost is applied by the backend, and the
+ *  breakdown of the last one is shown so the fees are never invisible. */
+function TradeForm({ onFilled }: { onFilled: (result: PaperTradeResult) => void }) {
+  const [symbol, setSymbol] = useState('');
+  const [side, setSide] = useState<'buy' | 'sell'>('buy');
+  const [price, setPrice] = useState('');
+  const [quantity, setQuantity] = useState('');
+  const [businessDate, setBusinessDate] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setBusy(true);
+    setError(null);
+    try {
+      onFilled(
+        await api.recordPaperTrade({
+          symbol: symbol.trim().toUpperCase(),
+          side,
+          price: Number(price),
+          quantity: Number(quantity),
+          business_date: businessDate || undefined,
+        })
+      );
+      setSymbol('');
+      setPrice('');
+      setQuantity('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="flex flex-wrap items-end gap-3">
+      <label className="block text-sm">
+        <span className="mb-1 block text-xs font-medium text-text-secondary">Symbol</span>
+        <input
+          required
+          value={symbol}
+          onChange={(e) => setSymbol(e.target.value)}
+          className="h-10 w-32 rounded-lg border border-border bg-surface px-3 text-sm uppercase text-text-primary"
+        />
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block text-xs font-medium text-text-secondary">Side</span>
+        <select
+          value={side}
+          onChange={(e) => setSide(e.target.value as 'buy' | 'sell')}
+          className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text-primary"
+        >
+          <option value="buy">buy</option>
+          <option value="sell">sell</option>
+        </select>
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block text-xs font-medium text-text-secondary">Price</span>
+        <input
+          required
+          type="number"
+          step="0.01"
+          min="0.01"
+          value={price}
+          onChange={(e) => setPrice(e.target.value)}
+          className="h-10 w-28 rounded-lg border border-border bg-surface px-3 text-sm text-text-primary"
+        />
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block text-xs font-medium text-text-secondary">Quantity</span>
+        <input
+          required
+          type="number"
+          min="1"
+          value={quantity}
+          onChange={(e) => setQuantity(e.target.value)}
+          className="h-10 w-28 rounded-lg border border-border bg-surface px-3 text-sm text-text-primary"
+        />
+      </label>
+      <label className="block text-sm">
+        <span className="mb-1 block text-xs font-medium text-text-secondary">
+          Date (blank = today)
+        </span>
+        <input
+          type="date"
+          value={businessDate}
+          onChange={(e) => setBusinessDate(e.target.value)}
+          className="h-10 rounded-lg border border-border bg-surface px-3 text-sm text-text-primary"
+        />
+      </label>
+      <button
+        disabled={busy}
+        className="inline-flex h-10 items-center gap-2 rounded-lg bg-nepse-600 px-4 text-sm font-semibold text-white hover:bg-nepse-700 disabled:opacity-50"
+      >
+        <ShoppingCart className="h-4 w-4" />
+        {busy ? 'Recording...' : `Record ${side}`}
+      </button>
+      {error && <p className="w-full text-sm text-negative">{error}</p>}
+    </form>
+  );
+}
 
 export function PortfolioPage() {
   const [data, setData] = useState<PortfolioSummary | null>(null);
   const [comparison, setComparison] = useState<HoldingComparison[]>([]);
+  const [trades, setTrades] = useState<PaperTradeRow[]>([]);
+  const [lastFill, setLastFill] = useState<PaperTradeResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -18,10 +123,12 @@ export function PortfolioPage() {
     Promise.all([
       api.portfolio(),
       api.meroshareCompare().catch(() => ({ rows: [], summary: {} })),
+      api.paperTrades().catch(() => []),
     ])
-      .then(([portfolio, realVsPaper]) => {
+      .then(([portfolio, realVsPaper, paperTrades]) => {
         setData(portfolio);
         setComparison(realVsPaper.rows);
+        setTrades(paperTrades);
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
@@ -81,6 +188,7 @@ export function PortfolioPage() {
           <p className="py-8 text-center text-sm text-text-tertiary">No open positions</p>
         ) : (
           <DataTable
+            label="Holdings"
             columns={[
               { key: 'symbol', label: 'Symbol', sortable: true },
               { key: 'quantity', label: 'Qty', sortable: true },
@@ -150,12 +258,95 @@ export function PortfolioPage() {
         )}
       </Card>
 
-      {/* Trade history */}
-      <Card title="Trade history">
-        <p className="py-4 text-sm text-text-tertiary">
-          {data.trades} trade{data.trades !== 1 ? 's' : ''} recorded.
-          {data.trades > 0 && ' Use the CLI (nepse-trader paper status) for detailed trade history.'}
+      <Card title="Record a simulated trade">
+        <p className="mb-4 text-sm text-text-secondary">
+          Simulated fills only &mdash; there is no live order path in this system, by design. Broker
+          commission, the SEBON fee, the DP charge and capital gains tax on a realized gain are all
+          applied for you.
         </p>
+        <TradeForm
+          onFilled={(result) => {
+            setLastFill(result);
+            setData(result.portfolio);
+            void api.paperTrades().then(setTrades).catch(() => undefined);
+          }}
+        />
+        {lastFill && (
+          <dl className="mt-4 grid grid-cols-2 gap-x-6 gap-y-1.5 border-t border-border pt-4 text-sm sm:grid-cols-4">
+            {[
+              ['gross', lastFill.trade.gross_amount],
+              ['commission', lastFill.trade.broker_commission],
+              ['SEBON fee', lastFill.trade.sebon_fee],
+              ['DP charge', lastFill.trade.dp_charge],
+              ['capital gains tax', lastFill.trade.cgt],
+              ['net', lastFill.trade.net_amount],
+            ].map(([label, value]) => (
+              <div key={String(label)} className="flex justify-between gap-2">
+                <dt className="text-text-tertiary">{label}</dt>
+                <dd className="font-medium text-text-primary">{Number(value).toFixed(2)}</dd>
+              </div>
+            ))}
+          </dl>
+        )}
+      </Card>
+
+      {/* Trade history */}
+      <Card
+        title="Trade history"
+        // The replayed count and the listed rows are different facts: the list
+        // is capped, so say how many exist as well as how many are shown.
+        actions={
+          <span className="text-xs text-text-tertiary">
+            {data.trades} trade{data.trades === 1 ? '' : 's'} recorded
+            {trades.length < data.trades && ` · showing the latest ${trades.length}`}
+          </span>
+        }
+      >
+        {trades.length === 0 ? (
+          <p className="py-6 text-center text-sm text-text-tertiary">No trades recorded yet.</p>
+        ) : (
+          <DataTable
+            label="Trade history"
+            columns={[
+              { key: 'business_date', label: 'Date', sortable: true },
+              { key: 'symbol', label: 'Symbol', sortable: true },
+              {
+                key: 'side',
+                // The API stores the side upper-cased, so compare case-insensitively.
+                label: 'Side',
+                render: (r) => (
+                  <span
+                    className={
+                      String(r.side).toUpperCase() === 'BUY' ? 'text-positive' : 'text-negative'
+                    }
+                  >
+                    {r.side}
+                  </span>
+                ),
+              },
+              { key: 'quantity', label: 'Qty', sortable: true },
+              { key: 'price', label: 'Price', render: (r) => Number(r.price).toFixed(2) },
+              {
+                key: 'gross_amount',
+                label: 'Gross',
+                render: (r) => Number(r.gross_amount).toFixed(2),
+              },
+              {
+                key: 'costs',
+                label: 'Costs',
+                render: (r) =>
+                  (
+                    Number(r.broker_commission) +
+                    Number(r.sebon_fee) +
+                    Number(r.dp_charge) +
+                    Number(r.cgt)
+                  ).toFixed(2),
+              },
+              { key: 'net_amount', label: 'Net', render: (r) => Number(r.net_amount).toFixed(2) },
+            ]}
+            data={trades}
+          />
+        )}
       </Card>
     </div>
   );
