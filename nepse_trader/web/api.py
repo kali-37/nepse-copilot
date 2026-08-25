@@ -4,6 +4,7 @@ import json
 import logging
 from contextlib import asynccontextmanager
 from datetime import UTC, date, datetime
+from decimal import Decimal
 from pathlib import Path
 from typing import Any, Literal
 
@@ -36,7 +37,8 @@ from nepse_trader.ai import Analyst, TokenBudget
 from nepse_trader.analysis.backtest import Backtester
 from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.analysis.strategies import STRATEGIES, build_strategy
-from nepse_trader.config import Settings, get_settings
+from nepse_trader.config import Settings, get_settings, load_sources
+from nepse_trader.export import EXPORT_TABLES
 from nepse_trader.health import record_snapshot, snapshot_history, system_health
 from nepse_trader.ingest.fundamentals import MeroLaganiFundamentalsClient
 from nepse_trader.meroshare import (
@@ -52,10 +54,12 @@ from nepse_trader.meroshare import (
     sync_history,
     sync_status,
 )
+from nepse_trader.models import CorporateAction, CorporateActionType, SourceName
 from nepse_trader.pipeline import DailyPipeline
 from nepse_trader.rag import DocumentIndex, build_evidence, build_retriever
 from nepse_trader.rag.corpus import KIND_NEWS
 from nepse_trader.storage import Storage
+from nepse_trader.web.jobs import HANDLERS, JobBusy, registry
 
 log = logging.getLogger("nepse_trader.web")
 
@@ -1264,6 +1268,432 @@ def meroshare_compare(cash: float = Query(100_000.0, gt=0)):
         for diff in diffs
     ]
     return {"rows": rows, "summary": comparison_summary(diffs)}
+
+
+# ---------------------------------------------------------------------------
+# Background jobs — the long-running CLI commands, without a blocking request
+# ---------------------------------------------------------------------------
+class JobSubmitRequest(BaseModel):
+    """Start one of the long-running commands.
+
+    ``params`` is passed through to the handler rather than being modelled per
+    kind: the five job kinds take overlapping but different options, and a
+    discriminated union of five near-identical models would be more schema than
+    the handlers themselves. Handlers validate what they read, and a bad value
+    surfaces as a failed job with the reason attached.
+    """
+
+    kind: Literal["ingest", "reconcile", "run-daily", "rag-index", "screen"]
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+@app.post("/api/jobs")
+def submit_job(body: JobSubmitRequest):
+    """Queue a job and return it immediately, before any work has happened.
+
+    409 when something is already running — every job writes to the same SQLite
+    file, so this build runs one at a time and points the caller at the job in
+    progress instead of interleaving two.
+    """
+    try:
+        job = registry.submit(body.kind, body.params, _settings())
+    except JobBusy as exc:
+        raise HTTPException(
+            409,
+            detail={
+                "message": f"a {exc.kind} job is already running",
+                "running_job_id": exc.job_id,
+            },
+        ) from exc
+    return job.as_dict()
+
+
+@app.get("/api/jobs")
+def list_jobs(limit: int = Query(20, ge=1, le=100)):
+    """Recent jobs, newest first, without log bodies.
+
+    ``kinds`` lets the UI render a launcher for every job type without knowing
+    the list, and ``running`` is what a page polls to re-attach to a job that
+    was started before the tab was opened.
+    """
+    return {
+        "jobs": registry.listing(limit),
+        "running": registry.running_id(),
+        "kinds": sorted(HANDLERS),
+    }
+
+
+@app.get("/api/jobs/{job_id}")
+def get_job(job_id: str):
+    """Full job state including the tail of its log. This is the poll target."""
+    payload = registry.snapshot(job_id)
+    if payload is None:
+        raise HTTPException(404, f"No job {job_id}")
+    return payload
+
+
+@app.post("/api/jobs/{job_id}/cancel")
+def cancel_job(job_id: str):
+    """Ask a job to stop at its next progress checkpoint.
+
+    Cancelling a finished job is deliberately not an error: the operator cannot
+    know it finished between the last poll and the click.
+    """
+    job = registry.cancel(job_id)
+    if job is None:
+        raise HTTPException(404, f"No job {job_id}")
+    return job.as_dict()
+
+
+# ---------------------------------------------------------------------------
+# Configured sources
+# ---------------------------------------------------------------------------
+@app.get("/api/sources")
+def sources():
+    """Every configured source, whether it is enabled, and how it is accessed."""
+    settings = _settings()
+    cfg = load_sources()
+    return {
+        "enabled_in_settings": list(settings.enabled_sources),
+        "sources": [
+            {
+                "name": name,
+                "enabled": spec.enabled,
+                "base_url": spec.base_url,
+                "access_method": spec.access_method,
+                "confidence": getattr(spec, "confidence", None),
+                "endpoints": [
+                    {
+                        "name": ep_name,
+                        "path": getattr(ep, "path", ""),
+                        "method": getattr(ep, "method", "GET"),
+                    }
+                    for ep_name, ep in spec.endpoints.items()
+                ],
+            }
+            for name, spec in cfg.sources.items()
+        ],
+    }
+
+
+# ---------------------------------------------------------------------------
+# Table browser — the `export` command, rendered instead of written
+# ---------------------------------------------------------------------------
+#: Newest-first ordering per exportable table. Keys are exactly
+#: :data:`EXPORT_TABLES`, which doubles as the identifier whitelist — a name that
+#: is not a key never reaches SQL.
+_TABLE_ORDER = {
+    "price_bars": "business_date DESC, symbol",
+    "reconciled_prices": "business_date DESC, symbol",
+    "signals": "business_date DESC, symbol",
+    "index_values": "business_date DESC, name",
+    "ingest_log": "id DESC",
+    "corporate_actions": "ex_date DESC, symbol",
+    "paper_trades": "business_date DESC, trade_id DESC",
+}
+
+
+@app.get("/api/tables")
+def list_tables():
+    """The exportable tables and their row counts.
+
+    This is the browser-side answer to ``export csv``: the dashboard renders the
+    rows in-page, so nothing is written to disk and nothing is downloaded.
+    """
+    conn = _storage()._conn
+    out = []
+    for name in EXPORT_TABLES:
+        count = conn.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]  # noqa: S608
+        out.append({"name": name, "rows": count})
+    return {"tables": out}
+
+
+@app.get("/api/tables/{name}")
+def read_table(
+    name: str,
+    limit: int = Query(100, ge=1, le=1000),
+    offset: int = Query(0, ge=0),
+):
+    """One page of a table, newest first, with its column order and total.
+
+    Paged in SQL rather than by slicing ``Storage.all_*()`` so opening the
+    browser on ``price_bars`` does not pull the whole history into memory.
+    """
+    if name not in _TABLE_ORDER:
+        raise HTTPException(404, f"Unknown table {name!r}. Try one of: {', '.join(EXPORT_TABLES)}")
+    conn = _storage()._conn
+    total = conn.execute(f"SELECT COUNT(*) FROM {name}").fetchone()[0]  # noqa: S608
+    cursor = conn.execute(
+        f"SELECT * FROM {name} ORDER BY {_TABLE_ORDER[name]} LIMIT ? OFFSET ?",  # noqa: S608
+        (limit, offset),
+    )
+    rows = [dict(r) for r in cursor.fetchall()]
+    columns = [d[0] for d in cursor.description] if cursor.description else []
+    return {
+        "name": name,
+        "columns": columns,
+        "rows": rows,
+        "total": total,
+        "limit": limit,
+        "offset": offset,
+    }
+
+
+# ---------------------------------------------------------------------------
+# Corporate actions — manual entry, as in the CLI
+# ---------------------------------------------------------------------------
+class CorporateActionRequest(BaseModel):
+    """A manually recorded bonus / rights / split / dividend."""
+
+    symbol: str = Field(min_length=1)
+    ex_date: str
+    action_type: Literal["bonus", "rights", "split", "dividend"]
+    ratio_numerator: int = Field(1, gt=0)
+    ratio_denominator: int = Field(1, gt=0)
+    notes: str = ""
+
+
+def _corporate_action_response(ca: CorporateAction) -> dict[str, Any]:
+    return {
+        "symbol": ca.symbol,
+        "ex_date": ca.ex_date.isoformat(),
+        "action_type": ca.action_type.value,
+        "ratio_numerator": ca.ratio_numerator,
+        "ratio_denominator": ca.ratio_denominator,
+        "factor": float(ca.factor),
+        "source": ca.source.value,
+        "notes": ca.notes or "",
+        "description": ca.description,
+    }
+
+
+@app.get("/api/corporate-actions")
+def list_corporate_actions(symbol: str | None = Query(None)):
+    """Stored corporate actions, optionally for one symbol."""
+    actions = _storage().corporate_actions(symbol=_symbol_filter(symbol))
+    return [_corporate_action_response(ca) for ca in actions]
+
+
+@app.post("/api/corporate-actions")
+def add_corporate_action(body: CorporateActionRequest):
+    """Record a corporate action by hand.
+
+    Prices stay as published — this table is the record of the event, not a
+    retroactive adjustment of history.
+    """
+    try:
+        ex_date = date.fromisoformat(body.ex_date)
+    except ValueError as exc:
+        raise HTTPException(400, f"ex_date must be YYYY-MM-DD, got {body.ex_date!r}") from exc
+    factor = round(body.ratio_denominator / body.ratio_numerator, 6)
+    action = CorporateAction(
+        symbol=body.symbol.strip().upper(),
+        ex_date=ex_date,
+        action_type=CorporateActionType(body.action_type),
+        ratio_numerator=body.ratio_numerator,
+        ratio_denominator=body.ratio_denominator,
+        factor=Decimal(str(factor)),
+        source=SourceName.MANUAL,
+        notes=body.notes,
+    )
+    _storage().upsert_corporate_action(action)
+    return _corporate_action_response(action)
+
+
+# ---------------------------------------------------------------------------
+# Paper trades — simulated fills only; there is no live order path anywhere
+# ---------------------------------------------------------------------------
+class PaperTradeRequest(BaseModel):
+    """A simulated fill. Full Nepal fees apply, and CGT on a realized gain.
+
+    ``cash`` is the replay parameter, not a deposit: the portfolio is rebuilt
+    from every recorded trade starting from this opening balance, so changing it
+    between trades silently re-prices the whole book. It defaults to the same
+    100,000 the CLI and the portfolio view use, and the UI keeps it fixed.
+    """
+
+    symbol: str = Field(min_length=1)
+    side: Literal["buy", "sell"]
+    price: float = Field(gt=0)
+    quantity: int = Field(gt=0)
+    business_date: str | None = None
+    cash: float = Field(100_000.0, gt=0)
+
+
+@app.get("/api/paper/trades")
+def paper_trades(limit: int = Query(100, ge=1, le=1000)):
+    """Recorded simulated trades, newest first."""
+    rows = [dict(r) for r in _storage().all_paper_trades()]
+    rows.sort(key=lambda r: (str(r.get("business_date") or ""), r.get("trade_id") or ""), reverse=True)
+    return rows[:limit]
+
+
+@app.post("/api/paper/trades")
+def record_paper_trade(body: PaperTradeRequest):
+    """Record a simulated buy or sell and return the fill plus the new book.
+
+    Replays the existing trades first so position and cost basis are correct,
+    then attaches storage so only the new trade is persisted — the same two-step
+    the ``paper buy``/``paper sell`` commands use.
+    """
+    try:
+        trade_date = date.fromisoformat(body.business_date) if body.business_date else date.today()
+    except ValueError as exc:
+        raise HTTPException(
+            400, f"business_date must be YYYY-MM-DD, got {body.business_date!r}"
+        ) from exc
+
+    pipe = _pipeline()
+    portfolio = pipe.replay_portfolio(body.cash)
+    portfolio.storage = pipe.storage
+    symbol = body.symbol.strip().upper()
+    fill = portfolio.buy if body.side == "buy" else portfolio.sell
+    try:
+        trade = fill(symbol, body.price, body.quantity, trade_date)
+    except ValueError as exc:
+        # Insufficient cash or selling more than is held. Operator error, not a
+        # server fault, so 400 with the portfolio's own wording.
+        raise HTTPException(400, str(exc)) from exc
+    return {
+        "trade": {
+            "symbol": trade.symbol,
+            "side": trade.side.value if hasattr(trade.side, "value") else str(trade.side),
+            "business_date": trade.business_date.isoformat(),
+            "quantity": trade.quantity,
+            "price": float(trade.price),
+            "gross_amount": float(trade.gross_amount),
+            "broker_commission": float(trade.broker_commission),
+            "sebon_fee": float(trade.sebon_fee),
+            "dp_charge": float(trade.dp_charge),
+            "cgt": float(trade.cgt),
+            "net_amount": float(trade.net_amount),
+        },
+        "portfolio": portfolio.to_dict(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Bulk analytics — the whole-market views the CLI prints as tables
+# ---------------------------------------------------------------------------
+@app.get("/api/stats")
+def bulk_stats(
+    symbols: str | None = Query(None, description="Comma list. Default: the first `top` stored"),
+    top: int = Query(25, ge=1, le=500),
+    periods: int = Query(252, ge=1, le=366),
+):
+    """Quantitative statistics for many symbols at once — the `stats` command."""
+    pipe = _pipeline()
+    requested = [s.strip().upper() for s in (symbols or "").split(",") if s.strip()]
+    target = requested or pipe.storage.symbols()[:top]
+    if not target:
+        return {"symbols": [], "rows": []}
+    return {
+        "symbols": target,
+        "periods_per_year": periods,
+        "rows": pipe.quant_stats(target, periods_per_year=periods),
+    }
+
+
+@app.get("/api/signals")
+def bulk_signals(
+    strategy: str = Query("sma_cross"),
+    symbols: str | None = Query(None, description="Comma list. Default: the first `top` stored"),
+    top: int = Query(25, ge=1, le=500),
+    actionable_only: bool = Query(False, description="Drop HOLD rows"),
+):
+    """The latest signal per symbol for one strategy — the whole-market `signal` view.
+
+    Note this recomputes and persists signals, exactly as the per-symbol route
+    already does; it is a read in the HTTP sense only.
+    """
+    if strategy not in STRATEGIES:
+        raise HTTPException(400, f"Unknown strategy {strategy!r}. One of: {', '.join(STRATEGIES)}")
+    pipe = _pipeline()
+    requested = [s.strip().upper() for s in (symbols or "").split(",") if s.strip()]
+    target = requested or pipe.storage.symbols()[:top]
+    rows = [
+        {
+            "symbol": s.symbol,
+            "business_date": s.business_date.isoformat(),
+            "strategy": s.strategy,
+            "action": s.action.value,
+            "strength": s.strength,
+            "reason": s.reason,
+            "price": s.price,
+        }
+        for s in pipe.latest_signals(target, strategy)
+    ]
+    if actionable_only:
+        rows = [r for r in rows if r["action"] in ("BUY", "SELL")]
+    return {"strategy": strategy, "count": len(rows), "rows": rows}
+
+
+@app.get("/api/strategies")
+def strategy_names():
+    """The registered strategy names, so a UI picker cannot drift from the registry."""
+    return {"strategies": sorted(STRATEGIES)}
+
+
+# ---------------------------------------------------------------------------
+# AI provider status and connectivity
+# ---------------------------------------------------------------------------
+class AiTestRequest(BaseModel):
+    """Exercise one provider chain with a single tiny prompt."""
+
+    tier: Literal["bulk", "synthesis"] = "synthesis"
+
+
+@app.get("/api/ai/models")
+def ai_models():
+    """Each provider chain and which legs are actually usable.
+
+    Read-only and offline: reports what is configured without calling anybody,
+    so the page can be opened without spending a token.
+    """
+    from nepse_trader.ai import LLMRouter
+
+    router = LLMRouter(_storage()._conn, _settings(), online=None)
+    status = router.status()
+    usable = sum(
+        1 for legs in status["tiers"].values() for leg in legs if leg["available"]
+    )
+    return {
+        **status,
+        "usable_legs": usable,
+        "banner": (
+            None
+            if usable
+            else "No provider is usable — AI mode will degrade to normal mode. "
+            "See .env.example for what to set."
+        ),
+    }
+
+
+@app.post("/api/ai/test")
+def ai_test(body: AiTestRequest):
+    """Send one tiny prompt through a chain and report what answered.
+
+    This spends real budget and needs the network — the only honest way to know
+    a provider works is to use it, which is why it is a POST and never happens
+    on page load. A chain where nobody answers is a 200 with ``ok: false``, not
+    a 5xx: a missing third-party key is not a server fault, and the UI needs to
+    render the reason.
+    """
+    from nepse_trader.ai import LLMRouter, prompts
+
+    router = LLMRouter(_storage()._conn, _settings(), online=True)
+    response = router.complete(
+        prompts.PING, task="ai_test", tier=body.tier, max_tokens=64, use_cache=False
+    )
+    return {
+        "ok": response.ok,
+        "tier": body.tier,
+        "provider": response.provider,
+        "model": response.model,
+        "total_tokens": response.total_tokens,
+        "text": response.text.strip()[:500] if response.ok else "",
+        "error": response.error,
+    }
 
 
 # ---------------------------------------------------------------------------

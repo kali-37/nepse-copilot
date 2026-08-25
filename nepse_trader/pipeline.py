@@ -346,11 +346,16 @@ class DailyPipeline:
         rank_by: str = "sharpe",
         min_bars: int = 60,
         paper_cash: float = 100_000.0,
+        on_progress: Callable[[int, int, str], Any] | None = None,
     ) -> tuple[dict[str, str], dict]:
         """Assemble the full once-a-day report. Returns (sections, summary).
 
         sections: title -> markdown, ready for reporting.write_markdown_report.
         summary: machine-readable headline numbers for logging/alerting.
+
+        ``on_progress`` is forwarded to the screening leg, which is where nearly
+        all the wall-clock goes; callers that want a progress bar over a daily
+        run pass it here.
         """
         strategies = strategies or list(STRATEGIES)
         breadth = self.market_breadth(business_date)
@@ -367,7 +372,12 @@ class DailyPipeline:
 
         quant_rows = self.quant_stats(tracked)
         leaderboard = self.screen_strategies(
-            tracked, strategies, cash=paper_cash, min_bars=min_bars, rank_by=rank_by
+            tracked,
+            strategies,
+            cash=paper_cash,
+            min_bars=min_bars,
+            rank_by=rank_by,
+            on_progress=on_progress,
         )
         best = best_per_symbol(leaderboard, rank_by=rank_by)
         portfolio = self.replay_portfolio(paper_cash)
