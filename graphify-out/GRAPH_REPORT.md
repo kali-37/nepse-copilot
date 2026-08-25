@@ -1,167 +1,167 @@
-# Graph Report - nepse-trader  (2026-08-24)
+# Graph Report - nepse-trader  (2026-08-25)
 
 ## Corpus Check
-- 206 files · ~222,510 words
+- 221 files · ~243,374 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 4561 nodes · 11170 edges · 202 communities (175 shown, 27 thin omitted)
-- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 999 edges (avg confidence: 0.52)
+- 4832 nodes · 12069 edges · 198 communities (170 shown, 28 thin omitted)
+- Extraction: 91% EXTRACTED · 9% INFERRED · 0% AMBIGUOUS · INFERRED: 1051 edges (avg confidence: 0.51)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `18f56e4f`
+- Built from commit: `adddd615`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
 ## Community Hubs (Navigation)
 - _settings
 - LLMProvider
-- command
-- corpus.py
+- Path
+- test_rag_corpus.py
 - reporting.py
 - Storage
-- test_ai_analyst.py
-- Document
-- BaseClient
+- LLMResponse
+- DocumentIndex
+- base.py
 - test_nepse_official.py
-- test_sharesansar.py
+- SourceName
 - build_evidence
 - ResponseCache
 - parse_into
-- SymbolNote
+- TestExtractJson
 - test_strategies.py
-- test_api_phase6.py
+- MeroShareHolding
 - test_mcp_server.py
 - ._search_fts
-- nepse_trader/models.py
+- jobs.py
 - quant.py
 - doses.py
-- advisor/__init__.py
+- journal.py
 - test_properties.py
 - outcomes.py
 - Backtester
 - ChukulClient
-- WebRetriever
-- plan.py
-- client.py
-- system_health
+- BaseClient
+- advisor/__init__.py
+- MeroShareClient
+- JobRegistry
 - build_plan_card
 - Plan: NEPSE Trader — Full Completion
 - NepseAlphaClient
 - migrations.py
 - merolagani.py
 - test_costs.py
-- Any
+- MCPServer
 - test_logging_setup.py
 - analyzer.py
-- Analyst
-- is_trading_day
-- CorporateAction
+- Settings
+- add_trading_days
+- ReconciledPrice
 - DailyPipeline
-- main.py
-- LLMResponse
+- _build_advisor_result
+- _budget
 - TestAdvisor
 - types.ts
-- pipeline.py
-- sync_payload
+- screen.py
+- api.py
 - CostEngine
-- auction.py
+- _to_money
 - test_mcp_protocol.py
-- sync.py
 - test_meroshare.py
+- MeroShareCredentials
 - test_advisor_doses.py
 - Plan: Web UI Dashboard
-- _Base
+- test_web_operations.py
 - App.tsx
-- MeroShareHolding
+- meroshare/__init__.py
 - size_position
 - Developers Guide — NEPSE Trader
-- MeroShareClient
+- .parse_announcements
 - _run
 - _settings
-- _safe_run
+- main.py
 - PriceBar
 - fixtures.ts
-- _settings
+- test_ingest_news.py
 - test_pipeline.py
 - rashifal_md
 - Make It Even Better — Engineering Quality Upgrades
 - SmaCrossStrategy
 - validate_yaml
-- test_backtest_risk.py
-- sharesansar.py
+- nepse_trader/models.py
+- htmlparse.py
 - compilerOptions
-- health.py
-- TestRagSearch
+- test_health.py
+- SourceClient
 - AccountVault
-- serve_stdio
+- TestHtmlToText
 - compilerOptions
 - Tier 2 — strong analytical upside
-- HTTPException
-- protocol.py
-- indicator_document
+- get
+- Dispatcher
+- Document
 - .daily_report
-- Dashboard.tsx
+- Operations.tsx
 - renderWithProviders.tsx
 - How It Works — NEPSE Trader Internals
 - devDependencies
-- TestPersistence
+- rashifal.py
 - SellCandidate
-- Settings
+- .complete
 - walkforward.py
 - test_reporting.py
-- SourceClient
-- news.py
-- get
+- JobBusy
+- .parse_news_list
+- _advisor_run_response
 - conftest.py
-- check_freshness
-- _storage
-- _d
+- post
+- _settings
+- check_schema
 - NEPSE Trader — Agent Context
 - test_advisor_rashifal.py
-- check_schema
+- check_freshness
+- SourceSpec
 - TokenBudget
-- test_web_api.py
 - read_bool
 - dependencies
-- api.py
+- TestRagSearch
 - NEPSE Trader — Operations Runbook
 - How To Use — NEPSE Trader
-- check_meroshare
-- TestExtractResultLinks
+- TestJobRoutes
+- NewsClient
 - _ensure_app_settings
 - test_cli_advisor.py
 - Auction.tsx
 - Rashifal.tsx
 - 22. Recipes
-- check_ingest
+- TestTableBrowser
 - Capabilities — NEPSE Trader
-- rashifal.py
+- Check
 - NEPSE Trader
 - test_cli.py
 - NEPSE Trader — project skill
-- credentials.py
-- build.py
-- _to_money
+- test_rag_index.py
+- FakeAnalyst
+- config.py
 - Alerter
 - Per-site capture recipes
-- SearchHit
+- Job
 - plugins
-- TestCardNumbers
-- FakeAnalyst
+- DoseReport
+- TestExtractResultLinks
 - scripts
 - NEPSE risk & position sizing — project skill
-- add_trading_days
-- test_rag_corpus.py
-- test_health.py
-- TestSectorOfTheDay
+- news.py
+- _DummyStrategy
+- FetchResult
+- TestCitations
 - NEPSE backtest protocol — project skill
-- PlanCard
+- TestClient
 - 23. All the settings
 - package.json
-- check_ai
-- test_advisor_plan.py
+- _client
+- _decide
 - React + TypeScript + Vite
 - Health.tsx
 - tsconfig.json
@@ -172,7 +172,7 @@
 - nepse_trader/__init__.py
 - mcp_server/__init__.py
 - trading/__init__.py
-- LLMRouter
+- ExplodingAnalyst
 - @tailwindcss/vite
 - @types/react
 - @types/react-dom
@@ -181,67 +181,63 @@
 - @vitejs/plugin-react
 - vitest
 - nepse-trader
-- reconcile_bars
+- ToolSpec
 - 3. Robustness & resilience
-- @types/node
-- Any
-- Path
-- TestDegradation
-- Rashifal
-- BaseModel
-- ai_budget
-- progress_bars
-- plan_cards_md
-- HoldingDiff
-- ReconciledPrice
-- TestExpectedOutcome
-- test_storage.py
+- TestSectorOfTheDay
 - _drive
-- TestMeroShareImport
-- FundamentalData
-- TestNoNetworkAndNoLLM
-- do_not_touch_md
-- sell_queue_md
-- _m0006_meroshare
-- test_list_returning_tools_report_how_much_they_returned
+- ._split_csv
+- PlanCard
+- TestPaperTrades
+- add_corporate_action
+- progress_spinner
+- TestAiRoutes
+- plan_cards_md
 - card
 - _seed
-- ._upper_symbol
 - conn
 - conn
-- Path
+- server.py
+- TestMeroShareImport
+- conn
+- conn
+- do_not_touch_md
+- sell_queue_md
+- redact
+- JobCancelled
+- @types/node
+- Signal
 - BaseModel
 - ValueError
 - fixture
 
 ## God Nodes (most connected - your core abstractions)
-1. `Settings` - 196 edges
-2. `PriceBar` - 130 edges
-3. `Document` - 125 edges
-4. `LLMResponse` - 110 edges
-5. `CostEngine` - 104 edges
-6. `DocumentIndex` - 104 edges
-7. `Storage` - 95 edges
-8. `BaseClient` - 89 edges
-9. `TokenBudget` - 71 edges
-10. `SourceName` - 62 edges
+1. `Settings` - 217 edges
+2. `Document` - 138 edges
+3. `PriceBar` - 131 edges
+4. `DocumentIndex` - 130 edges
+5. `Storage` - 122 edges
+6. `LLMResponse` - 112 edges
+7. `CostEngine` - 102 edges
+8. `DailyPipeline` - 91 edges
+9. `BaseClient` - 89 edges
+10. `TokenBudget` - 73 edges
 
 ## Surprising Connections (you probably didn't know these)
-- `test_constants_and_card_partition_are_exact()` --calls--> `partition_cards()`  [EXTRACTED]
-  tests/test_advisor_doses.py → nepse_trader/advisor/doses.py
-- `test_invalid_allocations_are_rejected()` --calls--> `build_dose_run()`  [EXTRACTED]
-  tests/test_advisor_doses.py → nepse_trader/advisor/doses.py
-- `TestAsDict` --uses--> `Skipped`  [INFERRED]
-  tests/test_advisor_plan.py → nepse_trader/advisor/plan.py
-- `TestCardNumbers` --uses--> `Skipped`  [INFERRED]
-  tests/test_advisor_plan.py → nepse_trader/advisor/plan.py
-- `TestDecide` --uses--> `Skipped`  [INFERRED]
-  tests/test_advisor_plan.py → nepse_trader/advisor/plan.py
+- `_StubSource` --uses--> `DailyPipeline`  [INFERRED]
+  tests/test_pipeline.py → nepse_trader/pipeline.py
+- `TestAiRoutes` --uses--> `JobBusy`  [INFERRED]
+  tests/test_web_operations.py → nepse_trader/web/jobs.py
+- `TestBulkAnalytics` --uses--> `JobBusy`  [INFERRED]
+  tests/test_web_operations.py → nepse_trader/web/jobs.py
+- `TestCorporateActions` --uses--> `JobBusy`  [INFERRED]
+  tests/test_web_operations.py → nepse_trader/web/jobs.py
+- `TestInventoryRoutes` --uses--> `JobBusy`  [INFERRED]
+  tests/test_web_operations.py → nepse_trader/web/jobs.py
 
 ## Import Cycles
 - None detected.
 
-## Communities (202 total, 27 thin omitted)
+## Communities (198 total, 28 thin omitted)
 
 ### Community 0 - "_settings"
 Cohesion: 0.05
@@ -249,127 +245,127 @@ Nodes (38): _anthropic_text(), AnthropicProvider, ClaudeCliProvider, estimate_to
 
 ### Community 1 - "LLMProvider"
 Cohesion: 0.05
-Nodes (37): LLMProvider, True when the provider is configured well enough to try. Checked without any…, Anything that can turn a prompt into text., The model this provider would use right now, for the ledger., ExplodingProvider, FakeProvider, _ok(), _prime_cache() (+29 more)
+Nodes (38): LLMProvider, ABC, True when the provider is configured well enough to try. Checked without any…, Anything that can turn a prompt into text., The model this provider would use right now, for the ledger., ExplodingProvider, FakeProvider, _ok() (+30 more)
 
-### Community 2 - "command"
-Cohesion: 0.07
-Nodes (43): command, auction_list_cmd(), ca_add(), ca_list(), dashboard(), export_csv_cmd(), export_parquet_cmd(), fund_show() (+35 more)
+### Community 2 - "Path"
+Cohesion: 0.15
+Nodes (15): har_analyze(), har_redact(), har_to_config(), meroshare_import_cmd(), meroshare_toggle_cmd(), Path, Import a MeroShare CSV export without using any portal credential., Turn the optional MeroShare integration on or off in one local setting. (+7 more)
 
-### Community 3 - "corpus.py"
-Cohesion: 0.11
-Nodes (19): A strategy's decision for a symbol on a date., Signal, breadth_document(), _doc_id(), _fmt(), fundamental_document(), date, Signal (+11 more)
+### Community 3 - "test_rag_corpus.py"
+Cohesion: 0.08
+Nodes (25): build_symbol_documents(), indicator_document(), iter_documents(), price_document(), ReconciledPrice, quant_document(), A single day's OHLCV as prose., Latest reading of every indicator, with its interpretation stated. (+17 more)
 
 ### Community 4 - "reporting.py"
 Cohesion: 0.11
 Nodes (26): _fmt_num(), leaderboard_md(), market_overview_md(), _md_escape(), movers_md(), portfolio_summary(), price_bars_markdown(), print_signals() (+18 more)
 
 ### Community 5 - "Storage"
-Cohesion: 0.14
-Nodes (15): export_csv(), export_parquet(), Path, Row, Storage, conn(), fixture, Path (+7 more)
-
-### Community 6 - "test_ai_analyst.py"
-Cohesion: 0.09
-Nodes (18): _analyst(), _FakeRouter, date, Tests for the analyst and the schemas that guard its output. Two contracts are…, Only the surface ``Analyst`` actually touches: ``complete`` and…, One pass per symbol times twenty-five symbols — free models, not synthesis., One failure, one degradation — not "no response" plus "failed validation"., ``deep`` is what the weekly cap counts; it must reach the router. (+10 more)
-
-### Community 7 - "Document"
 Cohesion: 0.07
-Nodes (17): Document, One retrievable fact or article., Positional tuple matching the ``documents`` table column order., DocumentIndex, Connection, Remove every document of one kind (used when rebuilding a slice)., Document count per kind — what the corpus actually holds., Read/write access to the document corpus and its search index. (+9 more)
+Nodes (28): export_csv(), export_parquet(), Path, _d(), _dt(), date, datetime, ReconciledPrice (+20 more)
 
-### Community 8 - "BaseClient"
-Cohesion: 0.06
-Nodes (50): BaseClient, FetchError, FetchResult, _HostThrottle, Any, Client, Exception, RateLimitedError (+42 more)
+### Community 6 - "LLMResponse"
+Cohesion: 0.09
+Nodes (16): LLMResponse, What a provider returned — or why it didn't., True when there is usable text and no error., _analyst(), date, One pass per symbol times twenty-five symbols — free models, not synthesis., One failure, one degradation — not "no response" plus "failed validation"., ``deep`` is what the weekly cap counts; it must reach the router. (+8 more)
+
+### Community 7 - "DocumentIndex"
+Cohesion: 0.07
+Nodes (14): DocumentIndex, Connection, Remove every document of one kind (used when rebuilding a slice)., Document count per kind — what the corpus actually holds., Read/write access to the document corpus and its search index., True when bm25 ranking is available; False means the LIKE fallback., Insert or replace documents by ``doc_id``. Returns the count written. Uses…, Same id twice must not double-count — this is what daily re-indexing does. (+6 more)
+
+### Community 8 - "base.py"
+Cohesion: 0.07
+Nodes (43): FetchError, _HostThrottle, Client, Exception, RateLimitedError, Polite HTTP base client shared by all ingestion sources. Design goals: *…, Raised when a source signals 429/403 — we back off, never bypass., Non-retryable fetch failure (bad status, parse impossible). (+35 more)
 
 ### Community 9 - "test_nepse_official.py"
 Cohesion: 0.07
-Nodes (53): decode_content(), _extract_records(), find_entries(), _first(), HarReplayClient, is_available(), load_har(), _looks_sharesansar() (+45 more)
+Nodes (55): decode_content(), _extract_records(), find_entries(), _first(), HarReplayClient, is_available(), load_har(), _looks_sharesansar() (+47 more)
 
-### Community 10 - "test_sharesansar.py"
-Cohesion: 0.05
-Nodes (57): EndpointSpec, load_cost_model(), load_sources(), Path, _read_yaml(), SourcesConfig, SourceSpec, _int() (+49 more)
+### Community 10 - "SourceName"
+Cohesion: 0.06
+Nodes (48): _int(), _num(), _parse_date(), _parse_datetime(), _parse_headline(), date, ShareSansar ingestion client — the project's PRIMARY public-data source.…, Extract plain text from a value that may be an HTML anchor. ShareSansar's JSON… (+40 more)
 
 ### Community 11 - "build_evidence"
 Cohesion: 0.08
-Nodes (26): build_evidence(), EvidencePack, A compact source list for the human-facing report., Pack hits into an :class:`EvidencePack` under both ceilings. ``max_documents``…, A size-bounded, ordered, citable set of documents., Distinct symbols appearing in the evidence, in first-seen order., ``{"[E1]": "price:NABIL:2026-08-20", ...}`` — for auditing an answer., The block to embed in a prompt. (+18 more)
+Nodes (28): build_evidence(), EvidencePack, A compact source list for the human-facing report., Pack hits into an :class:`EvidencePack` under both ceilings. ``max_documents``…, A size-bounded, ordered, citable set of documents., Distinct symbols appearing in the evidence, in first-seen order., ``{"[E1]": "price:NABIL:2026-08-20", ...}`` — for auditing an answer., The block to embed in a prompt. (+20 more)
 
 ### Community 12 - "ResponseCache"
-Cohesion: 0.07
-Nodes (27): cache_key(), Delete entries past the TTL. Returns how many went., Size and age of the cache, for ``ai budget``., Stable key for a request's content. The parts are joined with a separator that…, SQLite-backed cache over the ``ai_cache`` table., A fresh cached response, or None on a miss or an expired entry., Store a successful response. Returns whether it was written. Failures are never…, ResponseCache (+19 more)
+Cohesion: 0.08
+Nodes (25): cache_key(), Connection, Delete entries past the TTL. Returns how many went., Size and age of the cache, for ``ai budget``., Stable key for a request's content. The parts are joined with a separator that…, SQLite-backed cache over the ``ai_cache`` table., A fresh cached response, or None on a miss or an expired entry., Store a successful response. Returns whether it was written. Failures are never… (+17 more)
 
 ### Community 13 - "parse_into"
-Cohesion: 0.07
-Nodes (22): parse_into(), T, Parse *text* into *model*, or return None and log why. ``defaults`` fill fields…, _critique_json(), _note_json(), parametrize, The contract: a failed pass costs narrative, never an exception., Some models wrap the single answer in a list. (+14 more)
-
-### Community 14 - "SymbolNote"
 Cohesion: 0.06
-Nodes (29): critique_prompt(), Prompt templates as plain strings. Kept out of the modules that use them for…, symbol_note_prompt(), weekly_thesis_prompt(), _Base, _clean(), _clean_list(), Critique (+21 more)
+Nodes (19): parse_into(), T, Parse *text* into *model*, or return None and log why. ``defaults`` fill fields…, _critique_json(), _note_json(), parametrize, The contract: a failed pass costs narrative, never an exception., Some models wrap the single answer in a list. (+11 more)
+
+### Community 14 - "TestExtractJson"
+Cohesion: 0.22
+Nodes (6): extract_json(), _json_candidates(), Find the JSON payload in a model's reply, or None. Three shapes, tried in…, Free models ignore "no prose before or after it" constantly., ``42`` is valid JSON but no model's worth of fields., TestExtractJson
 
 ### Community 15 - "test_strategies.py"
 Cohesion: 0.07
 Nodes (50): BollingerStrategy, build_strategy(), CompositeStrategy, DonchianStrategy, IchimokuStrategy, MacdStrategy, MeanReversionStrategy, ABC (+42 more)
 
-### Community 16 - "test_api_phase6.py"
+### Community 16 - "MeroShareHolding"
 Cohesion: 0.05
-Nodes (23): _bars(), client(), empty_client(), _make_client(), _meroshare_client(), fixture, ReconciledPrice, Phase 6 endpoints: RAG search, AI budget, news, watchlist, advisor, MeroShare.… (+15 more)
+Nodes (25): MeroShareHolding, field_validator, One scrip balance in the user's demat account, as MeroShare reports it., Total invested in this scrip per the portal's WACC., _bars(), client(), empty_client(), _make_client() (+17 more)
 
 ### Community 17 - "test_mcp_server.py"
-Cohesion: 0.09
-Nodes (39): _call(), _payload(), Server-layer tests: tool registry, tool call semantics, and the stdio loop.…, Invoke a tool through the dispatcher and return the raw MCP result., Parse the JSON a tool rendered into its single text content block., Guard the read-only contract against a future tool being added carelessly., _request(), test_a_raising_tool_returns_is_error_not_a_jsonrpc_error() (+31 more)
+Cohesion: 0.08
+Nodes (45): _call(), _payload(), parametrize, Server-layer tests: tool registry, tool call semantics, and the stdio loop.…, Invoke a tool through the dispatcher and return the raw MCP result., Parse the JSON a tool rendered into its single text content block., An oversized request must fail loudly; a truncated answer would read as…, Every unbounded list carries ``returned``/``truncated`` alongside ``count``. (+37 more)
 
 ### Community 18 - "._search_fts"
 Cohesion: 0.14
 Nodes (14): _matched(), date, Row, Best-matching documents for *query*, most relevant first.…, Term-overlap ranking. Correct, just less clever than bm25., Newest documents matching the filters, ignoring relevance., Extract searchable words (Latin + Devanagari) from a raw query., Turn free text into a safe FTS5 MATCH expression. Terms are OR-ed with a prefix… (+6 more)
 
-### Community 19 - "nepse_trader/models.py"
-Cohesion: 0.21
-Nodes (9): CorporateActionType, OrderSide, Enum, str, Core data contracts shared across ingestion, analysis, and trading. All…, SignalAction, SourceName, SQLite persistence for price bars, indices, floorsheet, signals and trades.… (+1 more)
+### Community 19 - "jobs.py"
+Cohesion: 0.16
+Nodes (18): _job_ingest(), _job_rag_index(), _job_reconcile(), _job_run_daily(), _job_screen(), JobContext, Any, date (+10 more)
 
 ### Community 20 - "quant.py"
 Cohesion: 0.08
 Nodes (45): annualized_return(), annualized_volatility(), beta(), correlation(), covariance(), kurtosis(), max_drawdown(), mean() (+37 more)
 
 ### Community 21 - "doses.py"
-Cohesion: 0.10
-Nodes (40): _add_sell_guidance(), build_dose_run(), build_doses(), _card_horizon(), _card_value(), _confidence_for_card(), _date(), _decimal() (+32 more)
-
-### Community 22 - "advisor/__init__.py"
 Cohesion: 0.11
-Nodes (50): Public advisor API: deterministic plans, confidence, doses and review., _as_date(), _confidence(), confidence_for_prediction(), distill_lesson(), _fetch(), get_prediction(), journal_history() (+42 more)
+Nodes (37): _add_sell_guidance(), build_dose_run(), build_doses(), _card_horizon(), _card_value(), _confidence_for_card(), _date(), _decimal() (+29 more)
+
+### Community 22 - "journal.py"
+Cohesion: 0.11
+Nodes (49): _as_date(), _confidence(), distill_lesson(), _fetch(), get_prediction(), journal_history(), JournalError, _lesson_stats() (+41 more)
 
 ### Community 23 - "test_properties.py"
 Cohesion: 0.04
-Nodes (80): given, _latest_atr(), Wilder ATR over the reconciled history, or None if it can't be computed., atr(), bollinger_bands(), chikou_span(), donchian_channel(), ema() (+72 more)
+Nodes (78): given, atr(), bollinger_bands(), chikou_span(), donchian_channel(), ema(), kijun_sen(), latest() (+70 more)
 
 ### Community 24 - "outcomes.py"
 Cohesion: 0.10
-Nodes (40): _date(), _is_short(), _number(), Outcome, OutcomeResult, persist_score(), _prediction_symbol(), Any (+32 more)
+Nodes (38): _date(), _is_short(), _number(), Outcome, OutcomeResult, _prediction_symbol(), Any, datetime (+30 more)
 
 ### Community 25 - "Backtester"
 Cohesion: 0.10
-Nodes (35): Backtester, BacktestResult, _max_drawdown(), date, Long-only, event-driven backtester with the full Nepal cost model. The engine…, Event-driven, long-only backtester over a single symbol's price bars., Replay ``bars`` for ``strategy`` and return a :class:`BacktestResult`. Bars are…, Apply slippage: buys fill higher, sells fill lower. (+27 more)
+Nodes (34): Backtester, BacktestResult, _max_drawdown(), date, Event-driven, long-only backtester over a single symbol's price bars., Replay ``bars`` for ``strategy`` and return a :class:`BacktestResult`. Bars are…, Apply slippage: buys fill higher, sells fill lower., Largest whole-share quantity affordable within the cash budget. Budget is… (+26 more)
 
 ### Community 26 - "ChukulClient"
-Cohesion: 0.08
-Nodes (35): _as_records(), ChukulClient, _int(), _num(), _pick(), Any, date, Chukul JSON source adapter. Chukul (https://chukul.com) is powered by a… (+27 more)
-
-### Community 27 - "WebRetriever"
-Cohesion: 0.12
-Nodes (24): build_retriever(), HybridRetriever, LocalRetriever, Lazily built so constructing a WebRetriever opens no connection., Local first, web only when the local result set is thin. ``min_local_hits`` is…, The right retriever for the current mode. Offline (or web disabled) gives a…, Retrieval from the local document index. Offline, always available., Live search + page fetch. Requires online mode and a fetch client. The search… (+16 more)
-
-### Community 28 - "plan.py"
 Cohesion: 0.09
-Nodes (30): band_for(), blend(), certain(), Confidence, confidence_from_history(), ConfidenceError, market(), penalise() (+22 more)
+Nodes (34): _as_records(), ChukulClient, _int(), _num(), _pick(), Any, date, Chukul JSON source adapter. Chukul (https://chukul.com) is powered by a… (+26 more)
 
-### Community 29 - "client.py"
+### Community 27 - "BaseClient"
+Cohesion: 0.11
+Nodes (26): BaseClient, Wraps httpx with throttling, retries, and optional raw-response caching., build_retriever(), HybridRetriever, LocalRetriever, Lazily built so constructing a WebRetriever opens no connection., Local first, web only when the local result set is thin. ``min_local_hits`` is…, The right retriever for the current mode. Offline (or web disabled) gives a… (+18 more)
+
+### Community 28 - "advisor/__init__.py"
 Cohesion: 0.09
-Nodes (28): _as_date(), _as_float(), _as_int(), connect(), ensure_enabled(), _first(), MeroShareFetchError, OwnDetail (+20 more)
+Nodes (32): band_for(), blend(), certain(), Confidence, confidence_from_history(), ConfidenceError, market(), penalise() (+24 more)
 
-### Community 30 - "system_health"
-Cohesion: 0.27
-Nodes (7): Every check, in a stable order, plus the worst-wins overall verdict. *storage*…, Recent snapshots, newest first, without their full JSON payload. The payload is…, snapshot_history(), system_health(), _settings(), TestReport, TestSnapshots
+### Community 29 - "MeroShareClient"
+Cohesion: 0.10
+Nodes (24): _as_date(), _as_float(), _as_int(), MeroShareAuthError, MeroShareClient, MeroShareFetchError, _pick(), Any (+16 more)
+
+### Community 30 - "JobRegistry"
+Cohesion: 0.13
+Nodes (10): JobRegistry, In-memory job store that runs at most one job at a time., Drop all history. Used between tests so registries never leak state., Register throwaway job kinds, and remove them again afterwards. Editing the…, A worker must never share the request-path Storage., Entering a stage checks for cancellation, so later work never starts., A Saturday must not reach the network. Every stage is skipped., stub_handlers() (+2 more)
 
 ### Community 31 - "build_plan_card"
-Cohesion: 0.13
-Nodes (15): build_plan_card(), Confidence, Build one symbol's card, or explain why it can't be built. *today* defaults to…, _bars(), date, Silently returning quantity 0 would print an unactionable card., Only ACCUMULATE needs a tradeable size — a hold is information either way., T+2 is *trading* days. Every case here is one a naive +2 gets wrong. (+7 more)
+Cohesion: 0.05
+Nodes (31): build_plan_card(), build_plan_cards(), Confidence, date, Build one symbol's card, or explain why it can't be built. *today* defaults to…, Build cards for *symbols*, returning the cards and the skips separately.…, A symbol that could not be given an honest card, and why. Surfaced rather than…, Skipped (+23 more)
 
 ### Community 32 - "Plan: NEPSE Trader — Full Completion"
 Cohesion: 0.05
@@ -377,107 +373,107 @@ Nodes (43): Overview, Plan: NEPSE Trader — Full Completion, Potential Risks & 
 
 ### Community 33 - "NepseAlphaClient"
 Cohesion: 0.13
-Nodes (10): NepseAlphaClient, Any, date, Fetch daily price bars for *symbol* from the UDF history endpoint. The endpoint…, NepseAlpha is supplementary and doesn't support whole-market fetch. Returns an…, Client for NepseAlpha's TradingView UDF datafeed., Parse TradingView UDF history JSON into PriceBar records. Expected payload…, mock (+2 more)
+Nodes (11): NepseAlphaClient, Any, date, Fetch daily price bars for *symbol* from the UDF history endpoint. The endpoint…, NepseAlpha is supplementary and doesn't support whole-market fetch. Returns an…, Client for NepseAlpha's TradingView UDF datafeed., Parse TradingView UDF history JSON into PriceBar records. Expected payload…, mock (+3 more)
 
 ### Community 34 - "migrations.py"
-Cohesion: 0.04
-Nodes (57): FixtureRequest, The searchable document index: SQLite FTS5, with a LIKE fallback.…, Path, _applied_versions(), _create_version_table(), has_fts5(), _m0000_initial(), _m0001_corporate_actions() (+49 more)
+Cohesion: 0.05
+Nodes (40): Path, _applied_versions(), _create_version_table(), _m0000_initial(), _m0001_corporate_actions(), _m0002_adjusted_close(), _m0004_ai(), _m0005_advice() (+32 more)
 
 ### Community 35 - "merolagani.py"
 Cohesion: 0.09
 Nodes (32): HTMLParser, _build_column_map(), _cell_at(), _cell_text(), _data_rows(), _first_match(), _int(), MeroLaganiClient (+24 more)
 
 ### Community 36 - "test_costs.py"
-Cohesion: 0.21
-Nodes (16): CommissionSlab, CostModel, BaseModel, Nepal equity transaction cost + tax model. Values are tunable via YAML., _engine(), Tests for the Nepal cost & tax engine. The headline test reproduces the…, test_buy_breakdown_matches_worked_example(), test_cgt_boundary_exactly_365_days_is_short_term() (+8 more)
+Cohesion: 0.17
+Nodes (17): CostBreakdown, CommissionSlab, CostModel, BaseModel, Nepal equity transaction cost + tax model. Values are tunable via YAML., _engine(), Tests for the Nepal cost & tax engine. The headline test reproduces the…, test_buy_breakdown_matches_worked_example() (+9 more)
 
-### Community 37 - "Any"
-Cohesion: 0.11
-Nodes (23): _hit_to_dict(), _holding_to_dict(), _json_text(), MCPServer, _normalise_symbols(), _optional_bool(), _optional_choice(), _optional_date() (+15 more)
+### Community 37 - "MCPServer"
+Cohesion: 0.12
+Nodes (17): _hit_to_dict(), _holding_to_dict(), MCPServer, _normalise_symbols(), _optional_bool(), _optional_choice(), _optional_date(), _optional_int() (+9 more)
 
 ### Community 38 - "test_logging_setup.py"
-Cohesion: 0.10
-Nodes (34): BaseException, FileHandler, Logger, get_logger(), _is_control_flow_exit(), log_path(), _make_handler(), datetime (+26 more)
+Cohesion: 0.09
+Nodes (37): BaseException, callback, Context, FileHandler, Logger, _root(), get_logger(), _is_control_flow_exit() (+29 more)
 
 ### Community 39 - "analyzer.py"
-Cohesion: 0.12
-Nodes (33): analyze(), _content_type(), decode_content(), _endpoint_key(), EndpointCandidate, _entries(), find_entries(), _is_sensitive_param() (+25 more)
+Cohesion: 0.13
+Nodes (31): analyze(), _content_type(), decode_content(), _endpoint_key(), EndpointCandidate, _entries(), find_entries(), _is_sensitive_param() (+23 more)
 
-### Community 40 - "Analyst"
-Cohesion: 0.10
-Nodes (17): Analyst, date, One line naming why AI output is missing, or empty when it isn't. Reasons…, LLM commentary over deterministic output. Never a source of numbers., Narrative for one symbol. Bulk tier — this runs once per symbol., The expensive weekly pass. Synthesis tier, and the only ``deep`` call. Cached…, Devil's advocate against the deterministic plan. Synthesis tier., _render() (+9 more)
+### Community 40 - "Settings"
+Cohesion: 0.05
+Nodes (62): BaseSettings, Analyst, Connection, date, The analyst: evidence in, validated commentary out. One class tying the pieces…, One line naming why AI output is missing, or empty when it isn't. Reasons…, LLM commentary over deterministic output. Never a source of numbers., Narrative for one symbol. Bulk tier — this runs once per symbol. (+54 more)
 
-### Community 41 - "is_trading_day"
-Cohesion: 0.10
-Nodes (21): _default_holidays(), _get_holidays(), is_trading_day(), load_holidays(), next_trading_day(), periods_per_year(), previous_trading_day(), Any (+13 more)
+### Community 41 - "add_trading_days"
+Cohesion: 0.07
+Nodes (26): add_trading_days(), _default_holidays(), _get_holidays(), is_trading_day(), load_holidays(), next_trading_day(), periods_per_year(), previous_trading_day() (+18 more)
 
-### Community 42 - "CorporateAction"
-Cohesion: 0.24
-Nodes (19): adjust_prices(), Back-adjust reconciled closes by corporate action factors. For each symbol,…, CorporateAction, A corporate event that adjusts historical prices., _ca(), _price(), date, ReconciledPrice (+11 more)
+### Community 42 - "ReconciledPrice"
+Cohesion: 0.06
+Nodes (40): adjust_prices(), _consensus(), ReconciledPrice, Cross-source reconciliation. The whole point of pulling the same NEPSE data…, Back-adjust reconciled closes by corporate action factors. For each symbol,…, Return (agreed_value, agreeing_sources, disputed). Greedy clustering: for each…, reconcile_bars(), _within() (+32 more)
 
 ### Community 43 - "DailyPipeline"
+Cohesion: 0.10
+Nodes (22): DailyPipeline, build_corpus(), index_documents(), Write pre-built documents (news, web pages) into the index., Index everything derivable for *symbols* into the document store. ``pipeline``…, pipe(), fixture, _bars() (+14 more)
+
+### Community 44 - "_build_advisor_result"
 Cohesion: 0.11
-Nodes (20): DailyPipeline, build_corpus(), index_documents(), Write pre-built documents (news, web pages) into the index., Index everything derivable for *symbols* into the document store. ``pipeline``…, _bars(), pipeline(), fixture (+12 more)
+Nodes (20): _advisor_evidence(), _advisor_mode(), _advisor_positions(), _build_advisor_result(), _journal_confidence(), _latest_strategy_panel(), meroshare_holdings_cmd(), _normalise_symbols() (+12 more)
 
-### Community 44 - "main.py"
-Cohesion: 0.07
-Nodes (36): callback, Context, _advisor_evidence(), _advisor_horizon(), _advisor_mode(), _advisor_sections(), backtest(), _build_advisor_result() (+28 more)
-
-### Community 45 - "LLMResponse"
-Cohesion: 0.09
-Nodes (16): LLMResponse, What a provider returned — or why it didn't., True when there is usable text and no error., _budget(), _ok(), Tests for the token budget. The behaviour that matters is the **hard stop**:…, The estimate exists so an overrun is prevented, not just detected., The weekly cap rations successful theses, not failed attempts. (+8 more)
+### Community 45 - "_budget"
+Cohesion: 0.10
+Nodes (13): _budget(), _ok(), Tests for the token budget. The behaviour that matters is the **hard stop**:…, The estimate exists so an overrun is prevented, not just detected., The weekly cap rations successful theses, not failed attempts., A provider stuck in a failure loop must still burn its call allowance., _settings(), TestCallCap (+5 more)
 
 ### Community 47 - "types.ts"
-Cohesion: 0.13
-Nodes (22): AiBudget, BacktestRun, BacktestSummary, Confidence, DoseRun, Fundamentals, IngestReport, JournalEntry (+14 more)
+Cohesion: 0.08
+Nodes (35): fetchJson(), postJson(), AiCacheStats, AiProviderLeg, BacktestRun, BacktestSummary, BulkSignalRow, Confidence (+27 more)
 
-### Community 48 - "pipeline.py"
-Cohesion: 0.16
-Nodes (21): best_per_symbol(), Any, Backtest screening: rank strategies across symbols. Runs a panel of strategies…, Collapse a leaderboard to the single best strategy per symbol., Backtest every (symbol, strategy) pair and return a ranked leaderboard.…, screen(), ScreenRow, _strategies() (+13 more)
+### Community 48 - "screen.py"
+Cohesion: 0.20
+Nodes (17): best_per_symbol(), Any, Backtest screening: rank strategies across symbols. Runs a panel of strategies…, Collapse a leaderboard to the single best strategy per symbol., Backtest every (symbol, strategy) pair and return a ranked leaderboard.…, screen(), ScreenRow, _strategies() (+9 more)
 
-### Community 49 - "sync_payload"
-Cohesion: 0.13
-Nodes (16): Persist an already-fetched payload, logging the attempt either way. Split from…, Log in, read, persist. Any failure is logged to ``ms_sync_log`` and returned as…, Import a CSV/pasted export and persist it, logging the attempt., Holdings as last synced, ordered by symbol., What one sync attempt did. ``error`` is always redacted., stored_holdings(), sync_from_client(), sync_from_csv() (+8 more)
+### Community 49 - "api.py"
+Cohesion: 0.14
+Nodes (23): FastAPI, advisor_run(), AdvisorRunRequest, backtest_screen(), bulk_stats(), _evidence_builder(), lifespan(), list_jobs() (+15 more)
 
 ### Community 50 - "CostEngine"
-Cohesion: 0.10
-Nodes (34): CostEngine, PaperTrade, An executed paper trade with full Nepal cost breakdown., _Lot, PaperPortfolio, date, Decimal, Paper-trading portfolio ledger. A self-contained, in-memory account that… (+26 more)
+Cohesion: 0.07
+Nodes (36): CostEngine, PaperTrade, field_validator, An executed paper trade with full Nepal cost breakdown., All recorded paper trades in execution order (for portfolio replay)., _Lot, PaperPortfolio, date (+28 more)
 
-### Community 51 - "auction.py"
-Cohesion: 0.10
-Nodes (34): _advice_id(), advise_auction(), advise_from_plan(), _as_date(), auction_advice_history(), AuctionAdvice, _break_even_bid(), _break_even_exit_price() (+26 more)
+### Community 51 - "_to_money"
+Cohesion: 0.08
+Nodes (37): _advice_id(), advise_auction(), advise_from_plan(), _as_date(), auction_advice_history(), AuctionAdvice, _break_even_bid(), _break_even_exit_price() (+29 more)
 
 ### Community 52 - "test_mcp_protocol.py"
 Cohesion: 0.11
-Nodes (29): parse_message(), Exception, A protocol-level failure that must surface as a JSON-RPC ``error``. Method…, Parse one line of JSON into a :class:`Request`. Raises :class:`RpcError` with…, RpcError, dispatcher(), _line(), fixture (+21 more)
+Nodes (29): parse_message(), A parsed, structurally valid JSON-RPC request or notification., Parse one line of JSON into a :class:`Request`. Raises :class:`RpcError` with…, Request, dispatcher(), _line(), fixture, _raise_rpc_invalid_params() (+21 more)
 
-### Community 53 - "sync.py"
-Cohesion: 0.08
-Nodes (33): :func:`redact`, plus every account identifier on this instance., demat_fingerprint(), demat_last4(), _normalise(), Privacy-safe identifiers for persisted MeroShare mirror rows. The CDSC…, Return a deterministic, non-reversible storage key for a demat value., Return only the final four characters for masked display., _client_failure_message() (+25 more)
+### Community 53 - "test_meroshare.py"
+Cohesion: 0.07
+Nodes (39): MeroShareDisabledError, MeroShare integration is switched off in settings., MeroShareTransaction, One demat credit or debit. ``quantity`` is signed: debits are negative., Deterministic id — the portal exposes no stable row identifier. Hashing the…, demat_fingerprint(), demat_last4(), _normalise() (+31 more)
 
-### Community 54 - "test_meroshare.py"
-Cohesion: 0.10
-Nodes (23): connection_disclosure(), MeroShareAuthError, MeroShareDisabledError, MeroShareError, Exception, Base for every failure in this package. Messages carry no credential., MeroShare integration is switched off in settings., Login was refused, or the session expired. (+15 more)
+### Community 54 - "MeroShareCredentials"
+Cohesion: 0.06
+Nodes (32): connect(), connection_disclosure(), ConnectionResult, ensure_enabled(), _first(), OwnDetail, Client, Read-only HTTP client for the user's own MeroShare/CDSC account. **Read-only… (+24 more)
 
 ### Community 55 - "test_advisor_doses.py"
 Cohesion: 0.09
-Nodes (24): dose_history(), DoseRun, latest_dose_run(), Any, Connection, All four nested doses over one capital pool., Adapt a budgeted report to the persisted ``dose_runs`` contract., Render all four horizons as safe beginner-facing prose. (+16 more)
+Nodes (23): dose_history(), DoseError, DoseRun, latest_dose_run(), Any, Connection, ValueError, All four nested doses over one capital pool. (+15 more)
 
 ### Community 56 - "Plan: Web UI Dashboard"
 Cohesion: 0.06
 Nodes (32): Overview, Plan: Web UI Dashboard, Potential Risks & Gotchas, Prerequisites, Rollback Plan, Sprint 1: Backend API, Sprint 2: Frontend Foundation, Sprint 3: Dashboard + Symbols Page (+24 more)
 
-### Community 57 - "_Base"
-Cohesion: 0.14
-Nodes (5): _Base, Position, BaseModel, Decimal, field_validator
+### Community 57 - "test_web_operations.py"
+Cohesion: 0.09
+Nodes (13): fixture, _bars(), client(), PriceBar, ReconciledPrice, The background job engine and the operations endpoints it drives. Two halves.…, A temp database with one symbol's history, plus matching Settings., A TestClient over the seeded database, with a clean job registry. (+5 more)
 
 ### Community 58 - "App.tsx"
-Cohesion: 0.10
-Nodes (31): react, HoldingComparison, MeroShareHolding, NewsItem, PortfolioSummary, RagSearchResponse, ScreenRow, App() (+23 more)
+Cohesion: 0.07
+Nodes (50): react, AiBudget, AiModelsResponse, AiTestResult, BulkSignalsResponse, BulkStatsResponse, HoldingComparison, JournalEntry (+42 more)
 
-### Community 59 - "MeroShareHolding"
-Cohesion: 0.08
-Nodes (31): Dialect, ConnectionResult, Outcome of :func:`connect` — a login probe that fetches nothing else., import_portfolio(), ImportError_, _match_column(), _norm(), parse_holdings_csv() (+23 more)
+### Community 59 - "meroshare/__init__.py"
+Cohesion: 0.05
+Nodes (55): Dialect, MeroShareError, Exception, Base for every failure in this package. Messages carry no credential., :func:`redact`, plus every account identifier on this instance., import_portfolio(), ImportError_, _match_column() (+47 more)
 
 ### Community 60 - "size_position"
 Cohesion: 0.11
@@ -487,37 +483,37 @@ Nodes (14): exposure_pct(), Risk-managed position sizing, stop-loss, and exposur
 Cohesion: 0.08
 Nodes (26): 10. Layer: costs and taxes, 11. Layer: paper trading, 12. Layer: RAG, 13. Layer: AI, 14. Layer: advisor, 15. Layer: MeroShare mirror, 16. Layer: health, 17. Surface: CLI (+18 more)
 
-### Community 62 - "MeroShareClient"
-Cohesion: 0.20
-Nodes (6): MeroShareClient, Logs in once, then reads. Every boundary is injectable for testing. ``http``…, Log out, then drop the connection. Safe to call twice., parametrize, _settings(), TestClient
+### Community 62 - ".parse_announcements"
+Cohesion: 0.13
+Nodes (8): Parse the announcements table into documents. Columns are ``S.No | Headline |…, date, parametrize, No known-symbol set needed here — the table states the symbol., Daily re-ingestion must upsert, not accumulate., Sites reflow capitalisation; that must not spawn a duplicate document., TestDeterministicIds, TestParseAnnouncements
 
 ### Community 63 - "_run"
-Cohesion: 0.14
-Nodes (6): Signal, mode="normal" ignores the analyst entirely rather than half-using it., A default deterministic run over three symbols., _run(), TestNormalMode, TestSettlementInARun
+Cohesion: 0.10
+Nodes (10): Signal, Strategy, mode="normal" ignores the analyst entirely rather than half-using it., Every failure path must yield the full deterministic report plus a banner., It must not raise out of build_rashifal — that is the whole contract., A default deterministic run over three symbols., _run(), TestDegradation (+2 more)
 
 ### Community 64 - "_settings"
 Cohesion: 0.11
 Nodes (12): MonkeyPatch, parametrize, Tests for the runtime Settings model (modes, LLM, budget, RAG, MeroShare).…, Build Settings without reading the developer's real .env., Bulk per-symbol work must not default to a paid provider., claude_cli runs under the user's subscription — no API billing., Env vars are strings; a CSV watchlist must still parse to a list., _settings() (+4 more)
 
-### Community 65 - "_safe_run"
-Cohesion: 0.11
-Nodes (31): _advisor_positions(), auction_advise_cmd(), doses(), ingest(), journal_score_cmd(), paper_buy(), paper_sell(), paper_status() (+23 more)
+### Community 65 - "main.py"
+Cohesion: 0.06
+Nodes (73): command, _advisor_horizon(), _advisor_sections(), ai_models(), auction_advise_cmd(), auction_list_cmd(), backtest(), ca_add() (+65 more)
 
 ### Community 66 - "PriceBar"
 Cohesion: 0.17
 Nodes (11): _clamp01(), _clean_indicators(), Signal, Clamp ``x`` into [0, 1] (Signal.strength is validated ``0 <= s <= 1``)., Drop None entries; Signal.indicators is ``dict[str, float]``., Return signals for ``bars`` (chronological ascending)., Return (closes, has_close). ``closes`` carries the last valid close forward…, Convenience: the signal for the last day, or None if none produced. (+3 more)
 
 ### Community 67 - "fixtures.ts"
-Cohesion: 0.07
-Nodes (28): aiBudget, auctionAdvice, backtestRun, confidence, dashboardStats, doseRun, emptyMarketBreadth, emptyMovers (+20 more)
+Cohesion: 0.05
+Nodes (41): aiBudget, aiModels, aiTestOk, auctionAdvice, backtestRun, bulkSignals, bulkStats, confidence (+33 more)
 
-### Community 68 - "_settings"
-Cohesion: 0.18
-Nodes (14): ai_budget(), get_meroshare_setting(), health_report(), _meroshare_enabled(), _meroshare_settings(), meroshare_status(), Settings for the current request. Read out of ``_state`` rather than calling…, Effective integration toggle with its DB-or-environment provenance. (+6 more)
+### Community 68 - "test_ingest_news.py"
+Cohesion: 0.24
+Nodes (5): extract_symbols(), Symbols mentioned in *text*, in first-seen order. Without a ``known_symbols``…, Tests for news + announcement ingestion. Two things carry this module and are…, No known-symbol set means no tagging — mistagging is worse than nothing., TestExtractSymbols
 
 ### Community 69 - "test_pipeline.py"
-Cohesion: 0.09
-Nodes (21): build_clients(), _construct(), Instantiate the source clients to run. By default this honours…, pipe(), asyncio, fixture, Integration tests for the daily pipeline (no network)., A fake source that returns canned bars — exercises ingest without network. (+13 more)
+Cohesion: 0.08
+Nodes (25): CostEngine, build_clients(), _construct(), Settings, Storage, Daily orchestration: ingest -> reconcile -> signals -> report. This is the glue…, Instantiate the source clients to run. By default this honours…, SourceClient (+17 more)
 
 ### Community 70 - "rashifal_md"
 Cohesion: 0.28
@@ -528,40 +524,40 @@ Cohesion: 0.08
 Nodes (24): 1.1 Use `Decimal` for money — **high impact**, 1.2 Property-based tests (Hypothesis) — **high impact, low effort**, 1.3 Golden-file tests for parsers — **medium**, 1. Correctness & financial precision, 2.1 CI pipeline — **high impact, low effort**, `.github/workflows/ci.yml`, 2.2 Static typing in CI — **medium**, 2.3 Coverage measurement — **low**, 2.4 Pre-commit hooks — **low** (+16 more)
 
 ### Community 72 - "SmaCrossStrategy"
-Cohesion: 0.14
-Nodes (13): PortfolioBacktester, PortfolioResult, date, Multi-symbol portfolio backtester with equal-weight capital allocation., Aggregate performance of a multi-symbol portfolio., Run a strategy across multiple symbols with equal capital allocation., Run *strategy* on each symbol and aggregate results. *symbol_bars* maps symbol…, Fast/slow simple-moving-average crossover. (+5 more)
+Cohesion: 0.15
+Nodes (12): PortfolioBacktester, PortfolioResult, date, Aggregate performance of a multi-symbol portfolio., Run a strategy across multiple symbols with equal capital allocation., Run *strategy* on each symbol and aggregate results. *symbol_bars* maps symbol…, Fast/slow simple-moving-average crossover., SmaCrossStrategy (+4 more)
 
 ### Community 73 - "validate_yaml"
-Cohesion: 0.18
-Nodes (13): Any, Config file validation using JSON Schema. Provides validation functions for the…, Validate a single YAML file against its JSON Schema. Returns a (possibly empty)…, Validate all config files. Returns list of error messages (empty = OK)., _validate(), validate_all(), validate_yaml(), Path (+5 more)
+Cohesion: 0.19
+Nodes (12): Any, Path, Config file validation using JSON Schema. Provides validation functions for the…, Validate a single YAML file against its JSON Schema. Returns a (possibly empty)…, _validate(), validate_yaml(), Path, Tests for config file validation. (+4 more)
 
-### Community 74 - "test_backtest_risk.py"
-Cohesion: 0.33
-Nodes (6): _bar(), _buy_sig(), _DummyStrategy, Signal, Tests for risk-managed stop-loss / take-profit in the event-driven backtester., TestStopLossInBacktest
+### Community 74 - "nepse_trader/models.py"
+Cohesion: 0.11
+Nodes (25): _expected_outcome(), _latest_atr(), Decimal, Deterministic plan cards: the numbers behind the daily prescription. Every…, Wilder ATR over the reconciled history, or None if it can't be computed., PnL at *exit_price*, net of entry costs, exit costs and CGT. The gross figure…, Long-only, event-driven backtester with the full Nepal cost model. The engine…, Nepal equity transaction cost & tax engine. Computes the full, realistic cost… (+17 more)
 
-### Community 75 - "sharesansar.py"
-Cohesion: 0.14
-Nodes (23): has_header(), Row, Resilient HTML table extraction with a pluggable backend. Two backends produce…, Return the Scrapling Selector class, or None if unavailable., Resolve the effective parse engine name ('scrapling' or 'selectolax')., Return rows of (tag, text) cell tuples for the first table matching…, The text of the ``<td>`` cells in a row (ignoring header ``<th>`` cells)., resolve_engine() (+15 more)
+### Community 75 - "htmlparse.py"
+Cohesion: 0.15
+Nodes (22): has_header(), Row, Resilient HTML table extraction with a pluggable backend. Two backends produce…, Return the Scrapling Selector class, or None if unavailable., Resolve the effective parse engine name ('scrapling' or 'selectolax')., Return rows of (tag, text) cell tuples for the first table matching…, The text of the ``<td>`` cells in a row (ignoring header ``<th>`` cells)., resolve_engine() (+14 more)
 
 ### Community 76 - "compilerOptions"
 Cohesion: 0.08
 Nodes (23): DOM, src, vite/client, compilerOptions, allowArbitraryExtensions, allowImportingTsExtensions, erasableSyntaxOnly, jsx (+15 more)
 
-### Community 77 - "health.py"
-Cohesion: 0.15
-Nodes (14): Check, check_journal(), check_paper(), _guarded(), problems(), Any, One read-only health report over everything the toolkit owns. The daily loop…, Prediction lifecycle backlog: what is open, scored-but-unreviewed, retired. (+6 more)
+### Community 77 - "test_health.py"
+Cohesion: 0.10
+Nodes (24): health(), Check every moving part: schema, data freshness, sources, RAG, AI, MeroShare.…, check_ai(), check_meroshare(), problems(), Any, Connection, Whether AI mode could actually answer, and how much budget is left. Reads the… (+16 more)
 
-### Community 78 - "TestRagSearch"
-Cohesion: 0.15
-Nodes (3): _index(), TestNews, TestRagSearch
+### Community 78 - "SourceClient"
+Cohesion: 0.29
+Nodes (5): date, Interface every source adapter implements. Concrete clients (ShareSansar,…, SourceClient, FloorsheetEntry, A single matched trade from the floorsheet (transaction-level data).
 
 ### Community 79 - "AccountVault"
 Cohesion: 0.18
 Nodes (7): AccountVault, BankAccount, _money(), Decimal, Holds the sensitive, encapsulated account state. All money is stored as Decimal…, Accept Decimal / int / str. Refuse float (binary rounding errors)., The public-facing account that performs operations on a vault.
 
-### Community 80 - "serve_stdio"
-Cohesion: 0.11
-Nodes (16): Dispatcher, mcp_serve_cmd(), Serve the local, read-only MCP toolkit over stdio., build_server(), Settings, Construct a fully wired :class:`MCPServer`. Separate from :func:`serve_stdio`…, Resolved I/O plus whether we own (and may therefore guard) real stdout., Serve MCP over newline-delimited JSON-RPC until stdin closes. Blocks. Returns… (+8 more)
+### Community 80 - "TestHtmlToText"
+Cohesion: 0.12
+Nodes (10): html_to_text(), date, Search the web and return fetched pages as hits. ``kinds`` and ``since`` are…, Reduce a page to ``(title, body_text)``, truncated to ``max_chars``. Script,…, Short stable id for a URL, so re-fetching the same page upserts., Anything that can turn a query into ranked hits., Retriever, _url_key() (+2 more)
 
 ### Community 81 - "compilerOptions"
 Cohesion: 0.10
@@ -571,29 +567,29 @@ Nodes (19): node, vite.config.ts, compilerOptions, allowImportingTsExtensions, e
 Cohesion: 0.10
 Nodes (20): 1.1 Corporate-action adjustment (bonus / rights / splits) — **L**, `ingest/` + `analysis/`, 1.2 Verify & enable Chukul + NepseAlpha sources — **M**, `ingest/chukul.py`, new `ingest/nepsealpha.py`, 1.3 Holiday / trading-calendar awareness — **M**, new `calendar.py`, 1.4 Alerting integrations (Telegram / Discord / email) — **S–M**, `reporting.py`, 2.1 Multi-symbol portfolio backtest — **L**, `analysis/backtest.py`, 2.2 Risk-managed position sizing & stops — **M**, `analysis/strategies.py` + backtest, 2.3 Walk-forward optimization & parameter sweeps — **M**, new `analysis/optimize.py`, 2.4 More strategies — **S each**, `analysis/strategies.py` (+12 more)
 
-### Community 83 - "HTTPException"
-Cohesion: 0.12
-Nodes (24): HTTPException, auction_advice_endpoint(), journal_distill_endpoint(), _journal_error(), journal_retire_endpoint(), journal_review_endpoint(), journal_score_endpoint(), journal_score_one_endpoint() (+16 more)
+### Community 83 - "get"
+Cohesion: 0.07
+Nodes (51): get, HTTPException, advisor_doses_latest(), advisor_history(), advisor_latest(), auction_advice_history_endpoint(), auction_latest_endpoint(), backtest_run() (+43 more)
 
-### Community 84 - "protocol.py"
-Cohesion: 0.12
-Nodes (16): MethodHandler, Dispatcher, error_response(), Any, JSON-RPC 2.0 framing and dispatch for the MCP server — transport-agnostic. This…, Routes JSON-RPC methods to registered handlers. Deliberately a plain name →…, Dispatch a parsed request. Returns ``None`` for notifications., Parse and dispatch one wire line. Never raises. Returns the response dict to… (+8 more)
+### Community 84 - "Dispatcher"
+Cohesion: 0.15
+Nodes (12): MethodHandler, Dispatcher, error_response(), Any, JSON-RPC 2.0 framing and dispatch for the MCP server — transport-agnostic. This…, Routes JSON-RPC methods to registered handlers. Deliberately a plain name →…, Dispatch a parsed request. Returns ``None`` for notifications., Parse and dispatch one wire line. Never raises. Returns the response dict to… (+4 more)
 
-### Community 85 - "indicator_document"
-Cohesion: 0.18
-Nodes (10): build_symbol_documents(), indicator_document(), Latest reading of every indicator, with its interpretation stated., Every document derivable for one symbol from its bar history. Only the most…, A bare number is useless in a report; the reading must be explained., Daily re-indexing must upsert, not accumulate., A rising series long enough for SMA50/RSI/MACD/Bollinger to have values., _series() (+2 more)
+### Community 85 - "Document"
+Cohesion: 0.07
+Nodes (40): _breadth_documents(), _corporate_action_documents(), _documents_for_symbol(), _flush(), IndexReport, _periods(), Corpus construction: walk the database, emit documents, write the index.…, What an indexing run produced. (+32 more)
 
 ### Community 86 - ".daily_report"
-Cohesion: 0.10
-Nodes (12): Any, date, ReconciledPrice, Async variant: fetches from all sources concurrently., Call a client fetch method, isolating its failure to that data type., Reconciled history for a symbol as PriceBars (for indicators)., Rebuild the paper portfolio by replaying stored trades (no re-persist)., Advancers/decliners/turnover/reconcile-quality for a date. (+4 more)
+Cohesion: 0.09
+Nodes (15): IngestReport, Any, date, PriceBar, ReconciledPrice, Async variant: fetches from all sources concurrently., Call a client fetch method, isolating its failure to that data type., Reconciled history for a symbol as PriceBars (for indicators). (+7 more)
 
-### Community 87 - "Dashboard.tsx"
-Cohesion: 0.22
-Nodes (7): DashboardStats, MarketBreadth, MoversResponse, Badge(), Props, styles, DashboardPage()
+### Community 87 - "Operations.tsx"
+Cohesion: 0.12
+Nodes (19): api, Job, JobKind, JobStage, JobStageStatus, JOB_BADGE, JobConsole(), Props (+11 more)
 
 ### Community 88 - "renderWithProviders.tsx"
-Cohesion: 0.28
-Nodes (5): renderDetail(), handlers, Options, renderWithProviders(), server
+Cohesion: 0.13
+Nodes (7): pressRun(), runWithResult(), renderDetail(), handlers, Options, renderWithProviders(), server
 
 ### Community 89 - "How It Works — NEPSE Trader Internals"
 Cohesion: 0.12
@@ -603,73 +599,73 @@ Nodes (17): 10. Paper portfolio (`trading/portfolio.py`), 11. Storage & idempote
 Cohesion: 0.12
 Nodes (17): jsdom, oxlint, tailwindcss, @testing-library/jest-dom, @testing-library/react, @testing-library/user-event, @types/react-router-dom, @vitest/coverage-v8 (+9 more)
 
-### Community 91 - "TestPersistence"
-Cohesion: 0.20
-Nodes (8): latest_run(), Persist a run and its cards; returns the run id. Stored so a call can be scored…, The most recent run with its cards, or None if the advisor never ran., Recent runs, newest first, without their cards., run_history(), _run_row_to_dict(), save_rashifal(), TestPersistence
+### Community 91 - "rashifal.py"
+Cohesion: 0.09
+Nodes (25): Persist one dose run and exactly four child rows atomically., save_doses(), _attach_narrative(), build_rashifal(), latest_run(), _note_text(), date, PlanCard (+17 more)
 
 ### Community 92 - "SellCandidate"
-Cohesion: 0.22
-Nodes (7): build_sell_queue(), Which held positions to exit, from the engine's own view of each symbol.…, A held position the engine wants out of, and why., SellCandidate, date, PlanCard, TestSellQueue
+Cohesion: 0.20
+Nodes (8): build_sell_queue(), Which held positions to exit, from the engine's own view of each symbol.…, A held position the engine wants out of, and why., SellCandidate, _bars(), date, PlanCard, TestSellQueue
 
-### Community 93 - "Settings"
-Cohesion: 0.07
-Nodes (27): BaseSettings, Connection, The analyst: evidence in, validated commentary out. One class tying the pieces…, BudgetStatus, BudgetSummary, Connection, Token budgeting: hard ceilings with a DB-backed ledger. Three caps, all from…, Whether a call may proceed, and if not, why not in plain words. (+19 more)
+### Community 93 - ".complete"
+Cohesion: 0.20
+Nodes (6): Best available answer to *prompt*, or a response explaining the gap. ``task``…, Everything ``ai models`` prints: chains, availability, caps, cache., A refusal, logged in the ledger so the reason survives the run., Provider names to try, in order, for *tier*., A cached provider instance, or None if the name is unknown., The legs of *tier*'s chain that are configured well enough to try.
 
 ### Community 94 - "walkforward.py"
 Cohesion: 0.21
 Nodes (12): _param_grid(), Any, Walk-forward optimisation with expanding or rolling windows. Splits price…, walk_forward(), WFOFold, WFResult, _bars(), Tests for walk-forward optimisation. (+4 more)
 
 ### Community 95 - "test_reporting.py"
-Cohesion: 0.14
-Nodes (23): backtest_report(), Path, Markdown summary of backtest performance metrics., Write a combined daily report with a top title and one ``##`` per section., Send a plain-text message via Telegram Bot API., Build a GitHub markdown table of signals (pure, exact-text testable)., signals_markdown(), write_markdown_report() (+15 more)
+Cohesion: 0.11
+Nodes (29): backtest_report(), Path, ReconciledPrice, Markdown table of reconciled prices, flagging low-confidence / disputed rows., Markdown summary of backtest performance metrics., Write a combined daily report with a top title and one ``##`` per section., Send a plain-text message via Telegram Bot API., Build a GitHub markdown table of signals (pure, exact-text testable). (+21 more)
 
-### Community 96 - "SourceClient"
+### Community 96 - "JobBusy"
 Cohesion: 0.12
-Nodes (12): date, Interface every source adapter implements. Concrete clients (ShareSansar,…, SourceClient, MeroLaganiFundamentalsClient, Fundamentals data scraping from MeroLagani company detail pages., Fetch fundamental data for a single symbol from MeroLagani., FloorsheetEntry, IndexValue (+4 more)
+Nodes (23): BaseModel, AiTestRequest, AuctionAdviceRequest, CorporateActionRequest, JobSubmitRequest, JournalDistillRequest, JournalReviewRequest, MeroShareImportRequest (+15 more)
 
-### Community 97 - "news.py"
-Cohesion: 0.05
-Nodes (34): _clean(), extract_symbols(), _headline_key(), _nearby_date(), _news_document(), NewsClient, _parse_date(), date (+26 more)
+### Community 97 - ".parse_news_list"
+Cohesion: 0.21
+Nodes (3): Parse a ShareSansar news listing page into news documents. The listing is a…, Fuzzy date parsing would turn "11% dividend" into the 11th of this month., TestParseNewsList
 
-### Community 98 - "get"
-Cohesion: 0.20
-Nodes (20): get, advisor_doses_latest(), advisor_latest(), _advisor_run_response(), _attach_dose_cards(), _confidence_response(), _dose_response(), _dose_run_response() (+12 more)
+### Community 98 - "_advisor_run_response"
+Cohesion: 0.24
+Nodes (15): _advisor_run_response(), _attach_dose_cards(), _confidence_response(), _dose_response(), _dose_run_response(), _plan_card_response(), Any, Make persisted and in-memory confidence values share one API shape. Fresh… (+7 more)
 
 ### Community 99 - "conftest.py"
 Cohesion: 0.14
 Nodes (14): Config, Session, _isolate_run_logs(), fixture, Path, pytest_configure(), pytest_runtest_logreport(), pytest_sessionfinish() (+6 more)
 
-### Community 100 - "check_freshness"
-Cohesion: 0.22
-Nodes (10): check_database(), check_freshness(), date, The database exists, is readable, and holds price rows., How far behind the newest reconciled close is, counted in trading days., Trading days strictly after *start* up to and including *end*., _trading_days_between(), date (+2 more)
+### Community 100 - "post"
+Cohesion: 0.10
+Nodes (24): auction_advice_endpoint(), cancel_job(), journal_distill_endpoint(), _journal_error(), journal_retire_endpoint(), journal_review_endpoint(), journal_score_endpoint(), journal_score_one_endpoint() (+16 more)
 
-### Community 101 - "_storage"
-Cohesion: 0.08
-Nodes (30): advisor_history(), auction_advice_history_endpoint(), auction_latest_endpoint(), dashboard(), health_history(), journal_calibration_endpoint(), journal_history_endpoint(), journal_review_queue_endpoint() (+22 more)
+### Community 101 - "_settings"
+Cohesion: 0.10
+Nodes (22): ai_budget(), ai_models(), ai_test(), health_report(), _meroshare_enabled(), _meroshare_settings(), meroshare_status(), meroshare_sync() (+14 more)
 
-### Community 102 - "_d"
-Cohesion: 0.14
-Nodes (8): _d(), _dt(), date, datetime, ReconciledPrice, Signal, All reconciled consensus rows for a single business date., Aggregate statistics about the database contents.
+### Community 102 - "check_schema"
+Cohesion: 0.43
+Nodes (3): check_schema(), Every migration in the registry applied, and nothing unknown applied., TestSchema
 
 ### Community 103 - "NEPSE Trader — Agent Context"
 Cohesion: 0.13
 Nodes (14): Completed advisor scope, Current State, Key Design Decisions, NEPSE Trader — Agent Context, Open Questions / Planned, Project, Project Structure, Recent Sprint Progress (+6 more)
 
 ### Community 104 - "test_advisor_rashifal.py"
-Cohesion: 0.12
-Nodes (16): build_rashifal(), date, Describe the tape in one phrase, from advancers vs decliners., Compose a full run. Deterministic unless *analyst* is supplied. ``mode="ai"``…, _regime(), _bars(), _buys(), conn() (+8 more)
+Cohesion: 0.14
+Nodes (12): Describe the tape in one phrase, from advancers vs decliners., _regime(), _buys(), conn(), fixture, parametrize, Signal, Tests for the rashifal composer. Two properties matter more than the rest, and… (+4 more)
 
-### Community 105 - "check_schema"
-Cohesion: 0.43
-Nodes (3): check_schema(), Every migration in the registry applied, and nothing unknown applied., TestSchema
+### Community 105 - "check_freshness"
+Cohesion: 0.14
+Nodes (15): check_database(), check_freshness(), check_ingest(), date, The database exists, is readable, and holds price rows., How far behind the newest reconciled close is, counted in trading days., The error rate over the most recent ingest attempts, per source., Trading days strictly after *start* up to and including *end*. (+7 more)
 
-### Community 106 - "TokenBudget"
-Cohesion: 0.15
-Nodes (12): iso_week(), date, Spend accounting over the ``ai_budget_ledger`` table., ``(billable_calls, billable_tokens)`` for today. Cache hits excluded., Whether one more call fits inside the caps. ``estimated_tokens`` lets a large…, Append one call to the ledger, successful or not. Failures are recorded with…, Most recent ledger rows, newest first — the audit trail., ``"2026-W35"`` — the key the weekly deep-pass cap counts against. (+4 more)
+### Community 106 - "SourceSpec"
+Cohesion: 0.11
+Nodes (14): EndpointSpec, SourceSpec, MeroLaganiFundamentalsClient, Fundamentals data scraping from MeroLagani company detail pages., Fetch fundamental data for a single symbol from MeroLagani., Fetch and parse fundamentals for *symbol*., FundamentalData, test_config_driven_urls_override_defaults() (+6 more)
 
-### Community 107 - "test_web_api.py"
-Cohesion: 0.09
-Nodes (7): client(), fixture, TestBacktest, TestDashboard, TestHealth, TestPortfolio, TestSymbols
+### Community 107 - "TokenBudget"
+Cohesion: 0.07
+Nodes (19): BudgetSummary, iso_week(), Connection, date, Spend accounting over the ``ai_budget_ledger`` table., ``(billable_calls, billable_tokens)`` for today. Cache hits excluded., Whether one more call fits inside the caps. ``estimated_tokens`` lets a large…, Append one call to the ledger, successful or not. Failures are recorded with… (+11 more)
 
 ### Community 108 - "read_bool"
 Cohesion: 0.29
@@ -679,9 +675,9 @@ Nodes (9): ensure_table(), Any, Connection, Reads over the ``app_settings`` key/
 Cohesion: 0.15
 Nodes (13): clsx, lucide-react, react, react-dom, react-router-dom, recharts, dependencies, clsx (+5 more)
 
-### Community 110 - "api.py"
-Cohesion: 0.17
-Nodes (20): FastAPI, advisor_run(), AdvisorRunRequest, backtest_run(), backtest_screen(), _evidence_builder(), health(), lifespan() (+12 more)
+### Community 110 - "TestRagSearch"
+Cohesion: 0.15
+Nodes (3): _index(), TestNews, TestRagSearch
 
 ### Community 111 - "NEPSE Trader — Operations Runbook"
 Cohesion: 0.12
@@ -691,17 +687,17 @@ Nodes (16): 10. MeroShare and auction safety, 11. MCP setup, 1. Daily lifecycle,
 Cohesion: 0.06
 Nodes (32): 10. Paper trading, 11. The daily run, 12. Advice — rashifal, advise, doses, 13. Prediction journal, 14. Auction bid ceiling, 15. Fundamentals and corporate actions, 16. Searching your own data, 17. AI mode (+24 more)
 
-### Community 113 - "check_meroshare"
-Cohesion: 0.39
-Nodes (3): check_meroshare(), The read-only mirror: toggle, credential completeness, last sync. Reports field…, TestMeroShare
+### Community 113 - "TestJobRoutes"
+Cohesion: 0.20
+Nodes (3): The route only accepts the five real kinds, so a typo never reaches the…, Cancel is driven over HTTP; the work is a stub so the test stays fast. The kind…, TestJobRoutes
 
-### Community 114 - "TestExtractResultLinks"
-Cohesion: 0.22
-Nodes (6): extract_result_links(), Result URLs from the configured search endpoint, best first., Pull outbound result URLs from a search results page. DuckDuckGo's HTML…, Turn a search-engine redirect link into the destination URL., _unwrap_redirect(), TestExtractResultLinks
+### Community 114 - "NewsClient"
+Cohesion: 0.48
+Nodes (3): NewsClient, News plus announcements, deduplicated by ``doc_id``., ShareSansar news + announcement listings as retrievable documents.
 
 ### Community 115 - "_ensure_app_settings"
-Cohesion: 0.12
-Nodes (19): _advisor_symbols(), _ensure_app_settings(), get_watchlist(), MeroShareToggleRequest, put_meroshare_setting(), put_watchlist(), Persist a local toggle, or clear it with ``{"enabled": null}``., Assert the migrated settings table exists. ``app_settings`` is created by… (+11 more)
+Cohesion: 0.13
+Nodes (17): _advisor_symbols(), _ensure_app_settings(), get_meroshare_setting(), get_watchlist(), put_meroshare_setting(), put_watchlist(), Effective integration toggle with its DB-or-environment provenance., Persist a local toggle, or clear it with ``{"enabled": null}``. (+9 more)
 
 ### Community 116 - "test_cli_advisor.py"
 Cohesion: 0.21
@@ -719,17 +715,13 @@ Nodes (12): Dose, PlanCard, confidenceLabel(), confidenceValue(), confidenceVari
 Cohesion: 0.29
 Nodes (7): 22. Recipes, Add a data source, Add a health check, Add a strategy, Add a table, Add an indicator, Add an MCP tool
 
-### Community 120 - "check_ingest"
-Cohesion: 0.43
-Nodes (3): check_ingest(), The error rate over the most recent ingest attempts, per source., TestIngest
-
 ### Community 121 - "Capabilities — NEPSE Trader"
 Cohesion: 0.18
 Nodes (11): 10. Performance characteristics, 1. Capability matrix, 2. Data & coverage, 3. Analytical capabilities, 4. Backtesting & screening, 5. Cost & tax fidelity, 6. The once-a-day report, 7. Advisor, mirror and MCP details (+3 more)
 
-### Community 122 - "rashifal.py"
-Cohesion: 0.11
-Nodes (11): DoseReport, Compatibility/reporting view of the four nested doses., _attach_narrative(), _note_text(), The daily prescription: plan cards composed into a report. The name is a joke…, Ask the analyst for prose. Never let it affect a number, never let it raise.…, The card as text for the prompt. Read-only: the analyst sees, never sets., Flatten a :class:`WeeklyThesis` into prose for the report header. (+3 more)
+### Community 122 - "Check"
+Cohesion: 0.14
+Nodes (12): Check, check_journal(), check_paper(), check_rag(), _guarded(), Corpus size, per-kind coverage, and whether ranked search is available., Prediction lifecycle backlog: what is open, scored-but-unreviewed, retired., The replay-derived paper account, if anything was ever traded. (+4 more)
 
 ### Community 123 - "NEPSE Trader"
 Cohesion: 0.18
@@ -743,17 +735,17 @@ Nodes (3): fixture, CLI smoke tests via Typer's CliRunner (no network)., _temp_d
 Cohesion: 0.20
 Nodes (9): Common tasks → commands, Companion skills, Fetch / parse engines, Hard rules (do not cross), NEPSE Trader — project skill, Setup (once), The once-a-day run (the main thing), When a source breaks (endpoint discovery) (+1 more)
 
-### Community 126 - "credentials.py"
-Cohesion: 0.12
-Nodes (14): keyring_available(), MeroShareCredentialError, _password_from_keyring(), Exception, MeroShare credential resolution — and every path a secret could escape by. The…, Which fields are empty, by name — safe to show the user., Self, or raise naming only the *missing field names*., Whether the optional ``keyring`` module imports. ``(ok, reason)``. (+6 more)
+### Community 126 - "test_rag_index.py"
+Cohesion: 0.15
+Nodes (16): FixtureRequest, has_fts5(), _m0003_rag_documents(), Probe whether this SQLite build has the FTS5 extension compiled in. FTS5 ships…, Document corpus for retrieval, plus an FTS5 index over it when available.…, _conn(), _conn_without_fts(), _corpus() (+8 more)
 
-### Community 127 - "build.py"
-Cohesion: 0.14
-Nodes (15): _breadth_documents(), _corporate_action_documents(), _documents_for_symbol(), _flush(), IndexReport, _periods(), Corpus construction: walk the database, emit documents, write the index.…, What an indexing run produced. (+7 more)
+### Community 127 - "FakeAnalyst"
+Cohesion: 0.26
+Nodes (6): FakeAnalyst, _note(), Returns valid notes and records every call, so we can assert on inputs., The card already has the engine's action; a second opinion beside it is how a…, TestAIMode, _thesis()
 
-### Community 128 - "_to_money"
-Cohesion: 0.22
-Nodes (8): _expected_outcome(), Decimal, PnL at *exit_price*, net of entry costs, exit costs and CGT. The gross figure…, CostBreakdown, Decimal, Nepal equity transaction cost & tax engine. Computes the full, realistic cost…, Convert a number to paisa-precise Decimal (2 dp, half-up)., _to_money()
+### Community 128 - "config.py"
+Cohesion: 0.18
+Nodes (13): load_cost_model(), load_sources(), Path, Configuration loading: app settings + source endpoint map + cost model.…, _read_yaml(), SourcesConfig, Validate all config files. Returns list of error messages (empty = OK)., validate_all() (+5 more)
 
 ### Community 129 - "Alerter"
 Cohesion: 0.11
@@ -763,21 +755,21 @@ Nodes (15): Alerter, Response, Pluggable alert backends: Telegram, Discord, SMTP
 Cohesion: 0.22
 Nodes (9): 1. ShareSansar — `sharesansar.har` (PRIMARY), 2. Chukul — `chukul.har` (verify inferred /v1/ paths), 3. MeroLagani — `merolagani.har` (secondary HTML), 4. NepseAlpha — `nepsealpha.har` (TradingView UDF, Cloudflare-gated), 5. NEPSE official — `nepse_official.har` (reference / replay only), HAR Capture Plan — NEPSE data sources, How to capture a HAR (Chrome / Firefox / Edge), Per-site capture recipes (+1 more)
 
-### Community 132 - "SearchHit"
-Cohesion: 0.08
-Nodes (21): _as_scored(), EvidenceItem, Turning retrieved documents into a bounded, citable evidence block. An…, Normalise either input shape to (document, score) pairs., Interleave across kinds, preserving each kind's internal ranking., One document admitted into the pack, with its citation marker., _round_robin_by_kind(), One retrieved document plus why it matched. (+13 more)
+### Community 132 - "Job"
+Cohesion: 0.13
+Nodes (10): Job, JobStage, _now(), Settings, Storage, A unit of background work and everything the UI needs to render it., Start *kind* in a worker thread and return its job immediately. Raises…, Ask a job to stop. Returns the job, or None when the id is unknown. Cancelling… (+2 more)
 
 ### Community 133 - "plugins"
 Cohesion: 0.22
 Nodes (8): oxc, typescript, warn, plugins, rules, react/only-export-components, react/rules-of-hooks, $schema
 
-### Community 134 - "TestCardNumbers"
-Cohesion: 0.11
-Nodes (4): fixture, PlanCard, A stop the market cannot reach in one session would understate the risk., TestCardNumbers
+### Community 134 - "DoseReport"
+Cohesion: 0.15
+Nodes (4): DoseReport, Compatibility/reporting view of the four nested doses., Adapt a budgeted report to the persisted ``dose_runs`` contract., _report_as_run()
 
-### Community 135 - "FakeAnalyst"
-Cohesion: 0.26
-Nodes (6): FakeAnalyst, _note(), Returns valid notes and records every call, so we can assert on inputs., The card already has the engine's action; a second opinion beside it is how a…, TestAIMode, _thesis()
+### Community 135 - "TestExtractResultLinks"
+Cohesion: 0.22
+Nodes (6): extract_result_links(), Result URLs from the configured search endpoint, best first., Pull outbound result URLs from a search results page. DuckDuckGo's HTML…, Turn a search-engine redirect link into the destination URL., _unwrap_redirect(), TestExtractResultLinks
 
 ### Community 136 - "scripts"
 Cohesion: 0.25
@@ -787,29 +779,29 @@ Nodes (8): scripts, build, coverage, dev, lint, preview, test, test:run
 Cohesion: 0.29
 Nodes (6): Ask the engine for exact costs (don't approximate), Fit-check an existing paper portfolio, Hard rules, Nepal mechanics you MUST respect, NEPSE risk & position sizing — project skill, Sizing protocol (fixed-fractional, R-based)
 
-### Community 138 - "add_trading_days"
-Cohesion: 0.20
-Nodes (5): add_trading_days(), Return the date *n* trading days from *d*, skipping weekends and holidays.…, A trade dated Saturday is really the Sunday session., T+2 settlement lives on this function, so the weekend cases matter most., TestAddTradingDays
+### Community 138 - "news.py"
+Cohesion: 0.27
+Nodes (11): _clean(), _headline_key(), _nearby_date(), _news_document(), _parse_date(), date, datetime, News and company announcements — the RAG corpus the database cannot derive.… (+3 more)
 
-### Community 139 - "test_rag_corpus.py"
-Cohesion: 0.24
-Nodes (9): iter_documents(), price_document(), A single day's OHLCV as prose., Drop the ``None`` results that builders return for thin data., _bar(), Tests for the RAG document corpus builders. Two invariants carry the whole…, test_iter_documents_drops_nones(), TestAsRow (+1 more)
+### Community 139 - "_DummyStrategy"
+Cohesion: 0.38
+Nodes (5): _bar(), _buy_sig(), _DummyStrategy, Signal, TestStopLossInBacktest
 
-### Community 140 - "test_health.py"
-Cohesion: 0.17
-Nodes (11): fixture, check_rag(), Connection, Corpus size, per-kind coverage, and whether ranked search is available., Persist *report* and return its row id. Called only when a caller explicitly…, One stored report in full, or None when that id was never recorded., record_snapshot(), snapshot() (+3 more)
+### Community 140 - "FetchResult"
+Cohesion: 0.27
+Nodes (4): FetchResult, Any, Ingestion subpackage: per-source clients that fetch PUBLIC market data., retry
 
-### Community 141 - "TestSectorOfTheDay"
-Cohesion: 0.39
-Nodes (3): The sector with the best mean change today. Takes an already-grouped mapping so…, _sector_of_the_day(), TestSectorOfTheDay
+### Community 141 - "TestCitations"
+Cohesion: 0.31
+Nodes (4): normalise_citations(), Coerce whatever the model wrote into ``["[E1]", "[E3]"]`` form. Models write…, A marker only means something if it can match an evidence item., TestCitations
 
 ### Community 142 - "NEPSE backtest protocol — project skill"
 Cohesion: 0.33
 Nodes (5): Hard rules, NEPSE backtest protocol — project skill, Red flags that mean "do not deploy", The protocol (run in order), Why discipline matters on NEPSE specifically
 
-### Community 143 - "PlanCard"
-Cohesion: 0.17
-Nodes (8): build_plan_cards(), PlanCard, date, Build cards for *symbols*, returning the cards and the skips separately.…, A symbol that could not be given an honest card, and why. Surfaced rather than…, One symbol's prescription. Every field here is engine-computed., Skipped, TestBuildPlanCards
+### Community 143 - "TestClient"
+Cohesion: 0.31
+Nodes (3): parametrize, _settings(), TestClient
 
 ### Community 144 - "23. All the settings"
 Cohesion: 0.29
@@ -819,81 +811,89 @@ Nodes (7): 23. All the settings, AI providers, AI spending caps, Analysis, Fetch
 Cohesion: 0.40
 Nodes (4): name, private, type, version
 
-### Community 146 - "check_ai"
-Cohesion: 0.21
-Nodes (7): check_ai(), check_config(), Settings, YAML config parses against its schema, and at least one source is on., Whether AI mode could actually answer, and how much budget is left. Reads the…, TestAi, TestConfig
+### Community 146 - "_client"
+Cohesion: 0.46
+Nodes (4): _client(), mock, A missing news leg costs commentary, never numbers — it must not raise., TestFetch
 
-### Community 147 - "test_advisor_plan.py"
-Cohesion: 0.21
-Nodes (7): _decide(), Signal, Turn the strategy panel's votes into an action, conviction and reasons.…, Tests for the deterministic plan engine. The point of these tests is that…, AVOID exists for the AI vocabulary; the engine has no rule that emits it., _signal(), TestDecide
+### Community 147 - "_decide"
+Cohesion: 0.23
+Nodes (6): _decide(), Signal, Turn the strategy panel's votes into an action, conviction and reasons.…, AVOID exists for the AI vocabulary; the engine has no rule that emits it., _signal(), TestDecide
 
 ### Community 148 - "React + TypeScript + Vite"
 Cohesion: 0.50
 Nodes (3): Expanding the Oxlint configuration, React Compiler, React + TypeScript + Vite
 
 ### Community 149 - "Health.tsx"
-Cohesion: 0.15
-Nodes (10): api, HealthCheck, HealthReport, HealthSnapshot, HealthStatus, BADGE_VARIANT, CheckRow(), ICONS (+2 more)
+Cohesion: 0.20
+Nodes (10): HealthCheck, HealthReport, HealthSnapshot, HealthStatus, BADGE_VARIANT, CheckRow(), HealthPage(), ICONS (+2 more)
 
-### Community 158 - "LLMRouter"
-Cohesion: 0.21
-Nodes (8): LLMRouter, Best available answer to *prompt*, or a response explaining the gap. ``task``…, Everything ``ai models`` prints: chains, availability, caps, cache., A refusal, logged in the ledger so the reason survives the run., Cache → budget → provider chain, with graceful failure at every step., Provider names to try, in order, for *tier*., A cached provider instance, or None if the name is unknown., The legs of *tier*'s chain that are configured well enough to try.
+### Community 158 - "ExplodingAnalyst"
+Cohesion: 0.29
+Nodes (4): RuntimeError, ExplodingAnalyst, A badly-behaved analyst: raises instead of degrading., _raise_runtime()
 
-### Community 170 - "reconcile_bars"
-Cohesion: 0.25
-Nodes (12): _consensus(), ReconciledPrice, Cross-source reconciliation. The whole point of pulling the same NEPSE data…, Return (agreed_value, agreeing_sources, disputed). Greedy clustering: for each…, reconcile_bars(), _within(), _bar(), Tests for cross-source reconciliation. (+4 more)
+### Community 170 - "ToolSpec"
+Cohesion: 0.29
+Nodes (3): One MCP tool: what the model sees, and what runs when it is called.…, The ``tools/list`` representation (handler is not serialisable)., ToolSpec
 
 ### Community 171 - "3. Robustness & resilience"
 Cohesion: 0.40
 Nodes (5): 3.1 Async, concurrent ingestion — **high impact**, `ingest/base.py`, 3.2 Per-source circuit breaker — **medium**, 3.3 Respect `Retry-After` and `robots.txt` programmatically — **medium**, 3.4 Schema-driven HTML parsing — **medium**, `ingest/sharesansar.py`, `merolagani.py`, 3. Robustness & resilience
 
-### Community 175 - "TestDegradation"
-Cohesion: 0.18
-Nodes (5): ExplodingAnalyst, A badly-behaved analyst: raises instead of degrading., Every failure path must yield the full deterministic report plus a banner., It must not raise out of build_rashifal — that is the whole contract., TestDegradation
+### Community 172 - "TestSectorOfTheDay"
+Cohesion: 0.39
+Nodes (3): The sector with the best mean change today. Takes an already-grouped mapping so…, _sector_of_the_day(), TestSectorOfTheDay
 
-### Community 176 - "Rashifal"
+### Community 173 - "_drive"
+Cohesion: 0.33
+Nodes (6): _drive(), Run serve_stdio over StringIO. Returns (responses, raw stdout text)., With explicit streams the loop must leave sys.stdout untouched., test_end_to_end_initialize_list_and_call_over_the_stdio_loop(), test_serve_stdio_does_not_leak_the_real_stdout_rebinding(), test_stdio_loop_returns_cleanly_on_eof()
+
+### Community 174 - "._split_csv"
+Cohesion: 0.40
+Nodes (3): Any, field_validator, Accept a comma-separated string from env for list-valued settings.
+
+### Community 175 - "PlanCard"
 Cohesion: 0.17
-Nodes (5): PlanCard, Rashifal, One advisor run: the whole daily prescription., DegradingAnalyst, The documented failure mode: returns None and reports why.
+Nodes (4): PlanCard, One symbol's prescription. Every field here is engine-computed., DegradingAnalyst, The documented failure mode: returns None and reports why.
 
-### Community 177 - "BaseModel"
-Cohesion: 0.18
-Nodes (11): BaseModel, AuctionAdviceRequest, JournalDistillRequest, JournalReviewRequest, meroshare_import(), MeroShareImportRequest, A pasted CSV/holdings export. No credential is involved in this path., Persist a pasted CSV export — the no-credentials path into the mirror. (+3 more)
+### Community 177 - "add_corporate_action"
+Cohesion: 0.40
+Nodes (6): CorporateAction, add_corporate_action(), _corporate_action_response(), list_corporate_actions(), Stored corporate actions, optionally for one symbol., Record a corporate action by hand. Prices stay as published — this table is the…
 
-### Community 178 - "ai_budget"
-Cohesion: 0.20
-Nodes (10): ai_budget(), ai_models(), ai_test(), A router over the real database. Opens the DB; caller keeps the Storage., Show each provider chain and which legs are actually usable., Today's LLM spend against the caps, plus cache size., Send one tiny prompt through a chain and report what answered. This spends real…, Quantitative statistics per symbol over reconciled history. Annualised return &… (+2 more)
-
-### Community 179 - "progress_bars"
-Cohesion: 0.29
-Nodes (9): progress_bars(), progress_spinner(), Console, T, A simple spinner context for indeterminate tasks., Reusable Progress instance with standard columns., Iterate over *seq* with a live progress bar., track() (+1 more)
+### Community 178 - "progress_spinner"
+Cohesion: 0.12
+Nodes (21): ai_budget(), ai_test(), rag_index(), Build the searchable document corpus from what's already in the database. Runs…, A router over the real database. Opens the DB; caller keeps the Storage., Today's LLM spend against the caps, plus cache size., Send one tiny prompt through a chain and report what answered. This spends real…, Quantitative statistics per symbol over reconciled history. Annualised return &… (+13 more)
 
 ### Community 180 - "plan_cards_md"
 Cohesion: 0.38
 Nodes (4): plan_cards_md(), Render plan cards as one table row per symbol. Cards are…, _card(), TestPlanCardsMd
 
-### Community 181 - "HoldingDiff"
-Cohesion: 0.22
-Nodes (6): HoldingDiff, One symbol's disagreement (or agreement) between real and paper books., Real minus paper. Positive means the real account holds more., ``"real"``, ``"paper"``, or ``None`` when both hold the symbol., comparison_summary(), Counts over :func:`compare_with_paper`'s output, for a one-line report.
+### Community 181 - "card"
+Cohesion: 0.50
+Nodes (4): card(), fixture, PlanCard, storage()
 
-### Community 182 - "ReconciledPrice"
-Cohesion: 0.25
-Nodes (8): A price for a symbol/date agreed (or disputed) across multiple sources., ReconciledPrice, ReconciledPrice, Markdown table of reconciled prices, flagging low-confidence / disputed rows., reconciliation_report(), test_reconciliation_report_empty(), test_reconciliation_report_flags_disputed_even_if_confident(), test_reconciliation_report_flags_low_confidence()
-
-### Community 184 - "test_storage.py"
-Cohesion: 0.36
-Nodes (8): _bar(), Tests for the SQLite storage layer., test_bars_for_date(), test_db_stats(), test_different_sources_kept_separately(), test_index_values_roundtrip(), test_upsert_and_read_back(), test_upsert_is_idempotent_per_source()
-
-### Community 185 - "_drive"
-Cohesion: 0.21
-Nodes (8): _drive(), A client should learn the ceiling from the schema, not from an error., Run serve_stdio over StringIO. Returns (responses, raw stdout text)., With explicit streams the loop must leave sys.stdout untouched., test_declared_schemas_advertise_the_caps_the_handlers_enforce(), test_end_to_end_initialize_list_and_call_over_the_stdio_loop(), test_serve_stdio_does_not_leak_the_real_stdout_rebinding(), test_stdio_loop_returns_cleanly_on_eof()
-
-### Community 187 - "FundamentalData"
+### Community 182 - "_seed"
 Cohesion: 0.40
-Nodes (3): Fetch and parse fundamentals for *symbol*., FundamentalData, TestFundamentalDocument
+Nodes (5): fixture, Write both raw and reconciled bars: tools read from each side., _seed(), server(), storage()
 
-### Community 188 - "TestNoNetworkAndNoLLM"
-Cohesion: 0.33
-Nodes (3): The load-bearing guarantee: Normal mode is fully offline., The Claude leg is a subprocess; the engine must never reach it., TestNoNetworkAndNoLLM
+### Community 183 - "conn"
+Cohesion: 0.67
+Nodes (3): conn(), fixture, Path
+
+### Community 184 - "conn"
+Cohesion: 0.67
+Nodes (3): conn(), fixture, Path
+
+### Community 185 - "server.py"
+Cohesion: 0.14
+Nodes (17): Exception, A protocol-level failure that must surface as a JSON-RPC ``error``. Method…, RpcError, build_server(), _json_text(), The MCP server: a declarative tool registry plus the stdio loop. An MCP client…, Construct a fully wired :class:`MCPServer`. Separate from :func:`serve_stdio`…, Resolved I/O plus whether we own (and may therefore guard) real stdout. (+9 more)
+
+### Community 187 - "conn"
+Cohesion: 0.67
+Nodes (3): conn(), fixture, Path
+
+### Community 188 - "conn"
+Cohesion: 0.67
+Nodes (3): conn(), fixture, Path
 
 ### Community 189 - "do_not_touch_md"
 Cohesion: 0.50
@@ -903,49 +903,25 @@ Nodes (3): do_not_touch_md(), Render the excluded symbols with their reasons. A 
 Cohesion: 0.50
 Nodes (3): Render the exit queue: what to sell, why, and the earliest legal date., sell_queue_md(), TestSellQueueMd
 
-### Community 191 - "_m0006_meroshare"
-Cohesion: 0.40
-Nodes (4): _m0006_meroshare(), _m0012_meroshare_demat_privacy(), Read-only mirror of the user's own MeroShare/CDSC account. **No credential has…, Replace raw demat identifiers with a stable hash and masked suffix. ``0006``…
-
-### Community 192 - "test_list_returning_tools_report_how_much_they_returned"
-Cohesion: 0.40
-Nodes (5): parametrize, An oversized request must fail loudly; a truncated answer would read as…, Every unbounded list carries ``returned``/``truncated`` alongside ``count``., test_list_returning_tools_report_how_much_they_returned(), test_over_the_cap_requests_are_rejected_not_silently_served()
-
-### Community 193 - "card"
-Cohesion: 0.50
-Nodes (4): card(), fixture, PlanCard, storage()
-
-### Community 194 - "_seed"
-Cohesion: 0.50
-Nodes (4): fixture, Write both raw and reconciled bars: tools read from each side., _seed(), storage()
-
-### Community 196 - "conn"
-Cohesion: 0.67
-Nodes (3): conn(), fixture, Path
-
-### Community 197 - "conn"
-Cohesion: 0.67
-Nodes (3): conn(), fixture, Path
-
 ## Knowledge Gaps
-- **375 isolated node(s):** `Mover`, `BacktestSummary`, `Confidence`, `RagHit`, `NAV_ITEMS` (+370 more)
+- **401 isolated node(s):** `Mover`, `BacktestSummary`, `Confidence`, `RagHit`, `JobStatus` (+396 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **27 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **28 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `Settings` connect `Settings` to `_settings`, `LLMProvider`, `SearchHit`, `test_ai_analyst.py`, `BaseClient`, `ResponseCache`, `parse_into`, `SymbolNote`, `test_api_phase6.py`, `test_mcp_server.py`, `WebRetriever`, `client.py`, `LLMRouter`, `Analyst`, `DailyPipeline`, `LLMResponse`, `TestAdvisor`, `pipeline.py`, `sync_payload`, `test_meroshare.py`, `_drive`, `TestMeroShareImport`, `MeroShareHolding`, `MeroShareClient`, `_settings`, `test_pipeline.py`, `TestRagSearch`, `serve_stdio`, `SourceClient`, `news.py`, `TokenBudget`, `TestExtractResultLinks`, `credentials.py`?**
-  _High betweenness centrality (0.139) - this node is a cross-community bridge._
-- **Why does `PriceBar` connect `PriceBar` to `corpus.py`, `reporting.py`, `Storage`, `BaseClient`, `test_nepse_official.py`, `test_sharesansar.py`, `test_rag_corpus.py`, `test_strategies.py`, `test_api_phase6.py`, `test_mcp_server.py`, `nepse_trader/models.py`, `test_advisor_plan.py`, `test_properties.py`, `outcomes.py`, `Backtester`, `ChukulClient`, `plan.py`, `build_plan_card`, `NepseAlphaClient`, `merolagani.py`, `reconcile_bars`, `DailyPipeline`, `pipeline.py`, `test_storage.py`, `_Base`, `_seed`, `test_pipeline.py`, `SmaCrossStrategy`, `test_backtest_risk.py`, `sharesansar.py`, `indicator_document`, `.daily_report`, `walkforward.py`, `test_reporting.py`, `SourceClient`, `_d`, `test_advisor_rashifal.py`, `test_web_api.py`, `test_cli_advisor.py`?**
-  _High betweenness centrality (0.065) - this node is a cross-community bridge._
-- **Why does `Storage` connect `Storage` to `LLMProvider`, `test_ai_analyst.py`, `FakeAnalyst`, `ResponseCache`, `TestSectorOfTheDay`, `test_api_phase6.py`, `test_mcp_server.py`, `nepse_trader/models.py`, `advisor/__init__.py`, `migrations.py`, `CorporateAction`, `LLMResponse`, `TestDegradation`, `pipeline.py`, `Rashifal`, `test_meroshare.py`, `test_advisor_doses.py`, `test_storage.py`, `_run`, `card`, `_seed`, `conn`, `conn`, `test_pipeline.py`, `TestPersistence`, `SellCandidate`, `Settings`, `_d`, `test_advisor_rashifal.py`, `test_web_api.py`, `test_cli_advisor.py`?**
-  _High betweenness centrality (0.059) - this node is a cross-community bridge._
-- **Are the 127 inferred relationships involving `Settings` (e.g. with `Analyst` and `BudgetStatus`) actually correct?**
-  _`Settings` has 127 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 65 inferred relationships involving `Document` (e.g. with `JournalError` and `Prediction`) actually correct?**
-  _`Document` has 65 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 58 inferred relationships involving `LLMResponse` (e.g. with `BudgetStatus` and `BudgetSummary`) actually correct?**
-  _`LLMResponse` has 58 INFERRED edges - model-reasoned connections that need verification._
-- **Are the 30 inferred relationships involving `CostEngine` (e.g. with `AuctionAdvice` and `Dose`) actually correct?**
-  _`CostEngine` has 30 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `Settings` connect `Settings` to `_settings`, `LLMProvider`, `config.py`, `LLMResponse`, `TestExtractResultLinks`, `base.py`, `ResponseCache`, `FetchResult`, `TestCitations`, `parse_into`, `TestExtractJson`, `MeroShareHolding`, `_client`, `test_mcp_server.py`, `TestClient`, `BaseClient`, `MeroShareClient`, `MCPServer`, `ToolSpec`, `DailyPipeline`, `_budget`, `._split_csv`, `TestAdvisor`, `_drive`, `test_meroshare.py`, `MeroShareCredentials`, `_seed`, `server.py`, `TestMeroShareImport`, `meroshare/__init__.py`, `.parse_announcements`, `_settings`, `main.py`, `test_ingest_news.py`, `test_health.py`, `SourceClient`, `TestHtmlToText`, `Document`, `.parse_news_list`, `check_schema`, `check_freshness`, `TokenBudget`, `TestRagSearch`, `Check`?**
+  _High betweenness centrality (0.143) - this node is a cross-community bridge._
+- **Why does `PriceBar` connect `PriceBar` to `test_rag_corpus.py`, `reporting.py`, `Storage`, `base.py`, `test_nepse_official.py`, `SourceName`, `_DummyStrategy`, `test_strategies.py`, `MeroShareHolding`, `test_mcp_server.py`, `test_properties.py`, `outcomes.py`, `Backtester`, `ChukulClient`, `build_plan_card`, `NepseAlphaClient`, `merolagani.py`, `ReconciledPrice`, `DailyPipeline`, `screen.py`, `CostEngine`, `_seed`, `test_pipeline.py`, `SmaCrossStrategy`, `nepse_trader/models.py`, `test_health.py`, `SourceClient`, `Document`, `SellCandidate`, `walkforward.py`, `test_reporting.py`, `test_advisor_rashifal.py`, `check_freshness`, `test_cli_advisor.py`?**
+  _High betweenness centrality (0.051) - this node is a cross-community bridge._
+- **Why does `Storage` connect `Storage` to `LLMProvider`, `Path`, `SourceName`, `ResponseCache`, `MeroShareHolding`, `test_mcp_server.py`, `journal.py`, `ExplodingAnalyst`, `migrations.py`, `Settings`, `ToolSpec`, `ReconciledPrice`, `_build_advisor_result`, `TestSectorOfTheDay`, `_budget`, `PlanCard`, `DailyPipeline`, `progress_spinner`, `CostEngine`, `card`, `_seed`, `test_advisor_doses.py`, `conn`, `server.py`, `conn`, `conn`, `conn`, `test_meroshare.py`, `_run`, `main.py`, `test_pipeline.py`, `nepse_trader/models.py`, `test_health.py`, `rashifal.py`, `SellCandidate`, `test_advisor_rashifal.py`, `check_freshness`, `test_cli_advisor.py`, `FakeAnalyst`?**
+  _High betweenness centrality (0.048) - this node is a cross-community bridge._
+- **Are the 140 inferred relationships involving `Settings` (e.g. with `Analyst` and `BudgetStatus`) actually correct?**
+  _`Settings` has 140 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 75 inferred relationships involving `Document` (e.g. with `JournalError` and `Prediction`) actually correct?**
+  _`Document` has 75 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 54 inferred relationships involving `DocumentIndex` (e.g. with `JournalError` and `Prediction`) actually correct?**
+  _`DocumentIndex` has 54 INFERRED edges - model-reasoned connections that need verification._
+- **Are the 13 inferred relationships involving `Storage` (e.g. with `_Result` and `DegradingAnalyst`) actually correct?**
+  _`Storage` has 13 INFERRED edges - model-reasoned connections that need verification._
