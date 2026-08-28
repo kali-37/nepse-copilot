@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from datetime import date, datetime
 
 from nepse_trader.models import IndexValue, PriceBar, SourceName
@@ -100,4 +101,58 @@ def test_db_stats(tmp_path):
     assert stats["price_bar_rows"] == 1
     assert stats["price_date_earliest"] is not None
     assert stats["price_date_latest"] is not None
+    db.close()
+
+
+def test_latest_price_date(tmp_path):
+    db = Storage(tmp_path / "t.db")
+    assert db.latest_price_date() is None
+
+    db.upsert_price_bars([_bar("NABIL", 500.0, SourceName.SHARESANSAR)])
+    assert db.latest_price_date() == D
+
+    newer = PriceBar(
+        symbol="NABIL",
+        business_date=date(2026, 6, 10),
+        close=505.0,
+        source=SourceName.SHARESANSAR,
+    )
+    db.upsert_price_bars([newer])
+    assert db.latest_price_date() == date(2026, 6, 10)
+    db.close()
+
+
+def test_each_thread_gets_its_own_connection(tmp_path):
+    """One connection shared across threads corrupts reads.
+
+    Concurrent callers on a single ``sqlite3.Connection`` re-enter the same
+    cached prepared statement, so a ``SELECT`` can pick up another thread's
+    ``SQLITE_DONE`` and report no rows for a row that exists. That surfaced as
+    the API claiming ``app_settings`` was missing on a fully migrated database.
+    """
+    db = Storage(tmp_path / "t.db")
+    db.upsert_price_bars([_bar("NABIL", 500.0, SourceName.SHARESANSAR)])
+    sql = "SELECT 1 FROM sqlite_master WHERE type='table' AND name='price_bars'"
+
+    conns: list[int] = []
+    misses = 0
+    lock = threading.Lock()
+
+    def read() -> None:
+        nonlocal misses
+        with lock:
+            conns.append(id(db._conn))
+        for _ in range(500):
+            if db._conn.execute(sql).fetchone() is None:
+                with lock:
+                    misses += 1
+
+    threads = [threading.Thread(target=read) for _ in range(6)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert misses == 0
+    assert len(set(conns)) == len(threads)  # no connection reused across threads
     db.close()

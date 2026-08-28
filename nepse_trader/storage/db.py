@@ -8,6 +8,7 @@ duplicates. Reconciled prices live in their own table keyed by (symbol, date).
 from __future__ import annotations
 
 import sqlite3
+import threading
 from collections.abc import Iterable
 from contextlib import contextmanager
 from datetime import date, datetime
@@ -40,23 +41,58 @@ def _dt(value: datetime | str | None) -> str | None:
 
 
 class Storage:
+    """One database, one connection *per thread*.
+
+    A single ``sqlite3.Connection`` cannot be shared across threads even with
+    ``check_same_thread=False``: concurrent callers re-enter the same cached
+    prepared statement, so a ``SELECT`` can observe another thread's
+    ``SQLITE_DONE`` and return no rows for a row that exists.  The web API runs
+    every sync endpoint in a threadpool, which made that a source of phantom
+    "missing table" and silently-empty results.  Handing each thread its own
+    connection removes the shared statement cache and lets WAL serve reads in
+    parallel instead of serialising them behind one lock.
+    """
+
     def __init__(self, db_path: Path | str):
         self.db_path = Path(db_path)
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
-        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
-        self._conn.row_factory = sqlite3.Row
-        self._conn.execute("PRAGMA journal_mode=WAL;")
-        self._conn.execute("PRAGMA synchronous=NORMAL;")
-        self._conn.execute("PRAGMA cache_size=-64000;")
-        self._conn.execute("PRAGMA temp_store=MEMORY;")
-        self._conn.execute("PRAGMA foreign_keys=ON;")
+        self._local = threading.local()
+        self._conns: list[sqlite3.Connection] = []
+        self._conns_lock = threading.Lock()
         run_pending(self._conn)
         self._conn.commit()
         self._symbols_cache: list[str] | None = None
 
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        conn.row_factory = sqlite3.Row
+        conn.execute("PRAGMA journal_mode=WAL;")
+        conn.execute("PRAGMA synchronous=NORMAL;")
+        conn.execute("PRAGMA cache_size=-64000;")
+        conn.execute("PRAGMA temp_store=MEMORY;")
+        conn.execute("PRAGMA foreign_keys=ON;")
+        # WAL allows one writer at a time; wait instead of raising SQLITE_BUSY.
+        conn.execute("PRAGMA busy_timeout=10000;")
+        return conn
+
+    @property
+    def _conn(self) -> sqlite3.Connection:
+        """This thread's connection, opened on first use."""
+        conn = getattr(self._local, "conn", None)
+        if conn is None:
+            conn = self._connect()
+            self._local.conn = conn
+            with self._conns_lock:
+                self._conns.append(conn)
+        return conn
+
     def close(self) -> None:
         self._symbols_cache = None
-        self._conn.close()
+        with self._conns_lock:
+            conns, self._conns = self._conns, []
+        self._local = threading.local()
+        for conn in conns:
+            conn.close()
 
     def __enter__(self) -> Storage:
         return self
@@ -432,6 +468,17 @@ class Storage:
 
     def latest_reconciled_date(self) -> date | None:
         cur = self._conn.execute("SELECT MAX(business_date) AS d FROM reconciled_prices")
+        row = cur.fetchone()
+        return date.fromisoformat(row["d"]) if row and row["d"] else None
+
+    def latest_price_date(self) -> date | None:
+        """Newest ingested trading date, or ``None`` on an empty database.
+
+        The right default wherever a date is optional: the last board NEPSE
+        published is rarely ``date.today()`` — weekends, holidays and a session
+        that has not closed yet all make "today" an empty date.
+        """
+        cur = self._conn.execute("SELECT MAX(business_date) AS d FROM price_bars")
         row = cur.fetchone()
         return date.fromisoformat(row["d"]) if row and row["d"] else None
 
