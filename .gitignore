@@ -5,6 +5,9 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 data/*.db
+# WAL sidecars: present whenever a connection is open, gone on clean close.
+data/*.db-wal
+data/*.db-shm
 data/*.sqlite3
 har/captures/*.har
 !har/captures/.gitkeep
