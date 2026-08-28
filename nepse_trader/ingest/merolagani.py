@@ -14,6 +14,8 @@ uses the shared :class:`BaseClient` and is wrapped so any failure yields ``[]``.
 
 from __future__ import annotations
 
+import logging
+import re
 from datetime import date
 
 from selectolax.parser import HTMLParser, Node
@@ -24,6 +26,24 @@ from nepse_trader.models import IndexValue, PriceBar, SourceName
 
 _DEFAULT_STOCK_QUOTE_URL = "https://merolagani.com/StockQuote.aspx"
 _DEFAULT_INDICES_URL = "https://merolagani.com/Indices.aspx"
+
+log = logging.getLogger("nepse_trader.ingest.merolagani")
+
+# ``As of 2026/08/27 03:00:00`` in the page header. MeroLagani's market table
+# cannot be date-filtered over GET, so this label is the only statement of
+# which trading day the rows belong to.
+_AS_OF_RE = re.compile(r"as\s*of\s*:?\s*(\d{4})/(\d{2})/(\d{2})", re.IGNORECASE)
+
+
+def parse_as_of_date(html: str) -> date | None:
+    """The trading date the page itself says it is showing, or ``None``."""
+    match = _AS_OF_RE.search(html or "")
+    if match is None:
+        return None
+    try:
+        return date(int(match.group(1)), int(match.group(2)), int(match.group(3)))
+    except ValueError:
+        return None
 
 # Header-name fragments (lower-cased, "contains" match) -> logical column key.
 # Order matters within a key: the first matching fragment wins per cell.
@@ -295,11 +315,21 @@ class MeroLaganiClient(SourceClient):
     # ---- Fetchers (network; failures -> []) ----
 
     def fetch_prices(self, business_date: date | None = None) -> list[PriceBar]:
-        bd = business_date or date.today()
         try:
             result = self.client.fetch(self.stock_quote_url)
         except Exception:
             return []
+        as_of = parse_as_of_date(result.text)
+        if business_date is not None and as_of is not None and as_of != business_date:
+            log.warning(
+                "merolagani served the %s board for a request for %s; the table is "
+                "not date-filterable over GET, so these rows are dropped rather "
+                "than stamped with the wrong date",
+                as_of.isoformat(),
+                business_date.isoformat(),
+            )
+            return []
+        bd = as_of or business_date or date.today()
         try:
             return self.parse_stock_quote(result.text, bd, self.name)
         except Exception:

@@ -300,8 +300,10 @@ def _job_ingest(ctx: JobContext) -> dict[str, Any]:
 
 
 def _job_reconcile(ctx: JobContext) -> dict[str, Any]:
-    bd = ctx.param_date("business_date") or date.today()
     pipe = ctx.pipeline()
+    # The last ingested board, not the calendar: weekends and holidays make
+    # "today" an empty date, and the job would report 0 symbols reconciled.
+    bd = ctx.param_date("business_date") or pipe.storage.latest_price_date() or date.today()
     with ctx.stage("reconcile") as stage:
         prices = pipe.reconcile(bd)
         low = [p for p in prices if not p.is_trustworthy]

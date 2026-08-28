@@ -8,7 +8,7 @@ import httpx
 import respx
 
 from nepse_trader.ingest.base import BaseClient
-from nepse_trader.ingest.merolagani import MeroLaganiClient
+from nepse_trader.ingest.merolagani import MeroLaganiClient, parse_as_of_date
 from nepse_trader.models import SourceName
 
 BUSINESS_DATE = date(2026, 6, 10)
@@ -132,6 +132,43 @@ def test_fetch_prices_returns_empty_on_error():
     )
     client = MeroLaganiClient(client=BaseClient(cache_raw=False))
     assert client.fetch_prices(BUSINESS_DATE) == []
+
+
+# The page header states which trading day the table is: "As of 2026/08/27
+# 03:00:00". The table is not date-filterable over GET, so without reading the
+# label back every fetch stamps today's date — fabricating a trading day when
+# the market is shut (Friday/Saturday/holiday).
+AS_OF_HTML = '<div>As of 2026/08/27 03:00:00</div>' + STOCK_QUOTE_HTML
+
+
+def test_parse_as_of_date_reads_the_pages_own_label():
+    assert parse_as_of_date(AS_OF_HTML) == date(2026, 8, 27)
+    assert parse_as_of_date(STOCK_QUOTE_HTML) is None
+    assert parse_as_of_date("") is None
+    assert parse_as_of_date("As of 2026/13/45 03:00:00") is None
+
+
+@respx.mock
+def test_fetch_prices_stamps_the_boards_own_date_not_today():
+    respx.get("https://merolagani.com/StockQuote.aspx").mock(
+        return_value=httpx.Response(200, text=AS_OF_HTML)
+    )
+    client = MeroLaganiClient(client=BaseClient(cache_raw=False))
+    bars = client.fetch_prices()
+    assert {b.business_date for b in bars} == {date(2026, 8, 27)}
+
+
+@respx.mock
+def test_fetch_prices_refuses_a_board_from_a_different_date():
+    """A request for an old date must not relabel today's board as history."""
+    respx.get("https://merolagani.com/StockQuote.aspx").mock(
+        return_value=httpx.Response(200, text=AS_OF_HTML)
+    )
+    client = MeroLaganiClient(client=BaseClient(cache_raw=False))
+    assert client.fetch_prices(date(2026, 8, 20)) == []
+    assert {b.business_date for b in client.fetch_prices(date(2026, 8, 27))} == {
+        date(2026, 8, 27)
+    }
 
 
 # A market board, not an index table: its "Name" column holds prices. The old
