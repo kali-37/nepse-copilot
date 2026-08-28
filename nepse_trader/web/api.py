@@ -130,6 +130,17 @@ def _parse_date(value: str | None) -> date | None:
     return date.fromisoformat(value)
 
 
+def _latest_market_date() -> date:
+    """The date the dashboard should show when the caller did not pick one.
+
+    ``date.today()`` is the wrong default: NEPSE is shut on Friday and Saturday
+    and on every public holiday, so on those days a "today" query returns an
+    empty market and the UI looks broken rather than closed.
+    """
+    storage = _storage()
+    return storage.latest_reconciled_date() or storage.latest_price_date() or date.today()
+
+
 def _pipeline() -> DailyPipeline:
     return DailyPipeline(storage=_storage())
 
@@ -305,15 +316,15 @@ def dashboard():
 
 @app.get("/api/market-breadth")
 def market_breadth(business_date: str | None = Query(None)):
-    bd = _parse_date(business_date) or date.today()
+    bd = _parse_date(business_date) or _latest_market_date()
     return _pipeline().market_breadth(bd)
 
 
 @app.get("/api/movers")
 def movers(business_date: str | None = Query(None), top: int = Query(5)):
-    bd = _parse_date(business_date) or date.today()
+    bd = _parse_date(business_date) or _latest_market_date()
     gainers, losers = _pipeline().top_movers(bd, top=top)
-    return {"gainers": gainers, "losers": losers}
+    return {"gainers": gainers, "losers": losers, "business_date": bd.isoformat()}
 
 
 # ---------------------------------------------------------------------------

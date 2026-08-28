@@ -20,6 +20,7 @@ rate limits.
 
 from __future__ import annotations
 
+import logging
 import re
 from datetime import date
 from decimal import Decimal
@@ -57,6 +58,31 @@ _DEFAULT_URLS: dict[str, str] = {
 }
 
 _XHR_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
+
+log = logging.getLogger("nepse_trader.ingest.sharesansar")
+
+# ``<h5>As of : <span class="text-org">2026-08-27</span></h5>`` above the board.
+_AS_OF_RE = re.compile(r"as\s*of\s*:?\s*(?:<[^>]+>\s*)*(\d{4}-\d{2}-\d{2})", re.IGNORECASE)
+
+
+def parse_as_of_date(html: str) -> date | None:
+    """The trading date the page itself says it is showing, or ``None``.
+
+    This is the only trustworthy date on a ``/today-share-price`` response.
+    The ``?date=`` query parameter is *ignored* by the site — the real filter
+    is a DataTables POST — so a request for an old date returns the latest
+    board. Without reading the page's own label back, a backfill run silently
+    stamps today's prices with whatever date it asked for and fabricates
+    history that every backtest then trusts.
+    """
+    match = _AS_OF_RE.search(html or "")
+    if match is None:
+        return None
+    try:
+        return date.fromisoformat(match.group(1))
+    except ValueError:
+        return None
+
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
@@ -445,7 +471,17 @@ class ShareSansarClient(SourceClient):
             result = self.client.fetch(self._url("today_share_price"), params=params)
         except (FetchError, RateLimitedError, ValueError):
             return []
-        bdate = business_date or _today()
+        as_of = parse_as_of_date(result.text)
+        if business_date is not None and as_of is not None and as_of != business_date:
+            log.warning(
+                "sharesansar served the %s board for a request for %s; the "
+                "whole-market page is not date-filterable over GET, so these "
+                "rows are dropped rather than stamped with the wrong date",
+                as_of.isoformat(),
+                business_date.isoformat(),
+            )
+            return []
+        bdate = as_of or business_date or _today()
         bars = self.parse_today_share_price(result.text, bdate, self.name)
         for bar in bars:
             bar.fetched_at = result.fetched_at

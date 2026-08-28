@@ -274,6 +274,12 @@ class MeroLaganiClient(SourceClient):
             value = _num(_cell_at(cells, target_col["value"]))
             if not name or value is None:
                 continue
+            # An index is never called "2,557.31". When the table this picked is
+            # not really an index table, the "name" column lands on a numeric
+            # cell and every row becomes a junk index whose name is its own
+            # price — poison for anything that groups index_values by name.
+            if _num(name) is not None:
+                continue
             out.append(
                 IndexValue(
                     name=name,

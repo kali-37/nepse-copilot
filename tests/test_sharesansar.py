@@ -18,6 +18,7 @@ from nepse_trader.ingest.sharesansar import (
     _int,
     _num,
     _strip_html,
+    parse_as_of_date,
 )
 from nepse_trader.models import SourceName
 
@@ -379,4 +380,54 @@ def test_fetch_corporate_actions_error_degrades():
     base = BaseClient(client=http_client, cache_raw=False)
     client = ShareSansarClient(client=base, source_spec=None)
     assert client.fetch_corporate_actions() == []
+    http_client.close()
+
+
+# ---------------------------------------------------------------------------
+# "As of" date — the only trustworthy date on a /today-share-price response
+# ---------------------------------------------------------------------------
+AS_OF_HTML = '<h5>As of : <span class="text-org">2026-08-27</span>\n</h5>' + TODAY_HTML
+
+
+def test_parse_as_of_date_reads_the_pages_own_label():
+    assert parse_as_of_date(AS_OF_HTML) == date(2026, 8, 27)
+
+
+def test_parse_as_of_date_is_none_when_absent_or_unparseable():
+    assert parse_as_of_date(TODAY_HTML) is None
+    assert parse_as_of_date("") is None
+    assert parse_as_of_date("<h5>As of : 2026-13-45</h5>") is None
+
+
+@respx.mock
+def test_fetch_prices_stamps_the_boards_own_date_not_today():
+    """``?date=`` is ignored by the site, so trust the page, not the clock."""
+    url = "https://www.sharesansar.com/today-share-price"
+    respx.get(url).mock(return_value=httpx.Response(200, text=AS_OF_HTML))
+
+    http_client = httpx.Client()
+    client = ShareSansarClient(client=BaseClient(client=http_client, cache_raw=False))
+
+    bars = client.fetch_prices()
+    assert {b.business_date for b in bars} == {date(2026, 8, 27)}
+    http_client.close()
+
+
+@respx.mock
+def test_fetch_prices_refuses_a_board_from_a_different_date():
+    """A backfill request must not relabel today's board as history.
+
+    ShareSansar filters the whole-market table over a DataTables POST, so the
+    ``?date=`` GET parameter is silently ignored and the latest board comes
+    back. Storing it under the requested date would fabricate history that
+    every backtest downstream then trusts.
+    """
+    url = "https://www.sharesansar.com/today-share-price"
+    respx.get(url).mock(return_value=httpx.Response(200, text=AS_OF_HTML))
+
+    http_client = httpx.Client()
+    client = ShareSansarClient(client=BaseClient(client=http_client, cache_raw=False))
+
+    assert client.fetch_prices(date(2026, 8, 20)) == []
+    assert len(client.fetch_prices(date(2026, 8, 27))) == 2  # the date it really is
     http_client.close()

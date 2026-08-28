@@ -421,11 +421,13 @@ def ingest(
 
 @app.command()
 def reconcile(
-    date_: str = typer.Option(None, "--date", help="Trading date YYYY-MM-DD (default: today)"),
+    date_: str = typer.Option(
+        None, "--date", help="Trading date YYYY-MM-DD (default: newest ingested date)"
+    ),
 ) -> None:
     """Reconcile stored prices across sources into a confidence-scored consensus."""
-    bd = _parse_date(date_) or date.today()
     pipe = DailyPipeline()
+    bd = _parse_date(date_) or pipe.storage.latest_price_date() or date.today()
     with progress_spinner(console, "Reconciling prices across sources..."):
         prices = pipe.reconcile(bd)
     console.print(reconciliation_report(prices))

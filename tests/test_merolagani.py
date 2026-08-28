@@ -132,3 +132,27 @@ def test_fetch_prices_returns_empty_on_error():
     )
     client = MeroLaganiClient(client=BaseClient(cache_raw=False))
     assert client.fetch_prices(BUSINESS_DATE) == []
+
+
+# A market board, not an index table: its "Name" column holds prices. The old
+# parser picked it (most rows wins) and emitted one junk index per row, each
+# named after its own price — "2,557.31" and friends landing in index_values.
+NOT_AN_INDEX_HTML = """
+<html><body>
+<table>
+  <thead><tr><th>Name</th><th>Value</th><th>Change</th></tr></thead>
+  <tbody>
+    <tr><td>2,557.31</td><td>2,557.31</td><td>1.00</td></tr>
+    <tr><td>2,558.35</td><td>2,558.35</td><td>-0.50</td></tr>
+    <tr><td>NEPSE</td><td>2,600.00</td><td>3.20</td></tr>
+  </tbody>
+</table>
+</body></html>
+"""
+
+
+def test_parse_indices_drops_rows_whose_name_is_a_number():
+    indices = MeroLaganiClient.parse_indices(
+        NOT_AN_INDEX_HTML, SourceName.MEROLAGANI, BUSINESS_DATE
+    )
+    assert [i.name for i in indices] == ["NEPSE"]
