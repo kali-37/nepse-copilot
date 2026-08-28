@@ -172,3 +172,25 @@ class TestBacktest:
         r = client.get("/api/backtest/screen")
         assert r.status_code == 200
         assert r.json() == []
+
+
+class TestSpaFallback:
+    """Deep links like /rashifal must serve the app, not a 404."""
+
+    def test_unknown_page_path_serves_index(self, client):
+        r = client.get("/rashifal")
+        # The dist build may be absent in CI; then the app is API-only and the
+        # route legitimately 404s, so only assert when the frontend is mounted.
+        from nepse_trader.web.api import app
+
+        mounted = any(
+            getattr(route, "name", "") == "frontend" for route in app.routes
+        )
+        if mounted:
+            assert r.status_code == 200
+            assert r.headers["content-type"].startswith("text/html")
+
+    def test_api_paths_keep_json_404s(self, client):
+        r = client.get("/api/bogus")
+        assert r.status_code == 404
+        assert r.headers["content-type"].startswith("application/json")

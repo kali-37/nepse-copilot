@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Query
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
@@ -1712,7 +1713,26 @@ def ai_test(body: AiTestRequest):
 # ---------------------------------------------------------------------------
 _static = Path(__file__).resolve().parent.parent.parent / "web" / "dist"
 if _static.is_dir():
-    app.mount("/", StaticFiles(directory=str(_static), html=True), name="frontend")
+
+    class _SpaStaticFiles(StaticFiles):
+        """Serve ``index.html`` for unknown paths so client-side routes resolve.
+
+        ``StaticFiles(html=True)`` only answers ``/`` with the entry page; deep
+        links like ``/rashifal`` or a refresh on ``/settings`` would 404 before
+        React Router ever runs.
+        """
+
+        async def get_response(self, path: str, scope):
+            try:
+                response = await super().get_response(path, scope)
+            except StarletteHTTPException as exc:
+                if exc.status_code != 404 or path.startswith("api"):
+                    raise
+                # /api/* must keep its JSON 404s; only page paths fall back.
+                response = await super().get_response("index.html", scope)
+            return response
+
+    app.mount("/", _SpaStaticFiles(directory=str(_static), html=True), name="frontend")
     log.info("serving frontend from %s", _static)
 else:
     log.info("no built frontend found at %s — API-only mode", _static)
