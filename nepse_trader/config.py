@@ -23,7 +23,13 @@ DATA_DIR = PROJECT_ROOT / "data"
 class Settings(BaseSettings):
     """Runtime settings. Override via env vars (NEPSE_*) or .env."""
 
-    model_config = SettingsConfigDict(env_prefix="NEPSE_", env_file=".env", extra="ignore")
+    # The .env path is absolute on purpose: a relative "*.env*" resolves against
+    # the *current working directory*, so launching the API from a subdirectory
+    # silently dropped every NEPSE_* value — MeroShare credentials included —
+    # and the integration reported itself disabled instead of misconfigured.
+    model_config = SettingsConfigDict(
+        env_prefix="NEPSE_", env_file=PROJECT_ROOT / ".env", extra="ignore"
+    )
 
     db_path: Path = DATA_DIR / "nepse.db"
     raw_cache_dir: Path = DATA_DIR / "raw"
