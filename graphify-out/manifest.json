@@ -215,8 +215,8 @@
     "semantic_hash": ""
   },
   "nepse_trader/ingest/merolagani.py": {
-    "mtime": 1787886890.9750166,
-    "ast_hash": "df93113f2d1752e4bb47cfaa51b2df3f",
+    "mtime": 1787890267.7974193,
+    "ast_hash": "88c8de29c2c2f8e4c17382160d94c934",
     "semantic_hash": ""
   },
   "nepse_trader/ingest/nepse_official.py": {
@@ -585,8 +585,8 @@
     "semantic_hash": ""
   },
   "tests/test_merolagani.py": {
-    "mtime": 1787887358.2549176,
-    "ast_hash": "0a7a7cb1771080fca47a589e340b61eb",
+    "mtime": 1787890293.0173397,
+    "ast_hash": "2cbbe016897aab484c34bf2bf3536c91",
     "semantic_hash": ""
   },
   "tests/test_meroshare.py": {
@@ -1190,8 +1190,8 @@
     "semantic_hash": ""
   },
   "nepse_trader/web/jobs.py": {
-    "mtime": 1787563460.177272,
-    "ast_hash": "e2c59778d685be45003670b333071230",
+    "mtime": 1787890078.2650418,
+    "ast_hash": "91f6b47a81a896b36c5e2e051a2a31f5",
     "semantic_hash": ""
   },
   "tests/test_web_operations.py": {
@@ -1275,33 +1275,38 @@
     "semantic_hash": ""
   },
   "data/raw/20260828_2bf86c084b7dbd26.txt": {
-    "mtime": 1787887420.2280056,
+    "mtime": 1787890369.0945132,
     "ast_hash": "402c052efb4cf19b3ad9b9e778bf7fbe",
     "semantic_hash": ""
   },
   "data/raw/20260828_43801b35013f2605.txt": {
-    "mtime": 1787887410.2128696,
+    "mtime": 1787890359.0788107,
     "ast_hash": "bb6cb5c68df4652941caf652a366f2d8",
     "semantic_hash": ""
   },
   "data/raw/20260828_94a0c9582571b702.txt": {
-    "mtime": 1787886362.29977,
-    "ast_hash": "b4109e8ce47572b1c13a218bae7981e5",
+    "mtime": 1787890336.4242043,
+    "ast_hash": "8997d8ae8db00b92f620441790e1cb30",
     "semantic_hash": ""
   },
   "data/raw/20260828_95a21995950196a6.txt": {
-    "mtime": 1787886363.4053872,
-    "ast_hash": "f3c5e257141875ea2acbe776d33ec05c",
+    "mtime": 1787890337.3488073,
+    "ast_hash": "e1a6646d0fc9dc697a7142e3384bc3ad",
     "semantic_hash": ""
   },
   "data/raw/20260828_a989c7a609a1f154.txt": {
-    "mtime": 1787886976.800683,
-    "ast_hash": "efa1f5a7e70fca1831c2a4380ffb2bbf",
+    "mtime": 1787890436.1318998,
+    "ast_hash": "1c9f002602536efa6a79a9ee686d3932",
     "semantic_hash": ""
   },
   "data/raw/20260828_c1216150015b5d29.txt": {
-    "mtime": 1787886977.1264768,
+    "mtime": 1787890436.5061173,
     "ast_hash": "e06875fbf9803219913186e01c5aac2d",
+    "semantic_hash": ""
+  },
+  "data/raw/20260828_641c17e4aca91776.txt": {
+    "mtime": 1787890437.2660441,
+    "ast_hash": "b883f514cf203074e825b7967c850536",
     "semantic_hash": ""
   }
 }
