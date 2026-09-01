@@ -286,19 +286,29 @@ class DailyPipeline:
         return (r.close - r.previous_close) / r.previous_close * 100.0
 
     def top_movers(self, business_date: date, top: int = 5) -> tuple[list[dict], list[dict]]:
-        """Top gainers and losers for a date, by reconciled change %."""
+        """Top gainers and losers for a date, by reconciled change %.
+
+        Split by the sign of the change, not by slicing the ranked list from
+        both ends: with fewer symbols than *top* the two slices overlap, and
+        the overlap has to be resolved by dropping one side — which reported a
+        symbol that rose 2% as a top loser. A gainer is a symbol that went up.
+        Flat symbols belong to neither list.
+        """
         rows = []
         for r in self.storage.reconciled_history_for_date(business_date):
             ch = self._reconciled_change_pct(r)
             if ch is None:
                 continue
             rows.append({"symbol": r.symbol, "close": r.close, "change_percent": round(ch, 2)})
-        rows.sort(key=lambda d: d["change_percent"], reverse=True)
-        gainers = rows[:top]
-        losers = list(reversed(rows[-top:])) if len(rows) >= 1 else []
-        # Avoid overlap when very few symbols exist.
-        loser_syms = {d["symbol"] for d in losers}
-        gainers = [g for g in gainers if g["symbol"] not in loser_syms or len(rows) > top]
+        gainers = sorted(
+            (d for d in rows if d["change_percent"] > 0),
+            key=lambda d: d["change_percent"],
+            reverse=True,
+        )[:top]
+        losers = sorted(
+            (d for d in rows if d["change_percent"] < 0),
+            key=lambda d: d["change_percent"],
+        )[:top]
         return gainers, losers
 
     def quant_stats(self, symbols: list[str], periods_per_year: int | None = None) -> list[dict]:

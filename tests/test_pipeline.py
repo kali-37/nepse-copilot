@@ -191,6 +191,44 @@ def test_market_breadth_and_movers(pipe):
     assert isinstance(gainers, list) and isinstance(losers, list)
 
 
+def test_top_movers_splits_by_sign_not_by_slicing(pipe):
+    # With fewer symbols than *top*, slicing the ranked list from both ends
+    # overlaps, and resolving the overlap reported a symbol that rose as a top
+    # loser while handing back no gainers at all.
+    moves = {
+        "UP1": (510.0, 500.0),
+        "UP2": (505.0, 500.0),
+        "DOWN": (490.0, 500.0),
+        "FLAT": (500.0, 500.0),
+    }
+    bars = []
+    for sym, (close, prev) in moves.items():
+        for src in (SourceName.SHARESANSAR, SourceName.MEROLAGANI):
+            bars.append(
+                PriceBar(
+                    symbol=sym,
+                    business_date=START,
+                    close=close,
+                    previous_close=prev,
+                    turnover=close * 1000,
+                    source=src,
+                )
+            )
+    pipe.storage.upsert_price_bars(bars)
+    pipe.reconcile(START)
+
+    gainers, losers = pipe.top_movers(START, top=5)
+    assert [g["symbol"] for g in gainers] == ["UP1", "UP2"]
+    assert [lo["symbol"] for lo in losers] == ["DOWN"]  # FLAT belongs to neither
+    assert all(g["change_percent"] > 0 for g in gainers)
+    assert all(lo["change_percent"] < 0 for lo in losers)
+
+    # ``top`` still caps each side independently.
+    gainers, losers = pipe.top_movers(START, top=1)
+    assert [g["symbol"] for g in gainers] == ["UP1"]
+    assert [lo["symbol"] for lo in losers] == ["DOWN"]
+
+
 def test_quant_stats_rows(pipe):
     _seed_hump(pipe, days=70)
     rows = pipe.quant_stats(["AAA", "BBB"])
