@@ -58,4 +58,23 @@ describe('RashifalPage', () => {
     await waitFor(() => expect(body).not.toBeNull());
     expect(body).toMatchObject({ horizon: 'year' });
   });
+
+  it('renders the sell queue and exclusions of a run loaded from history', async () => {
+    server.use(
+      http.get('*/api/advisor/latest', () => HttpResponse.json({
+        ...fx.rashifal,
+        sell_queue: [{
+          symbol: 'NICA', quantity: 40, reference_price: 512, reason: 'Stop broken on rising volume',
+          earliest_sell_date: '2026-08-26', stop: 500, target: 560,
+        }],
+        do_not_touch: [{ symbol: 'HBL', reason: 'Not enough bars to judge' }],
+      }))
+    );
+    renderWithProviders(<RashifalPage />);
+    expect(await screen.findByText('Sell queue')).toBeInTheDocument();
+    expect(screen.getByText('NICA · 40 shares')).toBeInTheDocument();
+    expect(screen.getByText('Stop broken on rising volume')).toBeInTheDocument();
+    expect(screen.getByText('Do not touch')).toBeInTheDocument();
+    expect(screen.getByText('Not enough bars to judge')).toBeInTheDocument();
+  });
 });

@@ -900,6 +900,29 @@ def _m0013_health_snapshots(conn) -> None:
     )
 
 
+def _m0014_advice_run_context(conn) -> None:
+    """Store the run context that surrounds the cards, not just the cards.
+
+    ``advice_runs`` kept the headline fields but dropped the sell queue, the
+    exclusions, the breadth snapshot and the thesis, so a reloaded run was a
+    strictly smaller document than the one that was generated — the exits a
+    user was told to make simply vanished. Each is a JSON blob for the same
+    reason ``health_snapshots.report`` is: their shape belongs to the advisor,
+    and widening it should not need another migration.
+    """
+    columns = {
+        str(row[1]) for row in conn.execute("PRAGMA table_info(advice_runs)").fetchall()
+    }
+    for name, ddl in (
+        ("sell_queue", "ALTER TABLE advice_runs ADD COLUMN sell_queue TEXT"),
+        ("do_not_touch", "ALTER TABLE advice_runs ADD COLUMN do_not_touch TEXT"),
+        ("breadth", "ALTER TABLE advice_runs ADD COLUMN breadth TEXT"),
+        ("thesis", "ALTER TABLE advice_runs ADD COLUMN thesis TEXT"),
+    ):
+        if name not in columns:
+            conn.execute(ddl)
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
@@ -916,6 +939,7 @@ MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0011_app_settings", _m0011_app_settings),
     ("0012_meroshare_demat_privacy", _m0012_meroshare_demat_privacy),
     ("0013_health_snapshots", _m0013_health_snapshots),
+    ("0014_advice_run_context", _m0014_advice_run_context),
 ]
 
 

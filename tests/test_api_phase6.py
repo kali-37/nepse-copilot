@@ -519,6 +519,28 @@ class TestAdvisor:
         assert isinstance(data["cards"][0]["targets"], list)
         assert set(data["cards"][0]["confidence"]) >= {"value", "band", "label", "basis"}
 
+    def test_latest_carries_the_same_document_as_the_run(self, client):
+        """The page loads ``latest`` on mount and renders what ``run`` returned.
+
+        A reloaded run used to drop the sell queue, the exclusions, the breadth
+        snapshot and the thesis, so the exits a user had been told to make simply
+        vanished on refresh.
+        """
+        posted = client.post("/api/advisor/run", json={}).json()
+        data = client.get("/api/advisor/latest").json()
+        assert set(data) == set(posted)
+        for key in ("sell_queue", "do_not_touch", "breadth", "thesis", "banner"):
+            assert data[key] == posted[key]
+        assert isinstance(data["sell_queue"], list)
+        assert isinstance(data["do_not_touch"], list)
+        assert isinstance(data["breadth"], dict)
+        assert isinstance(data["thesis"], str)
+        assert isinstance(data["banner"], str)
+        assert data["degraded"] is False
+        # ``signals`` is AI-mode narrative and is not persisted; every other
+        # field the frontend types as required survives the round trip.
+        assert set(posted["cards"][0]) - {"signals"} <= set(data["cards"][0])
+
     def test_doses_latest_is_404_before_any_run(self, client):
         r = client.get("/api/advisor/doses/latest")
         assert r.status_code == 404

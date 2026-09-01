@@ -530,9 +530,25 @@ def test_normal_offline_rashifal_persists_four_doses_and_predictions(
     assert [dose["horizon"] for dose in doses] == ["day", "week", "month", "year"]
     assert sum(dose["allocation_pct"] for dose in doses) <= 1.0
     assert all(dose["confidence"]["value"] <= 0.90 for dose in doses)
-    expected_predictions = sum(dose["card_count"] for dose in doses)
-    stored_predictions = storage._conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0]
+    # A dose only deploys buys, so a hold-only run assigns no cards to any dose.
+    # Those cards are still forecasts, and one that was never journaled can never
+    # be scored, so the run's own cards are journaled too — deduplicated against
+    # whatever the doses already covered.
+    expected_predictions = {
+        (card["symbol"], dose["horizon_days"]) for dose in doses for card in dose["cards"]
+    } | {(card["symbol"], card["horizon_days"]) for card in payload["cards"]}
+    stored_predictions = {
+        (str(row[0]), int(row[1]))
+        for row in storage._conn.execute("SELECT symbol, horizon_days FROM predictions")
+    }
     assert stored_predictions == expected_predictions
+    assert storage._conn.execute("SELECT COUNT(*) FROM predictions").fetchone()[0] == len(
+        expected_predictions
+    )
+    unlinked = storage._conn.execute(
+        "SELECT COUNT(*) FROM advice_cards WHERE prediction_id IS NULL"
+    ).fetchone()[0]
+    assert unlinked == 0
     assert payload["run_id"] is not None
 
 

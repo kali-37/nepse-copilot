@@ -29,6 +29,7 @@ report is delivered whole.
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass, field
 from datetime import UTC, date, datetime
 
@@ -436,6 +437,17 @@ def _note_text(note: object) -> str:
 # --------------------------------------------------------------------- storage
 
 
+def _link_predictions(conn, cards: list, predictions: list, card_ids: dict) -> None:
+    """Point each stored ``advice_cards`` row at the prediction it produced."""
+    for card, prediction in zip(cards, predictions, strict=True):
+        card_id = card_ids.get((card.symbol, card.horizon_days))
+        if card_id is not None:
+            conn.execute(
+                "UPDATE advice_cards SET prediction_id=? WHERE id=?",
+                (prediction.prediction_id, card_id),
+            )
+
+
 def save_rashifal(conn, result: Rashifal) -> int:
     """Persist a run and its cards; returns the run id.
 
@@ -447,8 +459,9 @@ def save_rashifal(conn, result: Rashifal) -> int:
         """
         INSERT INTO advice_runs
             (run_date, mode, horizon, online, regime, sector_of_the_day,
-             banner, equity, generated_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+             banner, equity, generated_at, sell_queue, do_not_touch, breadth,
+             thesis)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             result.run_date.isoformat(),
@@ -460,6 +473,10 @@ def save_rashifal(conn, result: Rashifal) -> int:
             result.banner or None,
             result.equity,
             generated,
+            json.dumps([s.as_dict() for s in result.sell_queue]),
+            json.dumps([{"symbol": s.symbol, "reason": s.reason} for s in result.do_not_touch]),
+            json.dumps(dict(result.breadth)),
+            result.thesis,
         ),
     )
     run_id = int(cur.lastrowid)
@@ -506,47 +523,67 @@ def save_rashifal(conn, result: Rashifal) -> int:
     # Journal entries are written while every call is still unknown. The dose
     # deck contains the selected horizon too, so logging the four disjoint dose
     # groups records each forecast exactly once.
+    journaled: set[tuple[str, int]] = set()
     if result.doses is not None:
         for dose in result.doses.doses:
-            predictions = log_plan_cards(
+            cards = list(dose.cards)
+            _link_predictions(
                 conn,
-                list(dose.cards),
+                cards,
+                log_plan_cards(
+                    conn,
+                    cards,
+                    made_on=result.run_date,
+                    horizon=dose.horizon,
+                    run_id=run_id,
+                    commit=False,
+                ),
+                advice_card_ids,
+            )
+            journaled.update((c.symbol, c.horizon_days) for c in cards)
+        save_doses(conn, result.doses, run_id=run_id)
+    # The deck only deploys buys, so a hold-only run assigns no cards to any
+    # dose. Those cards are still forecasts, and one that was never journaled
+    # can never be scored — which would leave the audit trail empty exactly
+    # when the advisor said "sit tight".
+    rest = [c for c in result.cards if (c.symbol, c.horizon_days) not in journaled]
+    if rest:
+        _link_predictions(
+            conn,
+            rest,
+            log_plan_cards(
+                conn,
+                rest,
                 made_on=result.run_date,
-                horizon=dose.horizon,
+                horizon=result.horizon,
                 run_id=run_id,
                 commit=False,
-            )
-            for card, prediction in zip(dose.cards, predictions, strict=True):
-                card_id = advice_card_ids.get((card.symbol, card.horizon_days))
-                if card_id is not None:
-                    conn.execute(
-                        "UPDATE advice_cards SET prediction_id=? WHERE id=?",
-                        (prediction.prediction_id, card_id),
-                    )
-        save_doses(conn, result.doses, run_id=run_id)
-    else:
-        predictions = log_plan_cards(
-            conn,
-            result.cards,
-            made_on=result.run_date,
-            horizon=result.horizon,
-            run_id=run_id,
-            commit=False,
+            ),
+            advice_card_ids,
         )
-        for card, prediction in zip(result.cards, predictions, strict=True):
-            card_id = advice_card_ids.get((card.symbol, card.horizon_days))
-            if card_id is not None:
-                conn.execute(
-                    "UPDATE advice_cards SET prediction_id=? WHERE id=?",
-                    (prediction.prediction_id, card_id),
-                )
     conn.commit()
     result.run_id = run_id
     return run_id
 
 
-def _run_row_to_dict(row) -> dict:
-    return {
+def _json_or(raw: object, fallback: list | dict) -> list | dict:
+    """Decode a stored JSON blob, falling back for rows written before 0014."""
+    if not raw:
+        return fallback
+    try:
+        loaded = json.loads(str(raw))
+    except (TypeError, ValueError):
+        return fallback
+    return loaded if isinstance(loaded, type(fallback)) else fallback
+
+
+def _run_row_to_dict(row, *, context: bool = False) -> dict:
+    """Headline fields for a run; the surrounding context only when asked.
+
+    ``run_history`` lists dozens of runs and would otherwise carry every sell
+    queue and thesis it never displays, so the blobs are opt-in.
+    """
+    out = {
         "run_id": row["id"],
         "run_date": row["run_date"],
         "mode": row["mode"],
@@ -558,6 +595,13 @@ def _run_row_to_dict(row) -> dict:
         "equity": row["equity"],
         "generated_at": row["generated_at"],
     }
+    if context:
+        keys = row.keys()
+        out["sell_queue"] = _json_or(row["sell_queue"] if "sell_queue" in keys else None, [])
+        out["do_not_touch"] = _json_or(row["do_not_touch"] if "do_not_touch" in keys else None, [])
+        out["breadth"] = _json_or(row["breadth"] if "breadth" in keys else None, {})
+        out["thesis"] = (row["thesis"] if "thesis" in keys else None) or ""
+    return out
 
 
 def latest_run(conn) -> dict | None:
@@ -567,7 +611,7 @@ def latest_run(conn) -> dict | None:
     ).fetchone()
     if row is None:
         return None
-    out = _run_row_to_dict(row)
+    out = _run_row_to_dict(row, context=True)
     out["cards"] = [
         dict(c)
         for c in conn.execute(

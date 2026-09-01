@@ -170,7 +170,8 @@ export interface PlanCard {
   exit_cost: number;
   capital_gains_tax: number;
   note: string;
-  signals: string[];
+  /** AI mode only, and not persisted — absent on a run loaded from history. */
+  signals?: string[];
   confidence?: Confidence;
 }
 

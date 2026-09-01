@@ -275,6 +275,8 @@ def _advisor_run_response(run: Any) -> dict[str, Any]:
     else:
         out["doses"] = None
     out["degraded"] = bool(out.get("banner"))
+    # Stored as NULL when the run was not degraded; the contract says string.
+    out["banner"] = out.get("banner") or ""
     return out
 
 
