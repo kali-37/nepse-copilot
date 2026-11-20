@@ -134,11 +134,12 @@ class PortfolioBacktester:
 
         sorted_dates = sorted(unique_dates)
         portfolio_equity: list[tuple[date, float]] = []
+        last_equity = {symbol: cash_per_symbol for symbol in symbol_bars}
         for d in sorted_dates:
-            total = 0.0
-            for eq_map in all_equity_curves.values():
-                total += eq_map.get(d, 0.0)
-            portfolio_equity.append((d, total))
+            for symbol, eq_map in all_equity_curves.items():
+                if d in eq_map:
+                    last_equity[symbol] = eq_map[d]
+            portfolio_equity.append((d, sum(last_equity.values())))
 
         final_equity = portfolio_equity[-1][1] if portfolio_equity else 0.0
         total_return_pct = (

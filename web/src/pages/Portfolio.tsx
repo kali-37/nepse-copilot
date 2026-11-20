@@ -139,9 +139,10 @@ export function PortfolioPage() {
   if (!data) return null;
 
   const totalEquity = data.cash + data.positions.reduce(
-    (sum, p) => sum + p.market_value,
+    (sum, p) => sum + (p.market_value ?? 0),
     0
   );
+  const missingQuotes = data.positions.some((position) => position.market_value === null);
   const totalReturn = totalEquity - data.initial_cash;
   const totalReturnPct = data.initial_cash > 0
     ? (totalReturn / data.initial_cash) * 100
@@ -159,7 +160,7 @@ export function PortfolioPage() {
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <StatCard
           label="Total Equity"
-          value={`NPR ${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          value={missingQuotes ? 'Quote unavailable' : `NPR ${totalEquity.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
           icon={<Wallet className="h-4 w-4" />}
         />
         <StatCard
@@ -169,8 +170,8 @@ export function PortfolioPage() {
         />
         <StatCard
           label="Total Return"
-          value={`NPR ${totalReturn.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
-          change={`${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`}
+          value={missingQuotes ? 'Quote unavailable' : `NPR ${totalReturn.toLocaleString('en-US', { minimumFractionDigits: 2 })}`}
+          change={missingQuotes ? undefined : `${totalReturnPct >= 0 ? '+' : ''}${totalReturnPct.toFixed(2)}%`}
           changeType={totalReturn >= 0 ? 'positive' : 'negative'}
           icon={totalReturn >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
         />
@@ -202,13 +203,14 @@ export function PortfolioPage() {
                 key: 'market_value',
                 label: 'Market Value',
                 sortable: true,
-                render: (r) => `NPR ${Number(r.market_value).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
+                render: (r) => r.market_value === null ? 'Quote unavailable' : `NPR ${Number(r.market_value).toLocaleString('en-US', { minimumFractionDigits: 2 })}`,
               },
               {
                 key: 'unrealized_pnl',
                 label: 'Unrealized P&L',
                 sortable: true,
                 render: (r) => {
+                  if (r.unrealized_pnl === null) return 'Quote unavailable';
                   const v = Number(r.unrealized_pnl);
                   return (
                     <span className={v >= 0 ? 'text-positive' : 'text-negative'}>

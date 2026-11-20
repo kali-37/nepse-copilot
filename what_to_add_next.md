@@ -1,5 +1,9 @@
 # What To Add Next — NEPSE Trader Roadmap
 
+> Historical roadmap. History ingestion, adjustments, fundamentals filters,
+> portfolio/walk-forward surfaces, broker/sector views and ingestion reliability
+> are now implemented. See [current completion status](docs/COMPLETION_STATUS.md).
+
 A prioritized, concrete backlog. Each item states **why**, a rough **effort**
 (S ≤ 1 day, M ≤ 1 week, L > 1 week), and **where** in the codebase it lands. Items
 are ordered by value-to-effort within each tier.

@@ -15,6 +15,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Iterable
+from datetime import date
+from decimal import Decimal
 
 from nepse_trader.models import CorporateAction, PriceBar, ReconciledPrice, SourceName
 
@@ -103,6 +105,8 @@ def reconcile_bars(bars: Iterable[PriceBar], tolerance: float = 0.005) -> list[R
 def adjust_prices(
     prices: list[ReconciledPrice],
     actions: list[CorporateAction],
+    *,
+    as_of: date | None = None,
 ) -> list[ReconciledPrice]:
     """Back-adjust reconciled closes by corporate action factors.
 
@@ -111,6 +115,8 @@ def adjust_prices(
     pre-event prices are multiplied by the factor so the series is
     continuous at the ex-date).
     """
+    cutoff = as_of or max((p.business_date for p in prices), default=date.min)
+    actions = [ca for ca in actions if ca.ex_date <= cutoff]
     if not actions:
         for p in prices:
             p.adjusted_close = p.close
@@ -139,9 +145,9 @@ def adjust_prices(
         for p in sym_prices:
             while idx < len(cas) and p.business_date >= cas[idx].ex_date:
                 idx += 1
-            factor = 1.0
+            factor = Decimal("1")
             for j in range(idx, len(cas)):
-                factor *= float(cas[j].factor)
-            p.adjusted_close = round(p.close * factor, 2) if p.close is not None else None
+                factor *= cas[j].factor
+            p.adjusted_close = float(round(Decimal(str(p.close)) * factor, 2)) if p.close is not None else None
 
     return prices

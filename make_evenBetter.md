@@ -1,5 +1,8 @@
 # Make It Even Better — Engineering Quality Upgrades
 
+> Historical engineering proposals. Many items below are now implemented;
+> [current completion status](docs/COMPLETION_STATUS.md) is the live status reference.
+
 [`what_to_add_next.md`](what_to_add_next.md) covers *features*. This doc covers
 *engineering quality* — the changes that make the codebase more correct, faster,
 safer, and easier to work in. Ordered by impact-to-effort.

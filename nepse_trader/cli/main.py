@@ -397,6 +397,7 @@ def ingest(
         False, "--all-sources", help="Pull from EVERY configured source, ignore enable flags"
     ),
     async_: bool = typer.Option(False, "--async", help="Fetch from all sources concurrently"),
+    force: bool = typer.Option(False, help="Refresh an already-ingested date or retry a cooling source"),
 ) -> None:
     """Pull public data from sources into the local database.
 
@@ -408,7 +409,7 @@ def ingest(
     pipe = DailyPipeline(include_all_sources=all_sources)
     with progress_spinner(console, f"Ingesting from {len(pipe.clients)} source(s)..."):
         import asyncio
-        rep = asyncio.run(pipe.async_ingest(bd)) if async_ else pipe.ingest(bd)
+        rep = asyncio.run(pipe.async_ingest(bd, force=force)) if async_ else pipe.ingest(bd, force=force)
     console.print_json(json.dumps(rep.as_dict()))
     if rep.errors:
         console.print(f"[yellow]sources with errors:[/yellow] {', '.join(rep.errors)}")
@@ -523,6 +524,10 @@ def screen(
     min_bars: int = typer.Option(60, help="Skip symbols with fewer bars"),
     top: int = typer.Option(30, help="Show top N leaderboard rows"),
     best_only: bool = typer.Option(False, "--best-only", help="Best strategy per symbol only"),
+    max_pe: float | None = typer.Option(None, help="Maximum positive P/E from stored fundamentals"),
+    max_pbv: float | None = typer.Option(None, help="Maximum positive price/book ratio"),
+    min_eps: float | None = typer.Option(None, help="Minimum stored EPS"),
+    sector: str | None = typer.Option(None, help="Filter by stored company sector"),
 ) -> None:
     """Backtest the strategy panel across all symbols and rank the results.
 
@@ -543,6 +548,7 @@ def screen(
             prog.update(task, completed=_i, description=f"Backtesting {_sym}")
         rows = pipe.screen_strategies(
             strategy_names=strat_list, cash=cash, min_bars=min_bars, rank_by=rank_by,
+            max_pe=max_pe, max_pbv=max_pbv, min_eps=min_eps, sector=sector,
             on_progress=_progress,
         )
     if not rows:
@@ -1158,8 +1164,15 @@ def fund_show(
     symbol: str = typer.Argument(..., help="NEPSE symbol"),
 ) -> None:
     """Show fundamental data for a symbol from MeroLagani."""
-    client = MeroLaganiFundamentalsClient()
-    data = client.fetch_fundamentals(symbol)
+    settings = get_settings()
+    with Storage(settings.db_path) as storage:
+        data = storage.fundamentals().get(symbol.strip().upper())
+        if data is None and settings.online:
+            from nepse_trader.ingest.base import BaseClient
+            with BaseClient(settings, cache_raw=False) as http:
+                data = MeroLaganiFundamentalsClient(client=http).fetch_fundamentals(symbol)
+            if data is not None and (data.market_price is not None or data.eps is not None):
+                storage.upsert_fundamental(data)
     if data is None or (data.market_price is None and data.eps is None):
         console.print(f"[red]No fundamentals found for {symbol}.[/red]")
         raise typer.Exit(1)
@@ -1223,6 +1236,7 @@ def ca_add(
     ratio_numerator: int = typer.Option(1, "--num", help="Ratio numerator (e.g. 1 for 1:1)"),
     ratio_denominator: int = typer.Option(1, "--den", help="Ratio denominator (e.g. 1 for 1:1)"),
     notes: str = typer.Option("", "--notes", help="Optional notes"),
+    price_factor: str | None = typer.Option(None, help="Confirmed price factor, needed to adjust rights/cash dividends"),
 ) -> None:
     """Manually record a corporate action event."""
     try:
@@ -1236,8 +1250,10 @@ def ca_add(
         console.print(f"[red]Invalid date: {ex_date}. Use YYYY-MM-DD[/red]")
         raise typer.Exit(code=1) from None
 
-    factor = round(ratio_denominator / ratio_numerator, 6) if ratio_numerator else 1.0
-    d_factor = Decimal(str(factor))
+    from nepse_trader.analysis.corporate_actions import adjustment_factor
+
+    d_factor = adjustment_factor(atype, ratio_numerator, ratio_denominator,
+                                Decimal(price_factor) if price_factor else None)
 
     ca = CorporateAction(
         symbol=symbol,
@@ -1251,6 +1267,7 @@ def ca_add(
     )
     storage = Storage(get_settings().db_path)
     storage.upsert_corporate_action(ca)
+    DailyPipeline(storage=storage, clients=[]).refresh_adjustments({ca.symbol})
     console.print(f"[green]Recorded:[/green] {ca.description} for {ca.symbol} on {ca.ex_date} (factor {ca.factor})")
 
 
@@ -1718,6 +1735,10 @@ def ai_test(
         console.print(f"[red]No provider answered.[/red] {response.error}")
         raise typer.Exit(1)
 
+
+from nepse_trader.cli.research import register as _register_research  # noqa: E402
+
+_register_research(app)
 
 if __name__ == "__main__":
     app()

@@ -1,80 +1,17 @@
-import { describe, expect, it } from 'vitest';
-import { http, HttpResponse, delay } from 'msw';
-import { screen, waitFor } from '@testing-library/react';
+import { it, expect } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { RashifalPage } from './Rashifal';
 import { renderWithProviders } from '../test/renderWithProviders';
 import { server } from '../test/server';
-import * as fx from '../test/fixtures';
-
-describe('RashifalPage', () => {
-  it('renders the prescription, doses and confidence copy', async () => {
-    renderWithProviders(<RashifalPage />);
-    expect(await screen.findByRole('heading', { name: 'Rashifal' })).toBeInTheDocument();
-    expect(screen.getAllByText('NABIL').length).toBeGreaterThan(0);
-    expect(screen.getByText('Four doses')).toBeInTheDocument();
-    expect(screen.getAllByText('more likely than not').length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/NPR 1,140.00/).length).toBeGreaterThan(0);
-  });
-
-  it('sends normal/offline settings and capital when running', async () => {
-    let body: Record<string, unknown> | null = null;
-    server.use(
-      http.post('*/api/advisor/run', async ({ request }) => {
-        body = await request.json() as Record<string, unknown>;
-        await delay(10);
-        return HttpResponse.json(fx.rashifal);
-      })
-    );
-    renderWithProviders(<RashifalPage />);
-    await screen.findByRole('heading', { name: 'Rashifal' });
-    await userEvent.clear(screen.getByRole('spinbutton', { name: 'Capital' }));
-    await userEvent.type(screen.getByRole('spinbutton', { name: 'Capital' }), '250000');
-    await userEvent.click(screen.getByRole('button', { name: 'Run prescription' }));
-    await waitFor(() => expect(body).not.toBeNull());
-    expect(body).toMatchObject({ mode: 'normal', online: false, horizon: 'week', equity: 250000 });
-  });
-
-  it('shows expected versus realized outcomes, reviews and distilled lessons', async () => {
-    server.use(http.get('*/api/journal/history', () => HttpResponse.json(fx.journalHistory)));
-    renderWithProviders(<RashifalPage />);
-    expect(await screen.findByText('Past calls & outcomes')).toBeInTheDocument();
-    expect(screen.getByText('TARGET HIT')).toBeInTheDocument();
-    expect(screen.getByText('NPR 840.00')).toBeInTheDocument();
-    expect(screen.getByText(/The breakout held on improving breadth/)).toBeInTheDocument();
-    expect(screen.getByText(/Require breadth confirmation/)).toBeInTheDocument();
-  });
-
-  it('can run the yearly prescription horizon', async () => {
-    let body: Record<string, unknown> | null = null;
-    server.use(http.post('*/api/advisor/run', async ({ request }) => {
-      body = await request.json() as Record<string, unknown>;
-      return HttpResponse.json({ ...fx.rashifal, horizon: 'year' });
-    }));
-    renderWithProviders(<RashifalPage />);
-    await screen.findByRole('heading', { name: 'Rashifal' });
-    await userEvent.click(screen.getByRole('button', { name: 'Year' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Run prescription' }));
-    await waitFor(() => expect(body).not.toBeNull());
-    expect(body).toMatchObject({ horizon: 'year' });
-  });
-
-  it('renders the sell queue and exclusions of a run loaded from history', async () => {
-    server.use(
-      http.get('*/api/advisor/latest', () => HttpResponse.json({
-        ...fx.rashifal,
-        sell_queue: [{
-          symbol: 'NICA', quantity: 40, reference_price: 512, reason: 'Stop broken on rising volume',
-          earliest_sell_date: '2026-08-26', stop: 500, target: 560,
-        }],
-        do_not_touch: [{ symbol: 'HBL', reason: 'Not enough bars to judge' }],
-      }))
-    );
-    renderWithProviders(<RashifalPage />);
-    expect(await screen.findByText('Sell queue')).toBeInTheDocument();
-    expect(screen.getByText('NICA · 40 shares')).toBeInTheDocument();
-    expect(screen.getByText('Stop broken on rising volume')).toBeInTheDocument();
-    expect(screen.getByText('Do not touch')).toBeInTheDocument();
-    expect(screen.getByText('Not enough bars to judge')).toBeInTheDocument();
-  });
+import { decisionBoard } from '../test/decisionFixture';
+it('Rashifal starts with monthly advice and keeps daily buys one tap away', async () => {
+  server.use(http.get('*/api/decisions', () => HttpResponse.json(decisionBoard)));
+  renderWithProviders(<RashifalPage />);
+  expect(await screen.findByText('EBL')).toBeInTheDocument();
+  expect(screen.getByRole('heading', { name: 'Your Rashifal.' })).toBeInTheDocument();
+  expect(screen.getByRole('tab', { name: 'Monthly' })).toHaveAttribute('aria-selected', 'true');
+  await userEvent.click(screen.getByRole('tab', { name: 'Daily' }));
+  expect(screen.getByText('NABIL')).toBeInTheDocument();
 });

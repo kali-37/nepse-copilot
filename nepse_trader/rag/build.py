@@ -22,6 +22,7 @@ from nepse_trader.rag.corpus import (
     breadth_document,
     build_symbol_documents,
     corporate_action_document,
+    fundamental_document,
     reconcile_document,
     signal_document,
 )
@@ -128,6 +129,7 @@ def build_corpus(
         batch.extend(_breadth_documents(pipeline, report))
     if include_corporate_actions:
         batch.extend(_corporate_action_documents(pipeline, report))
+    batch.extend(fundamental_document(data) for data in pipeline.storage.fundamentals().values())
 
     _flush(index, batch, report)
     report.per_kind = index.kinds()

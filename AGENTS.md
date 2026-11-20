@@ -71,7 +71,7 @@ nepse_trader/
     __init__.py
     api.py              — FastAPI app; serves the built React SPA from web/dist
 tests/
-  test_*.py             — 378 passing, 1 skipped
+  test_*.py             — Offline unit, integration and property tests
 web/
   src/                  — React 19 + Vite + Tailwind v4 + recharts SPA
 ```
@@ -109,10 +109,16 @@ webhook), not in a separate package.
 4.5 Dashboard command (symbols, date range, source coverage, reconciliation health, portfolio)
 
 ## Current State
-- **Tests:** 1283 passing, 1 skipped (Python); 96 passing (frontend)
+- **Tests:** 1429 passing, 2 skipped (Python 3.11 and 3.12 clean installs); 186 passing (frontend)
 - **Lint:** ruff clean
 - **Schema:** sources.jsonc config validation shipped
-- **Last commit:** `refactor: frontend design polish — indigo palette, Inter type, subtle animations`
+- **Current completion:** historical backfill, persisted price adjustments,
+  fundamentals filters, shared portfolio/walk-forward research, broker/sector
+  views, ingestion reliability and the populated dashboard are implemented.
+- **Decision UI:** daily/monthly evidence-scored buy ideas, saved personal exit
+  plans, atomic/idempotent manual trade records, and one-button public-source
+  refresh are shipped. Advice remains offline-readable; orders stay manual.
+- **Status details:** `docs/COMPLETION_STATUS.md`
 
 ## Completed advisor scope
 The AI/advisor half is shipped: SQLite FTS5 RAG with optional live retrieval, the
@@ -143,7 +149,7 @@ nepse-trader export csv        # dump tables
 ```
 
 ## Open Questions / Planned
-- Docker image for scheduled deployment
+- Docker packaging shipped; image-build verification requires a running Docker daemon
 - Postgres storage backend (SQLite-only today)
 - **No** broker API integration — NEPSE has no sanctioned retail trading API, so
   execution stays manual. MeroShare access is read-only by design.

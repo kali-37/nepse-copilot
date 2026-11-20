@@ -216,6 +216,7 @@ class Position(_Base):
     symbol: str
     quantity: int = 0
     avg_cost: Decimal = Decimal("0.00")
+    cost_basis_amount: Decimal | None = None
 
     @field_validator("symbol")
     @classmethod
@@ -224,7 +225,7 @@ class Position(_Base):
 
     @property
     def cost_basis(self) -> Decimal:
-        return Decimal(str(self.quantity)) * self.avg_cost
+        return self.cost_basis_amount if self.cost_basis_amount is not None else Decimal(str(self.quantity)) * self.avg_cost
 
 
 class FundamentalData(_Base):
@@ -243,3 +244,8 @@ class FundamentalData(_Base):
     low_52w: float | None = None
     avg_volume_30d: int | None = None
     fetched_at: datetime | None = None
+
+    @field_validator("symbol")
+    @classmethod
+    def _upper_symbol(cls, value: str) -> str:
+        return value.strip().upper()

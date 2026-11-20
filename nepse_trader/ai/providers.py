@@ -241,6 +241,15 @@ class ClaudeCliProvider(LLMProvider):
 # ---------------------------------------------------------------------------
 
 
+def _provider_error(exc: Exception, settings: Settings) -> str:
+    message = str(exc)
+    for secret in (settings.openrouter_api_key, settings.anthropic_api_key,
+                   settings.meroshare_password, settings.meroshare_username):
+        if secret:
+            message = message.replace(secret, "[REDACTED]")
+    return _short(message)
+
+
 class OpenRouterProvider(LLMProvider):
     """OpenAI-compatible chat completions against OpenRouter's free models.
 
@@ -301,7 +310,7 @@ class OpenRouterProvider(LLMProvider):
                     },
                 )
             except Exception as exc:  # noqa: BLE001 - try the next model
-                problems.append(f"{model}: {_short(str(exc))}")
+                problems.append(f"{model}: {_provider_error(exc, self.settings)}")
                 continue
 
             text = _openrouter_text(data)
@@ -379,7 +388,7 @@ class AnthropicProvider(LLMProvider):
         try:
             data = self._post(body)
         except Exception as exc:  # noqa: BLE001 - the chain decides what happens next
-            reason = _short(str(exc))
+            reason = _provider_error(exc, self.settings)
             log.warning("anthropic: %s", reason)
             return LLMResponse(provider=self.name, model=self.model, error=reason)
 

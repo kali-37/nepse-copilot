@@ -25,7 +25,7 @@ class _Lot:
 
     business_date: date
     quantity: int
-    cost_per_share: Decimal
+    total_cost: Decimal
 
 
 class PaperPortfolio:
@@ -88,18 +88,18 @@ class PaperPortfolio:
 
         pos = self.positions.get(symbol) or Position(symbol=symbol)
         old_qty = pos.quantity
-        old_avg = pos.avg_cost
+        old_basis = sum((lot.total_cost for lot in self._lots.get(symbol, ())), Decimal(0))
         new_qty = old_qty + quantity
         new_avg = _to_money(
-            (Decimal(str(old_qty)) * old_avg + bd.net_amount) / Decimal(str(new_qty))
+            (old_basis + bd.net_amount) / Decimal(str(new_qty))
         )
         pos.quantity = new_qty
         pos.avg_cost = new_avg
+        pos.cost_basis_amount = old_basis + bd.net_amount
         self.positions[symbol] = pos
 
-        cost_per_share = _to_money(bd.net_amount / Decimal(str(quantity)))
         self._lots.setdefault(symbol, deque()).append(
-            _Lot(business_date=business_date, quantity=quantity, cost_per_share=cost_per_share)
+            _Lot(business_date=business_date, quantity=quantity, total_cost=bd.net_amount)
         )
 
         trade = PaperTrade(
@@ -148,7 +148,9 @@ class PaperPortfolio:
             if oldest_lot_date is None:
                 oldest_lot_date = lot.business_date
             take = min(remaining, lot.quantity)
-            basis_of_sold += _to_money(Decimal(str(take)) * lot.cost_per_share)
+            allocated = lot.total_cost if take == lot.quantity else _to_money(lot.total_cost * take / lot.quantity)
+            basis_of_sold += allocated
+            lot.total_cost -= allocated
             lot.quantity -= take
             remaining -= take
             if lot.quantity == 0:
@@ -177,6 +179,9 @@ class PaperPortfolio:
             self.positions.pop(symbol, None)
             self._lots.pop(symbol, None)
         else:
+            remaining_basis = sum((lot.total_cost for lot in lots), Decimal(0))
+            pos.avg_cost = _to_money(remaining_basis / pos.quantity)
+            pos.cost_basis_amount = remaining_basis
             self.positions[symbol] = pos
 
         trade = PaperTrade(
@@ -214,22 +219,30 @@ class PaperPortfolio:
         for sym, pos in self.positions.items():
             px = prices.get(sym)
             if px is not None:
-                total += Decimal(str(pos.quantity)) * (Decimal(str(px)) - pos.avg_cost)
+                basis = sum((lot.total_cost for lot in self._lots.get(sym, ())), Decimal(0))
+                total += Decimal(str(pos.quantity)) * Decimal(str(px)) - basis
         return _to_money(total)
 
     def holdings(self) -> list[Position]:
         return [self.positions[s] for s in sorted(self.positions)]
 
-    def to_dict(self) -> dict[str, object]:
+    def to_dict(self, prices: dict[str, float | Decimal] | None = None) -> dict[str, object]:
+        positions = []
+        for position in self.holdings():
+            row = {"symbol": position.symbol, "quantity": position.quantity,
+                   "avg_cost": float(position.avg_cost), "cost_basis": float(position.cost_basis)}
+            if prices is not None:
+                quote = prices.get(position.symbol)
+                value = _to_money(Decimal(str(quote)) * position.quantity) if quote is not None else None
+                row["market_value"] = float(value) if value is not None else None
+                row["unrealized_pnl"] = float(value - position.cost_basis) if value is not None else None
+            positions.append(row)
         return {
             "initial_cash": float(self.initial_cash),
             "cash": float(self.cash),
             "realized_pnl": float(self.realized_pnl),
             "investor": self.investor,
-            "positions": [
-                {"symbol": p.symbol, "quantity": p.quantity, "avg_cost": float(p.avg_cost)}
-                for p in self.holdings()
-            ],
+            "positions": positions,
             "trades": len(self.trades),
         }
 

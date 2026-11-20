@@ -10,6 +10,7 @@ dependencies = [
     "pydantic>=2.7",
     "pydantic-settings>=2.3",
     "pyyaml>=6.0",
+    "jsonschema>=4.23",
     "typer>=0.12",
     "rich>=13.7",
     "tenacity>=8.4",
@@ -17,7 +18,6 @@ dependencies = [
     "selectolax>=0.3.21",
     "fastapi>=0.115",
     "uvicorn[standard]>=0.32",
-    "pytest>=9.0.3",
 ]
 
 [project.optional-dependencies]
@@ -36,6 +36,21 @@ dev = [
 scrapling = [
     "scrapling>=0.4",
 ]
+
+[dependency-groups]
+# uv installs this group by default, so plain `uv run ruff` retains Ruff.
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "respx>=0.21",
+    "ruff>=0.5",
+    "freezegun>=1.5",
+    "hypothesis>=6.100",
+    "pre-commit>=3.8",
+]
+
+[tool.uv]
+default-groups = ["dev"]
 
 [project.scripts]
 nepse-trader = "nepse_trader.cli.main:app"

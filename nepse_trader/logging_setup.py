@@ -29,8 +29,10 @@ expects to see.
 from __future__ import annotations
 
 import contextlib
+import json
 import logging
 import re
+import uuid
 from collections.abc import Iterator
 from datetime import datetime
 from pathlib import Path
@@ -72,11 +74,26 @@ def log_path(component: str, about: str, *, now: datetime | None = None) -> Path
     return folder / filename
 
 
+class JsonLogFormatter(logging.Formatter):
+    def __init__(self, run_id: str):
+        super().__init__()
+        self.run_id = run_id
+
+    def format(self, record: logging.LogRecord) -> str:
+        item = {"timestamp": datetime.fromtimestamp(record.created).isoformat(),
+                "level": record.levelname, "logger": record.name,
+                "run_id": self.run_id, "message": record.getMessage()}
+        if record.exc_info:
+            item["exception"] = self.formatException(record.exc_info)
+        return json.dumps(item, ensure_ascii=False)
+
+
 def _make_handler(path: Path) -> logging.FileHandler:
     path.parent.mkdir(parents=True, exist_ok=True)
     handler = logging.FileHandler(path, encoding="utf-8")
     handler.setLevel(logging.DEBUG)
-    handler.setFormatter(logging.Formatter(_FILE_FORMAT, datefmt=_DATE_FORMAT))
+    formatter = JsonLogFormatter(uuid.uuid4().hex) if get_settings().log_format == "json" else logging.Formatter(_FILE_FORMAT, datefmt=_DATE_FORMAT)
+    handler.setFormatter(formatter)
     return handler
 
 

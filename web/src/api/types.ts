@@ -1,4 +1,6 @@
 export interface DashboardStats {
+  history_ready_symbols?: number;
+  trading_days?: number;
   symbols_with_data: number;
   price_bar_rows: number;
   reconciled_rows: number;
@@ -99,8 +101,8 @@ export interface PortfolioSummary {
     symbol: string;
     quantity: number;
     avg_cost: number;
-    market_value: number;
-    unrealized_pnl: number;
+    market_value: number | null;
+    unrealized_pnl: number | null;
   }>;
   trades: number;
 }
@@ -467,7 +469,7 @@ export interface HealthSnapshot {
 }
 
 // --------------------------------------------------------------- background jobs
-export type JobKind = 'ingest' | 'reconcile' | 'run-daily' | 'rag-index' | 'screen';
+export type JobKind = 'refresh-today' | 'ingest' | 'reconcile' | 'run-daily' | 'rag-index' | 'screen' | 'backfill' | 'fundamentals' | 'floorsheet';
 
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
 

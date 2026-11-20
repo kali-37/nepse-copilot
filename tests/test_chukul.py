@@ -129,14 +129,14 @@ def test_config_driven_urls_override_defaults():
 
 def test_default_urls_when_no_spec():
     client = ChukulClient(client=object())
-    assert client.prices_url.startswith("https://api.chukul.com/v1/")
-    assert client.index_url.startswith("https://api.chukul.com/v1/")
+    assert client.prices_url == "https://chukul.com/api/data/v2/live-market/"
+    assert client.index_url is None
 
 
 @respx.mock
 def test_fetch_prices_over_respx():
-    route = respx.get("https://api.chukul.com/v1/market/live/").mock(
-        return_value=httpx.Response(200, json=PRICES_AS_LIST)
+    route = respx.get("https://chukul.com/api/data/v2/live-market/").mock(
+        return_value=httpx.Response(200, json=[{**row, "business_date": BUSINESS_DATE.isoformat()} for row in PRICES_AS_LIST])
     )
     client = ChukulClient(client=BaseClient(cache_raw=False))
     bars = client.fetch_prices(BUSINESS_DATE)
@@ -147,7 +147,7 @@ def test_fetch_prices_over_respx():
 
 @respx.mock
 def test_fetch_prices_empty_on_error():
-    respx.get("https://api.chukul.com/v1/market/live/").mock(
+    respx.get("https://chukul.com/api/data/v2/live-market/").mock(
         return_value=httpx.Response(404, json={"detail": "not found"})
     )
     client = ChukulClient(client=BaseClient(cache_raw=False))

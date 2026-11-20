@@ -75,7 +75,7 @@ describe('BacktestPage', () => {
     renderWithProviders(<BacktestPage />);
 
     await userEvent.selectOptions(screen.getByRole('combobox'), 'cagr_pct');
-    const minBars = screen.getByRole('spinbutton');
+    const minBars = screen.getByRole('spinbutton', { name: 'Min bars' });
     await userEvent.clear(minBars);
     await userEvent.type(minBars, '120');
     const strategies = screen.getByPlaceholderText('all or comma list');

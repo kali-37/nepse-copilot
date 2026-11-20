@@ -174,6 +174,12 @@ class Storage:
             )
         return len(rows)
 
+    @staticmethod
+    def _bump_market_revision(conn) -> None:
+        conn.execute("""INSERT INTO app_settings(key,value,updated_at) VALUES('market_revision','1',?)
+            ON CONFLICT(key) DO UPDATE SET value=CAST(app_settings.value AS INTEGER)+1,
+            updated_at=excluded.updated_at""", (datetime.now().isoformat(),))
+
     def upsert_reconciled(self, prices: Iterable[ReconciledPrice]) -> int:
         rows = [
             (
@@ -190,6 +196,7 @@ class Storage:
                 ",".join(s.value for s in p.sources_present),
                 ",".join(p.disputed_fields),
                 p.confidence,
+                p.adjusted_close,
             )
             for p in prices
         ]
@@ -200,8 +207,8 @@ class Storage:
                 """INSERT INTO reconciled_prices
                    (symbol,business_date,open,high,low,close,previous_close,
                     volume,turnover,sources_agreeing,sources_present,
-                    disputed_fields,confidence)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+                    disputed_fields,confidence,adjusted_close)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(symbol,business_date) DO UPDATE SET
                      open=excluded.open, high=excluded.high, low=excluded.low,
                      close=excluded.close, previous_close=excluded.previous_close,
@@ -209,9 +216,11 @@ class Storage:
                      sources_agreeing=excluded.sources_agreeing,
                      sources_present=excluded.sources_present,
                      disputed_fields=excluded.disputed_fields,
-                     confidence=excluded.confidence""",
+                     confidence=excluded.confidence,
+                     adjusted_close=excluded.adjusted_close""",
                 rows,
             )
+            self._bump_market_revision(c)
         return len(rows)
 
     def upsert_signals(self, signals: Iterable[Signal]) -> int:
@@ -304,6 +313,43 @@ class Storage:
                 rows,
             )
 
+    def record_run_metrics(self, kind: str, business_date: date | None, payload: dict) -> str:
+        import json
+        import uuid
+
+        run_id = uuid.uuid4().hex
+        with self._tx() as conn:
+            conn.execute("INSERT INTO run_metrics(run_id,kind,business_date,recorded_at,payload) VALUES(?,?,?,?,?)",
+                (run_id, kind, _d(business_date), datetime.now().isoformat(), json.dumps(payload, default=str)))
+        return run_id
+
+    def source_cooldown(self, source: str) -> float:
+        row = self._conn.execute("SELECT cooldown_until FROM ingest_state WHERE source=?", (source,)).fetchone()
+        return row[0] if row else 0.0
+
+    def record_source_result(self, source: str, success: bool, threshold: int, cooldown: int) -> None:
+        import time
+
+        with self._tx() as conn:
+            row = conn.execute("SELECT failures,cooldown_until FROM ingest_state WHERE source=?", (source,)).fetchone()
+            failures = 0 if success else (row[0] if row else 0) + 1
+            until = time.time() + cooldown if failures >= threshold else 0.0
+            conn.execute("""INSERT INTO ingest_state(source,failures,cooldown_until) VALUES(?,?,?)
+                ON CONFLICT(source) DO UPDATE SET failures=excluded.failures,cooldown_until=excluded.cooldown_until""",
+                (source, failures, until))
+
+    def source_date_ingested(self, source: str, business_date: date) -> bool:
+        row = self._conn.execute("""SELECT rows FROM ingest_log WHERE source=? AND business_date=?
+            AND endpoint='prices' AND status='ok' AND rows>0 ORDER BY id DESC LIMIT 1""", (source, _d(business_date))).fetchone()
+        if not row:
+            return False
+        count = self._conn.execute("SELECT COUNT(*) FROM price_bars WHERE source=? AND business_date=?", (source, _d(business_date))).fetchone()[0]
+        return count >= row[0]
+
+    def recent_source_counts(self, source: str) -> list[int]:
+        return [row[0] for row in self._conn.execute("""SELECT rows FROM ingest_log
+            WHERE source=? AND endpoint='prices' AND status='ok' AND rows>0 ORDER BY id DESC LIMIT 5""", (source,))]
+
     # ---- reads ----------------------------------------------------------
     def price_history(self, symbol: str, source: SourceName | None = None) -> list[PriceBar]:
         symbol = symbol.strip().upper()
@@ -346,6 +392,7 @@ class Storage:
                     ],
                     disputed_fields=[f for f in (r["disputed_fields"] or "").split(",") if f],
                     confidence=r["confidence"] or 0.0,
+                    adjusted_close=r["adjusted_close"],
                 )
             )
         return out
@@ -386,6 +433,7 @@ class Storage:
                     ],
                     disputed_fields=[f for f in (r["disputed_fields"] or "").split(",") if f],
                     confidence=r["confidence"] or 0.0,
+                    adjusted_close=r["adjusted_close"],
                 )
             )
         return out
@@ -440,6 +488,7 @@ class Storage:
                     ca.notes,
                 ),
             )
+            self._bump_market_revision(c)
 
     def corporate_actions(self, symbol: str | None = None) -> list[CorporateAction]:
         query = "SELECT * FROM corporate_actions"
@@ -465,6 +514,52 @@ class Storage:
                 )
             )
         return out
+
+    def upsert_fundamental(self, data, business_date: date | None = None) -> None:
+        """Store a dated snapshot rather than rewriting historical valuation."""
+        from datetime import UTC
+
+        observed = business_date or (data.fetched_at.date() if data.fetched_at else datetime.now(UTC).date())
+        with self._tx() as conn:
+            conn.execute("""INSERT INTO fundamentals(symbol,business_date,payload) VALUES(?,?,?)
+                ON CONFLICT(symbol,business_date) DO UPDATE SET payload=excluded.payload""",
+                (data.symbol.strip().upper(), observed.isoformat(), data.model_dump_json()))
+
+    def fundamentals(self, as_of: date | None = None) -> dict:
+        """Latest available snapshot per name, bounded by an optional date."""
+        from nepse_trader.models import FundamentalData
+
+        rows = self._conn.execute("""SELECT f.symbol, f.payload FROM fundamentals f
+            JOIN (SELECT symbol, MAX(business_date) AS business_date FROM fundamentals
+                  WHERE business_date<=? GROUP BY symbol) latest
+            ON f.symbol=latest.symbol AND f.business_date=latest.business_date""",
+            ((as_of or date.max).isoformat(),)).fetchall()
+        return {row["symbol"]: FundamentalData.model_validate_json(row["payload"]) for row in rows}
+
+    def upsert_floorsheet(self, entries) -> int:
+        """Upsert matched contracts; anonymous rows get a stable content ID."""
+        import hashlib
+
+        rows = []
+        for entry in entries:
+            identity = entry.contract_id or hashlib.sha256(entry.model_dump_json().encode()).hexdigest()
+            rows.append((identity, entry.symbol, _d(entry.business_date), entry.buyer_broker,
+                         entry.seller_broker, entry.quantity, entry.rate, entry.amount, entry.source.value))
+        with self._tx() as conn:
+            conn.executemany("""INSERT INTO floorsheet
+                (contract_id,symbol,business_date,buyer_broker,seller_broker,quantity,rate,amount,source)
+                VALUES(?,?,?,?,?,?,?,?,?) ON CONFLICT(contract_id,symbol,business_date,source)
+                DO UPDATE SET buyer_broker=excluded.buyer_broker,seller_broker=excluded.seller_broker,
+                quantity=excluded.quantity,rate=excluded.rate,amount=excluded.amount""", rows)
+        return len(rows)
+
+    def floorsheet_entries(self, business_date: date, symbol: str | None = None) -> list:
+        from nepse_trader.models import FloorsheetEntry
+
+        rows = self._conn.execute("""SELECT * FROM floorsheet WHERE business_date=?
+            AND (? IS NULL OR symbol=?) ORDER BY symbol,contract_id,source""",
+            (_d(business_date), symbol, symbol)).fetchall()
+        return [FloorsheetEntry(**dict(row)) for row in rows]
 
     def latest_reconciled_date(self) -> date | None:
         cur = self._conn.execute("SELECT MAX(business_date) AS d FROM reconciled_prices")
@@ -529,6 +624,8 @@ class Storage:
 
         cur = self._conn.execute("SELECT COUNT(*) AS n FROM reconciled_prices")
         out["reconciled_rows"] = cur.fetchone()["n"]
+        out["history_ready_symbols"] = self._conn.execute("SELECT COUNT(*) FROM (SELECT symbol FROM reconciled_prices GROUP BY symbol HAVING COUNT(*)>=60)").fetchone()[0]
+        out["trading_days"] = self._conn.execute("SELECT COUNT(DISTINCT business_date) FROM reconciled_prices").fetchone()[0]
 
         cur = self._conn.execute("SELECT MIN(business_date) AS earliest, MAX(business_date) AS latest FROM price_bars")
         row = cur.fetchone()

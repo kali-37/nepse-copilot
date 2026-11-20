@@ -262,6 +262,20 @@ def build_plan_card(
             "no resolved comparable predictions; house prior",
         )
 
+    if forecast_confidence.sample_size == 0 and len(bars) >= 50:
+        from nepse_trader.advisor.decision_signals import (
+            chart_states,
+            evidence_confidence,
+            historical_evidence,
+        )
+        states = chart_states(bars)
+        if states[-1] is not None:
+            evidence_days = max(3, horizon_days)
+            hits, total = historical_evidence(bars, states, evidence_days)
+            evidence = evidence_confidence(states[-1], evidence_days, hits, total, 0.88)
+            value = 1 - evidence["value"] if action in (REDUCE, AVOID) else evidence["value"]
+            forecast_confidence = market(value, "Technical/historical evidence strength, not calibrated probability. " + evidence["basis"], sample_size=total)
+
     stop = stop_loss_price(price, atr=atr, atr_multiple=atr_multiple)
     if stop is None:
         return Skipped(symbol, "no stop could be computed")

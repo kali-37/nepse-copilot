@@ -1,35 +1,11 @@
-"""A 0–1 confidence on every prediction, and the rules that keep it honest.
+"""Confidence values with an explicit evidence basis and conservative ceilings.
 
-You asked for a number on each call: 1 means it is going to happen, and 0.95–0.99
-means "still money in the bank". That phrasing is exactly right, and this module
-is built to make it *stay* right — because the easy way to build a confidence
-score is to let it drift upward until every card reads 0.9 and the number means
-nothing.
-
-Four rules enforce that:
-
-* **Only arithmetic reaches 1.0.** :func:`certain` is the single constructor that
-  can return it, and it is for facts that are computed rather than forecast: the
-  settlement date, the commission on a known quantity, the breakeven price. Any
-  claim about where a price will go is capped at :data:`MARKET_CEILING` (0.90),
-  below the user's "still money in the bank" band. A market can gap through any
-  stop on any morning; a 0.95+ directional forecast would overstate what a price
-  model can know.
-* **History, not vibes.** :func:`confidence_from_history` reads the prediction
-  journal's realised hit-rate through a :func:`wilson_lower_bound`, so twelve
-  wins out of twelve does not become 1.0 — it becomes ~0.76, which is what a
-  sample of twelve actually supports. Small samples are pulled toward a prior
-  rather than being allowed to shout.
-* **Blending takes the weakest link, not the average.** :func:`blend` returns the
-  *minimum*. A plan that needs a good entry fill *and* a target hit *and* enough
-  liquidity to exit is only as good as its worst leg; averaging 0.99 liquidity
-  against 0.4 edge to claim 0.7 would hide the leg that will actually break.
-* **Every number carries its basis.** :attr:`Confidence.basis` says where the
-  figure came from, so a reader can dismiss it. An unfalsifiable confidence score
-  is worse than none.
-
-The bands exist because 0.62 means nothing to a beginner. "more likely than not"
-does.
+Only arithmetic facts can reach 1.0. Market forecasts are capped at 0.90;
+no score makes a price outcome guaranteed. Resolved prediction history uses a
+Wilson lower bound with a small-sample prior, while decision-board technical
+scores explicitly identify themselves as evidence strength rather than
+calibrated win probabilities. Every number carries the basis and sample size
+needed to judge it. A compound plan takes its weakest confidence leg.
 """
 
 from __future__ import annotations
@@ -78,7 +54,7 @@ def band_for(value: float) -> tuple[str, str]:
 
 @dataclass(frozen=True)
 class Confidence:
-    """A probability in 0–1, its plain-language band, and where it came from.
+    """A confidence value in 0–1, its band, and the evidence behind it.
 
     Frozen because a confidence should never be edited after the fact — a caller
     that wants a different number must state a different basis for it.

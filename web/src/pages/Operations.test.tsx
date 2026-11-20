@@ -27,6 +27,21 @@ function cardOf(title: string): HTMLElement {
 }
 
 describe('OperationsPage', () => {
+  it('starts a dated history download from the selected verified source', async () => {
+    let submitted: { kind?: string; params?: Record<string, unknown> } = {};
+    server.use(http.post('*/api/jobs', async ({ request }) => {
+      submitted = await request.json() as typeof submitted;
+      return HttpResponse.json({ ...fx.doneJob, kind: 'backfill' });
+    }));
+    renderWithProviders(<OperationsPage />);
+    await userEvent.click(screen.getByRole('button', { name: 'Download price history' }));
+    await userEvent.type(screen.getByLabelText('Symbols (comma list, blank = all)'), 'NABIL,EBL');
+    fireEvent.change(screen.getByLabelText('History from'), { target: { value: '2024-01-01' } });
+    await userEvent.selectOptions(screen.getByLabelText('History source'), 'chukul');
+    await pressRun();
+    await waitFor(() => expect(submitted.kind).toBe('backfill'));
+    expect(submitted.params).toEqual({ symbols: 'NABIL,EBL', since: '2024-01-01', source: 'chukul' });
+  });
   it('renders without crashing', () => {
     expect(() => renderWithProviders(<OperationsPage />)).not.toThrow();
   });

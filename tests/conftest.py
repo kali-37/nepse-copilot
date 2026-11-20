@@ -40,6 +40,12 @@ def _isolate_run_logs(tmp_path_factory):
 
     scratch = tmp_path_factory.mktemp("run_logs")
     prev = os.environ.get("NEPSE_LOG_DIR")
+    prev_robots = os.environ.get("NEPSE_RESPECT_ROBOTS")
+    prev_cache = os.environ.get("NEPSE_RAW_CACHE_DIR")
+    os.environ["NEPSE_RAW_CACHE_DIR"] = str(tmp_path_factory.mktemp("raw_cache"))
+    # Existing transport tests mock only their data endpoint. Robots policy is
+    # exercised separately with Settings(respect_robots=True) and mocked rules.
+    os.environ["NEPSE_RESPECT_ROBOTS"] = "false"
     os.environ["NEPSE_LOG_DIR"] = str(scratch)
     get_settings.cache_clear()
     yield
@@ -47,6 +53,14 @@ def _isolate_run_logs(tmp_path_factory):
         os.environ.pop("NEPSE_LOG_DIR", None)
     else:
         os.environ["NEPSE_LOG_DIR"] = prev
+    if prev_robots is None:
+        os.environ.pop("NEPSE_RESPECT_ROBOTS", None)
+    else:
+        os.environ["NEPSE_RESPECT_ROBOTS"] = prev_robots
+    if prev_cache is None:
+        os.environ.pop("NEPSE_RAW_CACHE_DIR", None)
+    else:
+        os.environ["NEPSE_RAW_CACHE_DIR"] = prev_cache
     get_settings.cache_clear()
 
 

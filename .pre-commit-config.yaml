@@ -17,6 +17,12 @@ repos:
 
   - repo: local
     hooks:
+      - id: public-file-check
+        name: Public-file and credential check
+        entry: python scripts/check_public_files.py
+        language: system
+        pass_filenames: false
+        always_run: true
       - id: har-secret-scan
         name: HAR secret scan
         description: Refuse to commit any .har file (even redacted)

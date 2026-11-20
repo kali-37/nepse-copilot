@@ -923,6 +923,50 @@ def _m0014_advice_run_context(conn) -> None:
             conn.execute(ddl)
 
 
+def _m0015_fundamentals(conn) -> None:
+    conn.execute("""CREATE TABLE IF NOT EXISTS fundamentals (
+        symbol TEXT NOT NULL, business_date TEXT NOT NULL, payload TEXT NOT NULL,
+        PRIMARY KEY(symbol, business_date))""")
+
+
+def _m0016_ingest_state(conn) -> None:
+    conn.executescript("""CREATE TABLE IF NOT EXISTS ingest_state (
+        source TEXT PRIMARY KEY, failures INTEGER NOT NULL DEFAULT 0,
+        cooldown_until REAL NOT NULL DEFAULT 0);
+        CREATE INDEX IF NOT EXISTS idx_price_date ON price_bars(business_date,source);
+        CREATE INDEX IF NOT EXISTS idx_reconciled_date ON reconciled_prices(business_date);
+        CREATE INDEX IF NOT EXISTS idx_ingest_source_date ON ingest_log(source,business_date,endpoint);
+    """)
+
+
+def _m0017_run_metrics(conn) -> None:
+    conn.execute("""CREATE TABLE IF NOT EXISTS run_metrics (
+        run_id TEXT PRIMARY KEY, kind TEXT NOT NULL, business_date TEXT,
+        recorded_at TEXT NOT NULL, payload TEXT NOT NULL)""")
+
+
+def _m0018_decision_board(conn) -> None:
+    conn.executescript("""CREATE TABLE IF NOT EXISTS tracked_positions (
+        symbol TEXT PRIMARY KEY, quantity INTEGER NOT NULL, cost_basis TEXT,
+        bought_on TEXT, stop REAL, target REAL, horizon_days INTEGER NOT NULL DEFAULT 22,
+        updated_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS position_records (
+        id TEXT PRIMARY KEY, symbol TEXT NOT NULL, side TEXT NOT NULL,
+        quantity INTEGER NOT NULL, price TEXT NOT NULL, business_date TEXT NOT NULL,
+        recorded_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS decision_runs (
+        id TEXT PRIMARY KEY, generated_at TEXT NOT NULL, payload TEXT NOT NULL);
+    """)
+
+
+def _m0019_position_entry(conn) -> None:
+    conn.execute("ALTER TABLE tracked_positions ADD COLUMN entry_price REAL")
+
+
+def _m0020_position_plan_review(conn) -> None:
+    conn.execute("ALTER TABLE tracked_positions ADD COLUMN plan_reviewed_on TEXT")
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
@@ -940,6 +984,12 @@ MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0012_meroshare_demat_privacy", _m0012_meroshare_demat_privacy),
     ("0013_health_snapshots", _m0013_health_snapshots),
     ("0014_advice_run_context", _m0014_advice_run_context),
+    ("0015_fundamentals", _m0015_fundamentals),
+    ("0016_ingest_state", _m0016_ingest_state),
+    ("0017_run_metrics", _m0017_run_metrics),
+    ("0018_decision_board", _m0018_decision_board),
+    ("0019_position_entry", _m0019_position_entry),
+    ("0020_position_plan_review", _m0020_position_plan_review),
 ]
 
 

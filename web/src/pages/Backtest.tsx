@@ -22,6 +22,8 @@ export function BacktestPage() {
   const [rankBy, setRankBy] = useState('sharpe');
   const [minBars, setMinBars] = useState(60);
   const [strategies, setStrategies] = useState('all');
+  const [maxPe, setMaxPe] = useState('');
+  const [maxPbv, setMaxPbv] = useState('');
 
   const run = async () => {
     setLoading(true);
@@ -33,6 +35,8 @@ export function BacktestPage() {
         min_bars: minBars,
         rank_by: rankBy,
         top: 50,
+        max_pe: maxPe ? Number(maxPe) : undefined,
+        max_pbv: maxPbv ? Number(maxPbv) : undefined,
       });
       setResults(data);
     } catch (e) {
@@ -76,6 +80,7 @@ export function BacktestPage() {
             </label>
             <input
               type="number"
+              aria-label="Min bars"
               value={minBars}
               onChange={(e) => setMinBars(Number(e.target.value))}
               className="w-20 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary focus:border-nepse-500 focus:outline-none"
@@ -95,6 +100,16 @@ export function BacktestPage() {
             />
           </div>
 
+          <label className="block text-xs text-text-secondary">
+            Maximum P/E
+            <input aria-label="Maximum P/E" type="number" min="0.01" step="0.1" value={maxPe} onChange={(event) => setMaxPe(event.target.value)}
+              className="mt-1 block w-24 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary" />
+          </label>
+          <label className="block text-xs text-text-secondary">
+            Maximum P/B
+            <input aria-label="Maximum P/B" type="number" min="0.01" step="0.1" value={maxPbv} onChange={(event) => setMaxPbv(event.target.value)}
+              className="mt-1 block w-24 rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text-primary" />
+          </label>
           <button
             onClick={run}
             disabled={loading}
@@ -105,6 +120,7 @@ export function BacktestPage() {
           </button>
         </div>
       </Card>
+      {(maxPe || maxPbv) && <p className="text-xs text-text-secondary">Valuation filters use dated, stored fundamentals. Download them in Operations; symbols with missing valuations are excluded.</p>}
 
       {error && <ErrorState message={error} onRetry={run} />}
 

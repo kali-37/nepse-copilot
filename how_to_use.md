@@ -1,5 +1,17 @@
 # How To Use — NEPSE Trader
 
+Start with [how_to_proceed.md](how_to_proceed.md) for installation and private
+`.env` configuration. Every user keeps their own credentials and database.
+
+The dashboard is at `http://127.0.0.1:8000/` when the local server is running.
+The main screen shows daily/monthly buy ideas and your sell/hold plans.
+**Refresh today** updates enabled sources and analysis; **I bought / I sold**
+record trades you already made. **Set exit plan** updates an existing holding
+without adding another purchase. Advanced tools are under **Research & tools**.
+The **Analytics** page provides portfolio and walk-forward research;
+**Operations** downloads history, fundamentals and broker trades. See
+[completion status and commands](docs/COMPLETION_STATUS.md) for the current setup.
+
 This is the plain-language guide. It assumes nothing about programming. Every
 command is written out in full so you can copy it, paste it, and press Enter.
 
@@ -49,9 +61,11 @@ You need Python 3.11 or newer. The easy path uses
 [`uv`](https://github.com/astral-sh/uv):
 
 ```bash
-cd nepse-trader
-uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python -e ".[dev]"
+git clone https://github.com/kali-37/nepse-copilot.git
+cd nepse-copilot
+uv sync --frozen --python 3.12
+cp .env.example .env
+chmod 600 .env
 ```
 
 Every command below starts with `.venv/bin/python -m nepse_trader.cli.main`,
@@ -88,8 +102,9 @@ nt dashboard              # what do I have now?
 ```
 
 If `nt ingest` reports zero rows, check the date. NEPSE trades **Sunday through
-Thursday**. On a Friday, Saturday, or a public holiday there is genuinely
-nothing to fetch, and zero rows is the correct answer, not a bug.
+Thursday**. On a Friday, Saturday or public holiday, a source can return the last
+published session. Its original date is preserved; the dashboard identifies
+the market as closed.
 
 One day of data is not enough to analyse anything. Indicators need history. To
 get about six weeks of it, run this once and let it work (it is polite and slow
@@ -826,7 +841,7 @@ each one said.
 To confirm the installation itself is sound:
 
 ```bash
-.venv/bin/python -m pytest -q      # 1284 tests, all offline
+.venv/bin/python -m pytest -q      # full Python test suite
 .venv/bin/ruff check .             # lint
 ```
 

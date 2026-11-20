@@ -1,5 +1,8 @@
 # Plan: NEPSE Trader — Full Completion
 
+> Historical sprint plan. See [current completion status](docs/COMPLETION_STATUS.md)
+> for implemented features, verification and remaining extensions.
+
 **Generated**: 2026-07-21
 **Estimated Complexity**: High
 **Total effort**: ~6–8 weeks (single developer)

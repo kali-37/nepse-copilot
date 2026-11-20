@@ -2,28 +2,28 @@
 @import "tailwindcss";
 
 @theme {
-  --color-nepse-50: #eef2ff;
-  --color-nepse-100: #e0e7ff;
-  --color-nepse-200: #c7d2fe;
-  --color-nepse-300: #a5b4fc;
-  --color-nepse-400: #818cf8;
-  --color-nepse-500: #6366f1;
-  --color-nepse-600: #4f46e5;
-  --color-nepse-700: #4338ca;
-  --color-nepse-800: #3730a3;
-  --color-nepse-900: #312e81;
+  --color-nepse-50: #edf5ef;
+  --color-nepse-100: #dcebdd;
+  --color-nepse-200: #c3ddcc;
+  --color-nepse-300: #9bc4ad;
+  --color-nepse-400: #6fa58a;
+  --color-nepse-500: #45876b;
+  --color-nepse-600: #2f7156;
+  --color-nepse-700: #235b45;
+  --color-nepse-800: #194333;
+  --color-nepse-900: #132f25;
   --color-surface: #ffffff;
-  --color-surface-secondary: #f8fafc;
-  --color-surface-tertiary: #f1f5f9;
-  --color-border: #e2e8f0;
-  --color-text-primary: #0f172a;
-  --color-text-secondary: #475569;
-  --color-text-tertiary: #94a3b8;
+  --color-surface-secondary: #f7f8f4;
+  --color-surface-tertiary: #eef0e9;
+  --color-border: #e2e6dc;
+  --color-text-primary: #202c25;
+  --color-text-secondary: #647067;
+  --color-text-tertiary: #768278;
   --color-positive: #059669;
   --color-negative: #e11d48;
   --color-warning: #d97706;
   --color-accent: #f59e0b;
-  --color-chart-line: #6366f1;
+  --color-chart-line: #45876b;
   --color-chart-up: #059669;
   --color-chart-down: #e11d48;
   --font-sans: 'Inter', system-ui, -apple-system, sans-serif;
@@ -90,3 +90,6 @@ body {
 .page-enter {
   animation: fadeIn 0.3s ease-out;
 }
+
+:focus-visible { outline:2px solid var(--color-nepse-500); outline-offset:3px; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; scroll-behavior:auto !important; } }

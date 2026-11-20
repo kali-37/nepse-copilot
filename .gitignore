@@ -1,31 +1,77 @@
+# Local configuration and credentials (only sanitized templates are tracked).
+.env
+.env.*
+*.env
+*.env.*
+!.env.example
+!*.env.example
+.envrc
+.netrc
+.pypirc
+.npmrc
+.mcp.json
+.aws/
+.ssh/
+secrets/
+credentials/
+**/credentials.json
+**/service-account*.json
+*.pem
+*.key
+*.p12
+*.pfx
+
+# Python and test environments.
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
 *.egg-info/
 .pytest_cache/
 .ruff_cache/
-data/*.db
-# WAL sidecars: present whenever a connection is open, gone on clean close.
-data/*.db-wal
-data/*.db-shm
-data/*.sqlite3
-har/captures/*.har
-!har/captures/.gitkeep
-*.log
-# Runtime run-logs: keep the tree, ignore the files.
-logs/**/*.log
+.hypothesis/
+.coverage*
+htmlcov/
+
+# Runtime market/account data, exports, captures, and private screenshots.
+data/
+logs/
 !logs/.gitkeep
-.env
+artifacts/
+backups/
+exports/
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
+*.log
+*.har
+har/captures/
+!har/captures/.gitkeep
+holdings*.csv
+transactions*.csv
+meroshare*.csv
+wacc*.csv
+account*.csv
+credentials*.txt
+secrets*.json
+secrets*.yaml
+
+# Builds, JavaScript dependencies, and local scratch files.
+node_modules/
 dist/
 build/
+web/dist/
 .build_workflow.js
 .review_workflow.js
-web/dist
+/s.py
+/package-lock.json
+*.tmp
+*.bak
+.DS_Store
 
-# graphify: track the graph and report; ignore regenerable bulk.
-graphify-out/cache/
-graphify-out/graph.html
-graphify-out/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/
-graphify-out/.graphify_analysis.json
-# Stray per-package graph caches (regenerable, not the project graph).
+# Local generated architecture maps contain machine paths and cached analysis.
+graphify-out/
 nepse_trader/**/graphify-out/

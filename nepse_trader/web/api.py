@@ -143,7 +143,7 @@ def _latest_market_date() -> date:
 
 
 def _pipeline() -> DailyPipeline:
-    return DailyPipeline(storage=_storage())
+    return DailyPipeline(settings=_settings(), storage=_storage(), clients=[])
 
 
 def _symbol_filter(symbol: str | None) -> str | None:
@@ -404,13 +404,24 @@ def symbol_quant(symbol: str):
 
 @app.get("/api/symbols/{symbol}/fundamentals")
 def symbol_fundamentals(symbol: str):
-    client = MeroLaganiFundamentalsClient()
+    cached = _storage().fundamentals().get(symbol.upper())
+    if cached is not None:
+        return cached.model_dump(mode="json")
+    if not _settings().online:
+        raise HTTPException(404, f"No stored fundamentals for {symbol.upper()}; download them in Operations when online.")
+    from nepse_trader.ingest.base import BaseClient
+
+    transport = BaseClient(_settings(), cache_raw=False)
+    client = MeroLaganiFundamentalsClient(client=transport)
     try:
         data = client.fetch_fundamentals(symbol.upper())
     except Exception as e:
         raise HTTPException(502, f"Fundamentals fetch failed: {e}") from e
+    finally:
+        transport.close()
     if data is None or (data.market_price is None and data.eps is None):
         raise HTTPException(404, f"No fundamentals for {symbol.upper()}")
+    _storage().upsert_fundamental(data)
     return {
         "company_name": data.company_name,
         "sector": data.sector,
@@ -435,7 +446,13 @@ def symbol_fundamentals(symbol: str):
 def portfolio(cash: float = Query(100_000.0)):
     pipe = _pipeline()
     pf = pipe.replay_portfolio(cash)
-    return pf.to_dict()
+    quotes = {}
+    for position in pf.holdings():
+        history = pipe.storage.reconciled_history(position.symbol)
+        closes = [row.close for row in history if row.close is not None]
+        if closes:
+            quotes[position.symbol] = closes[-1]
+    return pf.to_dict(quotes)
 
 
 # ---------------------------------------------------------------------------
@@ -448,6 +465,10 @@ def backtest_screen(
     min_bars: int = Query(60),
     rank_by: str = Query("sharpe"),
     top: int = Query(30),
+    max_pe: float | None = Query(None, gt=0),
+    max_pbv: float | None = Query(None, gt=0),
+    min_eps: float | None = Query(None),
+    sector: str | None = Query(None),
 ):
     pipe = _pipeline()
     strat_list = (
@@ -460,6 +481,7 @@ def backtest_screen(
         cash=cash,
         min_bars=min_bars,
         rank_by=rank_by,
+        max_pe=max_pe, max_pbv=max_pbv, min_eps=min_eps, sector=sector,
     )
     return [r.as_dict() for r in rows[:top]]
 
@@ -506,15 +528,16 @@ def trigger_ingest(
     business_date: str | None = Query(None),
     all_sources: bool = Query(True),
     async_: bool = Query(False, alias="async"),
+    force: bool = Query(False),
 ):
     import asyncio
 
     bd = _parse_date(business_date)
-    pipe = _pipeline()
+    pipe = DailyPipeline(settings=_settings(), storage=_storage(), include_all_sources=all_sources)
     if async_:
-        rep = asyncio.run(pipe.async_ingest(bd))
+        rep = asyncio.run(pipe.async_ingest(bd, force=force))
     else:
-        rep = pipe.ingest(bd)
+        rep = pipe.ingest(bd, force=force)
     return rep.as_dict()
 
 
@@ -890,7 +913,7 @@ def advisor_run(body: AdvisorRunRequest):
     result = build_rashifal(
         symbols=symbols,
         bars_for=pipe.reconciled_bars,
-        signals_for=lambda sym: pipe.signals_for(sym, "sma_cross"),
+        signals_for=lambda sym: [signal for name in STRATEGIES for signal in pipe.signals_for(sym, name)[-1:] if signal.business_date == run_date],
         equity=body.equity,
         run_date=run_date,
         mode=body.mode,
@@ -1297,7 +1320,7 @@ class JobSubmitRequest(BaseModel):
     surfaces as a failed job with the reason attached.
     """
 
-    kind: Literal["ingest", "reconcile", "run-daily", "rag-index", "screen"]
+    kind: Literal["refresh-today", "ingest", "reconcile", "run-daily", "rag-index", "screen", "backfill", "fundamentals", "floorsheet"]
     params: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -1465,6 +1488,7 @@ class CorporateActionRequest(BaseModel):
     ratio_numerator: int = Field(1, gt=0)
     ratio_denominator: int = Field(1, gt=0)
     notes: str = ""
+    price_factor: Decimal | None = Field(None, gt=0, allow_inf_nan=False)
 
 
 def _corporate_action_response(ca: CorporateAction) -> dict[str, Any]:
@@ -1492,25 +1516,28 @@ def list_corporate_actions(symbol: str | None = Query(None)):
 def add_corporate_action(body: CorporateActionRequest):
     """Record a corporate action by hand.
 
-    Prices stay as published — this table is the record of the event, not a
-    retroactive adjustment of history.
+    Preserve published prices and recompute the separate adjusted history.
     """
     try:
         ex_date = date.fromisoformat(body.ex_date)
     except ValueError as exc:
         raise HTTPException(400, f"ex_date must be YYYY-MM-DD, got {body.ex_date!r}") from exc
-    factor = round(body.ratio_denominator / body.ratio_numerator, 6)
+    from nepse_trader.analysis.corporate_actions import adjustment_factor
+
+    factor = adjustment_factor(CorporateActionType(body.action_type), body.ratio_numerator,
+                               body.ratio_denominator, body.price_factor)
     action = CorporateAction(
         symbol=body.symbol.strip().upper(),
         ex_date=ex_date,
         action_type=CorporateActionType(body.action_type),
         ratio_numerator=body.ratio_numerator,
         ratio_denominator=body.ratio_denominator,
-        factor=Decimal(str(factor)),
+        factor=factor,
         source=SourceName.MANUAL,
         notes=body.notes,
     )
     _storage().upsert_corporate_action(action)
+    _pipeline().refresh_adjustments({action.symbol})
     return _corporate_action_response(action)
 
 
@@ -1709,6 +1736,14 @@ def ai_test(body: AiTestRequest):
         "error": response.error,
     }
 
+
+from nepse_trader.web.research import router as _research_router  # noqa: E402
+
+app.include_router(_research_router)
+
+from nepse_trader.web.decisions import router as _decision_router  # noqa: E402
+
+app.include_router(_decision_router)
 
 # ---------------------------------------------------------------------------
 # Serve built frontend (production)

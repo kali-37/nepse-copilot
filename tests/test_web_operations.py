@@ -515,9 +515,13 @@ class TestJobRoutes:
         body = client.get("/api/jobs?limit=5").json()
         assert body["running"] is None
         assert body["kinds"] == [
+            "backfill",
+            "floorsheet",
+            "fundamentals",
             "ingest",
             "rag-index",
             "reconcile",
+            "refresh-today",
             "run-daily",
             "screen",
         ]

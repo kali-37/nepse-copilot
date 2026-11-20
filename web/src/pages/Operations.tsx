@@ -13,10 +13,18 @@ interface KindSpec {
   kind: JobKind;
   label: string;
   blurb: string;
-  fields: Array<'business_date' | 'all_sources' | 'strategies' | 'top' | 'rank_by' | 'cash' | 'min_bars' | 'symbols' | 'recent_days' | 'news'>;
+  fields: Array<'business_date' | 'since' | 'until' | 'source' | 'all_sources' | 'strategies' | 'top' | 'rank_by' | 'cash' | 'min_bars' | 'symbols' | 'recent_days' | 'news'>;
 }
 
 const KINDS: KindSpec[] = [
+  { kind: 'fundamentals', label: 'Download fundamentals', blurb: 'Store dated company valuations and sectors for offline research and screening.', fields: ['symbols'] },
+  { kind: 'floorsheet', label: 'Download broker trades', blurb: 'Store published matched contracts for broker buy/sell flow analysis.', fields: ['business_date'] },
+  {
+    kind: 'backfill',
+    label: 'Download price history',
+    blurb: 'Load published daily prices for your symbols, then cross-check and adjust them for stored corporate actions. Repeating this updates existing prices.',
+    fields: ['symbols', 'since', 'until', 'source'],
+  },
   {
     kind: 'run-daily',
     label: 'Daily run',
@@ -55,6 +63,9 @@ const RANK_OPTIONS = ['sharpe', 'total_return_pct', 'cagr_pct', 'max_drawdown_pc
 
 const FIELD_LABEL: Record<string, string> = {
   business_date: 'Trading date',
+  since: 'History from',
+  until: 'History through (blank = today)',
+  source: 'History source',
   all_sources: 'Every source, not just enabled ones',
   strategies: 'Strategies',
   top: 'Max symbols',
@@ -68,6 +79,9 @@ const FIELD_LABEL: Record<string, string> = {
 
 const DEFAULTS: Record<string, string | number | boolean> = {
   business_date: '',
+  since: '',
+  until: '',
+  source: 'sharesansar',
   all_sources: true,
   strategies: 'all',
   top: 25,
@@ -295,7 +309,7 @@ export function OperationsPage() {
                     </label>
                   );
                 }
-                if (field === 'rank_by') {
+                if (field === 'rank_by' || field === 'source') {
                   return (
                     <label key={field} className="block text-sm">
                       <span className="text-text-secondary">{FIELD_LABEL[field]}</span>
@@ -304,7 +318,7 @@ export function OperationsPage() {
                         onChange={(e) => setField(field, e.target.value)}
                         className="mt-1 h-9 w-full rounded border border-border bg-surface px-2 text-sm text-text-primary"
                       >
-                        {RANK_OPTIONS.map((option) => (
+                        {(field === 'source' ? ['sharesansar', 'chukul'] : RANK_OPTIONS).map((option) => (
                           <option key={option} value={option}>
                             {option.replace(/_/g, ' ')}
                           </option>
@@ -318,7 +332,7 @@ export function OperationsPage() {
                   <label key={field} className="block text-sm">
                     <span className="text-text-secondary">{FIELD_LABEL[field]}</span>
                     <input
-                      type={field === 'business_date' ? 'date' : numeric ? 'number' : 'text'}
+                      type={['business_date', 'since', 'until'].includes(field) ? 'date' : numeric ? 'number' : 'text'}
                       value={String(value ?? '')}
                       onChange={(e) =>
                         setField(field, numeric ? Number(e.target.value) : e.target.value)

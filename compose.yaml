@@ -1,0 +1,17 @@
+services:
+  dashboard:
+    build: .
+    ports:
+      - "127.0.0.1:8000:8000"
+    volumes:
+      - nepse-data:/app/data
+      - nepse-logs:/app/logs
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped
+    environment:
+      NEPSE_LOG_FORMAT: json
+volumes:
+  nepse-data:
+  nepse-logs:

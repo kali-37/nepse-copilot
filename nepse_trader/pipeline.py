@@ -13,7 +13,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass, field
-from datetime import date
+from datetime import date, timedelta
 from typing import Any
 
 from nepse_trader import reporting
@@ -22,13 +22,15 @@ from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.analysis.screen import ScreenRow, best_per_symbol, screen
 from nepse_trader.analysis.strategies import STRATEGIES, Strategy, build_strategy
 from nepse_trader.calendar import periods_per_year as _calendar_periods
+from nepse_trader.calendar import previous_trading_day
 from nepse_trader.config import Settings, SourcesConfig, get_settings, load_sources
 from nepse_trader.ingest.base import SourceClient
 from nepse_trader.ingest.chukul import ChukulClient
 from nepse_trader.ingest.merolagani import MeroLaganiClient
 from nepse_trader.ingest.nepse_official import NepseScraperClient
 from nepse_trader.ingest.nepsealpha import NepseAlphaClient
-from nepse_trader.ingest.reconcile import reconcile_bars
+from nepse_trader.ingest.policy import IngestPolicy
+from nepse_trader.ingest.reconcile import adjust_prices, reconcile_bars
 from nepse_trader.ingest.sharesansar import ShareSansarClient
 from nepse_trader.models import PriceBar, ReconciledPrice, Signal, SourceName
 from nepse_trader.storage import Storage
@@ -93,14 +95,20 @@ class IngestReport:
     business_date: date | None
     per_source: dict[str, int] = field(default_factory=dict)
     errors: dict[str, str] = field(default_factory=dict)
+    skipped: dict[str, str] = field(default_factory=dict)
+    warnings: list[str] = field(default_factory=list)
     total_bars: int = 0
     total_indices: int = 0
+    business_dates: set[date] = field(default_factory=set)
 
     def as_dict(self) -> dict:
         return {
             "business_date": self.business_date.isoformat() if self.business_date else None,
+            "business_dates": sorted(d.isoformat() for d in self.business_dates),
             "per_source": self.per_source,
             "errors": self.errors,
+            "skipped": self.skipped,
+            "warnings": self.warnings,
             "total_bars": self.total_bars,
             "total_indices": self.total_indices,
         }
@@ -123,43 +131,54 @@ class DailyPipeline:
             else build_clients(self.settings, include_all=include_all_sources)
         )
         self.cost_engine = cost_engine or CostEngine()
+        self.ingest_policy = IngestPolicy(self.storage, self.settings)
 
     # ------------------------------------------------------------- ingestion
-    def ingest(self, business_date: date | None = None) -> IngestReport:
+    def ingest(self, business_date: date | None = None, *, force: bool = False) -> IngestReport:
         report = IngestReport(business_date=business_date)
         for client in self.clients:
             sname = client.name.value
+            reason = self.ingest_policy.skip_reason(sname, business_date, force=force)
+            if reason:
+                report.skipped[sname] = reason
+                continue
             # Isolate prices and indices independently: a failure fetching one
             # data type must NOT discard a successful fetch of the other.
             bars = self._safe_fetch(client.fetch_prices, business_date, sname, "prices", report)
             indices = self._safe_fetch(
                 client.fetch_indices, business_date, sname, "indices", report
             )
+            report.business_dates.update(bar.business_date for bar in bars)
             n = self.storage.upsert_price_bars(bars)
             ni = self.storage.upsert_index_values(indices)
             report.per_source[sname] = n
             report.total_bars += n
             report.total_indices += ni
-            self.storage.log_ingest(sname, "prices", business_date, n, "ok")
+            report.warnings.extend(self.ingest_policy.record(sname, bars, business_date))
         return report
 
-    async def async_ingest(self, business_date: date | None = None) -> IngestReport:
+    async def async_ingest(self, business_date: date | None = None, *, force: bool = False) -> IngestReport:
         """Async variant: fetches from all sources concurrently."""
         report = IngestReport(business_date=business_date)
         async def _fetch_one(client):
             sname = client.name.value
+            reason = self.ingest_policy.skip_reason(sname, business_date, force=force)
+            if reason:
+                report.skipped[sname] = reason
+                return
             bars = await self._safe_async_fetch(
                 client.async_fetch_prices, business_date, sname, "prices", report
             )
             indices = await self._safe_async_fetch(
                 client.async_fetch_indices, business_date, sname, "indices", report
             )
+            report.business_dates.update(bar.business_date for bar in bars)
             n = self.storage.upsert_price_bars(bars)
             ni = self.storage.upsert_index_values(indices)
             report.per_source[sname] = report.per_source.get(sname, 0) + n
             report.total_bars += n
             report.total_indices += ni
-            self.storage.log_ingest(sname, "prices", business_date, n, "ok")
+            report.warnings.extend(self.ingest_policy.record(sname, bars, business_date))
 
         await asyncio.gather(*[_fetch_one(c) for c in self.clients])
         return report
@@ -189,27 +208,61 @@ class DailyPipeline:
         bars = self.storage.bars_for_date(business_date)
         reconciled = reconcile_bars(bars, tolerance=self.settings.price_agreement_tolerance)
         self.storage.upsert_reconciled(reconciled)
-        return reconciled
+        self.refresh_adjustments({p.symbol for p in reconciled})
+        return self.storage.reconciled_history_for_date(business_date)
+
+    def refresh_adjustments(self, symbols: set[str] | None = None) -> int:
+        """Recompute from raw closes so late/corrected events never compound."""
+        count = 0
+        actions = self.storage.corporate_actions()
+        for symbol in sorted(symbols if symbols is not None else self.storage.symbols()):
+            prices = self.storage.reconciled_history(symbol)
+            adjust_prices(prices, [ca for ca in actions if ca.symbol == symbol])
+            count += self.storage.upsert_reconciled(prices)
+        return count
 
     # ---------------------------------------------------------------- signals
-    def reconciled_bars(self, symbol: str) -> list[PriceBar]:
+    def reconciled_bars(self, symbol: str, *, adjusted: bool = True, as_of: date | None = None) -> list[PriceBar]:
         """Reconciled history for a symbol as PriceBars (for indicators)."""
         out: list[PriceBar] = []
-        for r in self.storage.reconciled_history(symbol):
+        actions = self.storage.corporate_actions(symbol) if adjusted else []
+        history = self.storage.reconciled_history(symbol)
+        if as_of is not None:
+            history = [r for r in history if r.business_date <= as_of]
+            actions = [action for action in actions if action.ex_date <= as_of]
+            if adjusted:
+                adjust_prices(history, actions)
+        prior: ReconciledPrice | None = None
+        for r in history:
+            factor = r.adjusted_close / r.close if adjusted and r.adjusted_close is not None and r.close else 1.0
+            def scaled(value: float | None, multiplier: float = factor) -> float | None:
+                return value * multiplier if value is not None else None
+            previous_close = scaled(r.previous_close)
+            if previous_close is not None:
+                # The previous close predates today's ex-date, whereas today's
+                # OHLC are already quoted in the new share units.
+                for action in actions:
+                    if action.ex_date == r.business_date:
+                        previous_close *= float(action.factor)
+                if (adjusted and prior is not None and prior.close == r.previous_close
+                        and prior.business_date == previous_trading_day(r.business_date - timedelta(days=1))):
+                    previous_close = prior.adjusted_close if prior.adjusted_close is not None else prior.close
             out.append(
                 PriceBar(
                     symbol=r.symbol,
                     business_date=r.business_date,
-                    open=r.open,
-                    high=r.high,
-                    low=r.low,
-                    close=r.close,
-                    previous_close=r.previous_close,
+                    open=scaled(r.open),
+                    high=scaled(r.high),
+                    low=scaled(r.low),
+                    close=scaled(r.close),
+                    previous_close=previous_close,
                     volume=r.volume,
                     turnover=r.turnover,
                     source=SourceName.MANUAL,
                 )
             )
+            if r.close is not None:
+                prior = r
         return out
 
     def signals_for(
@@ -332,9 +385,17 @@ class DailyPipeline:
         min_bars: int = 60,
         rank_by: str = "sharpe",
         on_progress: Callable[[int, int, str], Any] | None = None,
+        max_pe: float | None = None,
+        max_pbv: float | None = None,
+        min_eps: float | None = None,
+        sector: str | None = None,
     ) -> list[ScreenRow]:
         """Backtest the strategy panel across symbols; return a ranked leaderboard."""
-        symbols = symbols or self.storage.symbols()
+        from nepse_trader.analysis.fundamentals import filter_symbols
+
+        symbols = filter_symbols(symbols if symbols is not None else self.storage.symbols(),
+            self.storage.fundamentals(as_of=self.storage.latest_reconciled_date()),
+            max_pe=max_pe, max_pbv=max_pbv, min_eps=min_eps, sector=sector)
         return screen(
             self.reconciled_bars,
             symbols,
@@ -416,4 +477,5 @@ class DailyPipeline:
             "top_strategy": (leaderboard[0].as_dict() if leaderboard else None),
         }
         log.info("daily_report summary: %s", summary)
+        self.storage.record_run_metrics("daily-report", business_date, summary)
         return sections, summary

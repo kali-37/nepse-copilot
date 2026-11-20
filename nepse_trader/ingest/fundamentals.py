@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+import re
 from datetime import UTC, datetime
 
 from selectolax.parser import HTMLParser
@@ -29,9 +31,8 @@ class MeroLaganiFundamentalsClient(SourceClient):
 
     def fetch_fundamentals(self, symbol: str) -> FundamentalData | None:
         """Fetch and parse fundamentals for *symbol*."""
-        url = f"{self.BASE_URL}?symbol={symbol.upper()}"
         try:
-            resp = self.client.fetch(url)
+            resp = self.client.fetch(self.BASE_URL, params={"symbol": symbol.upper()})
         except Exception:
             return None
 
@@ -62,6 +63,16 @@ class MeroLaganiFundamentalsClient(SourceClient):
                 val = tds[1].text(strip=True)
                 data[key] = val
 
+        # Current company pages use a th/td accordion instead of div rows.
+        for row in parser.css("table#accordion tr"):
+            header = row.css_first("th")
+            cell = row.css_first("td")
+            if header is not None and cell is not None:
+                data.setdefault(header.text(strip=True), cell.text(strip=True))
+        company_name = parser.css_first('span[id$="_companyName"]')
+        if company_name is not None:
+            data.setdefault("Company Name", company_name.text(strip=True))
+
         def _num(v: object) -> float | None:
             if v is None:
                 return None
@@ -69,7 +80,9 @@ class MeroLaganiFundamentalsClient(SourceClient):
             if s == "-" or not s:
                 return None
             try:
-                return float(s)
+                match = re.match(r"^[+-]?(?:\d+(?:\.\d*)?|\.\d+)", s)
+                value = float(match.group()) if match else None
+                return value if value is not None and math.isfinite(value) else None
             except ValueError:
                 return None
 

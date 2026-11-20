@@ -44,7 +44,7 @@ import type {
 
 const BASE = '/api';
 
-async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
+export async function fetchJson<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${url}`, {
     headers: { Accept: 'application/json', ...init?.headers },
     ...init,
@@ -116,6 +116,9 @@ export const api = {
     min_bars?: number;
     rank_by?: string;
     top?: number;
+    max_pe?: number;
+    max_pbv?: number;
+    min_eps?: number;
   }) => {
     const params = new URLSearchParams();
     if (opts?.strategies) params.set('strategies', opts.strategies);
@@ -123,6 +126,9 @@ export const api = {
     if (opts?.min_bars) params.set('min_bars', String(opts.min_bars));
     if (opts?.rank_by) params.set('rank_by', opts.rank_by);
     if (opts?.top) params.set('top', String(opts.top));
+    if (opts?.max_pe !== undefined) params.set('max_pe', String(opts.max_pe));
+    if (opts?.max_pbv !== undefined) params.set('max_pbv', String(opts.max_pbv));
+    if (opts?.min_eps !== undefined) params.set('min_eps', String(opts.min_eps));
     return fetchJson<ScreenRow[]>(`/backtest/screen?${params}`);
   },
 

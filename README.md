@@ -28,8 +28,12 @@ verify each site's real data endpoints from your own browser captures.
 
 ## Documentation
 
+See [current completion status](docs/COMPLETION_STATUS.md) for delivered features,
+real data coverage, dashboard commands and deployment prerequisites.
+
 | Doc | For |
 |-----|-----|
+| [`how_to_proceed.md`](how_to_proceed.md) | First install, private configuration and contributing |
 | [`how_to_use.md`](how_to_use.md) | Operators — every command, with examples |
 | [`how_it_works.md`](how_it_works.md) | The algorithms & design decisions, stage by stage |
 | [`developers_guide.md`](developers_guide.md) | Contributors — contracts and extension recipes |
@@ -112,9 +116,11 @@ Key modules:
 Requires Python ≥ 3.11. Using [`uv`](https://github.com/astral-sh/uv):
 
 ```bash
-cd nepse-trader
-uv venv --python 3.12 .venv
-uv pip install --python .venv/bin/python -e ".[dev]"
+git clone https://github.com/kali-37/nepse-copilot.git
+cd nepse-copilot
+uv sync --frozen --python 3.12
+cp .env.example .env
+chmod 600 .env
 ```
 
 Optional (NEPSE-official ingestion via the MIT library):
@@ -250,8 +256,8 @@ See `har/HAR_CAPTURE_PLAN.md` for the per-site capture playbook.
 ## Testing
 
 ```bash
-.venv/bin/python -m pytest -q
-.venv/bin/ruff check .
+uv run --frozen ruff check .
+uv run --frozen pytest -q
 ```
 
 ## Disclaimer
@@ -259,3 +265,43 @@ See `har/HAR_CAPTURE_PLAN.md` for the per-site capture playbook.
 For research and education. Market data may be delayed or inaccurate; always
 verify against the official source for anything material. No warranty; not
 financial advice; respect each site's terms and NEPSE's data licensing.
+
+### Simple buying and selling dashboard
+
+Open `http://127.0.0.1:8000/` after starting the dashboard server. **Refresh today**
+updates enabled public sources, chart analysis and personal advice. Switch
+between **Daily** and **Monthly** buys; **What to sell or hold** shows your
+saved exits. Record trades you already made using **I bought this** / **I sold**.
+For an existing mirrored holding, **Set exit plan** updates its cost and levels
+without adding another purchase. Cash means money available for new purchases.
+Confidence is evidence strength, with its historical basis available on each
+card. The dashboard keeps published market dates explicit on closed days.
+Advanced tools are grouped under **Research & tools**. See
+[completion status](docs/COMPLETION_STATUS.md) for validation and limits.
+
+### Private configuration and public contributions
+
+Each installation uses its own `.env` and SQLite database. The committed
+[`.env.example`](.env.example) contains blank credential fields. Put MeroShare
+DP ID, username/password and optional AI keys in your local `.env` or OS keyring.
+These values are omitted from settings representations and JSON output; remote
+AI errors are redacted before logging. Never put credentials in `VITE_*`
+variables, because they become part of the browser bundle.
+
+Git and Docker exclude local env files, account exports, databases, backups,
+HAR captures, logs, private screenshots and cloud credentials. Previously
+tracked raw captures are removed from the current source tree and preserved
+locally. CI checks the tracked file set for private paths and recognized secret
+formats. Each user starts with an empty database and ingests their own data.
+
+The dashboard is a personal single-user application. A public repository shares
+the source code; keep your running dashboard on `127.0.0.1`. A shared deployment
+would need authentication and separate storage for each user.
+
+CI selects Python 3.11 and 3.12 explicitly, installs the locked default `dev`
+group, and runs Ruff and pytest without dropping development tools. Frontend
+CI uses Node 24, `npm ci`, lint, tests and a production build. See
+[how to proceed](how_to_proceed.md) for the complete setup and push checklist.
+
+Source code is available under the [MIT license](LICENSE). Market data remains
+subject to the source providers' terms.

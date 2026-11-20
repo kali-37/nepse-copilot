@@ -48,6 +48,7 @@ from nepse_trader.calendar import is_trading_day
 from nepse_trader.config import Settings
 from nepse_trader.pipeline import DailyPipeline
 from nepse_trader.storage import Storage
+from nepse_trader.web.refresh import refresh_today
 
 log = logging.getLogger("nepse_trader.web.jobs")
 
@@ -181,8 +182,10 @@ class JobContext:
             raise ValueError(f"unknown strategies: {', '.join(unknown)}")
         return wanted or list(STRATEGIES)
 
-    def pipeline(self, *, include_all_sources: bool = False) -> DailyPipeline:
-        return DailyPipeline(storage=self.storage, include_all_sources=include_all_sources)
+    def pipeline(self, *, include_all_sources: bool | None = None) -> DailyPipeline:
+        return DailyPipeline(settings=self.settings, storage=self.storage,
+                             clients=[] if include_all_sources is None else None,
+                             include_all_sources=bool(include_all_sources))
 
     # --------------------------------------------------------------- comms
     def log_line(self, message: str) -> None:
@@ -264,6 +267,12 @@ Handler = Callable[[JobContext], dict[str, Any]]
 #: stage list from this before the thread starts, so the UI can render the whole
 #: shape of a job — including steps not reached yet — from the first poll.
 JOB_STAGES: dict[str, list[tuple[str, str]]] = {
+    "refresh-today": [("ingest", "Download market prices"), ("reconcile", "Cross-check sources"),
+                      ("history", "Repair missing history"), ("analyse", "Analyse charts and historical outcomes"),
+                      ("context", "Refresh company and broker data"), ("save", "Update buy and sell advice")],
+    "backfill": [("history", "Download and reconcile price history")],
+    "fundamentals": [("fundamentals", "Download company fundamentals")],
+    "floorsheet": [("floorsheet", "Download matched contracts")],
     "ingest": [("ingest", "Download from sources")],
     "reconcile": [("reconcile", "Cross-check sources")],
     # No advisor stage: the dashboard already runs the advisor synchronously via
@@ -290,7 +299,7 @@ def _job_ingest(ctx: JobContext) -> dict[str, Any]:
     with ctx.stage("ingest") as stage:
         stage.detail = f"{len(pipe.clients)} source(s)"
         ctx.log_line(f"ingesting from {len(pipe.clients)} source(s)")
-        report = pipe.ingest(bd)
+        report = pipe.ingest(bd, force=bool(ctx.params.get("force", False)))
         stage.detail = f"{report.total_bars} bars from {len(report.per_source)} source(s)"
         for name, count in report.per_source.items():
             ctx.log_line(f"  {name}: {count} bars")
@@ -358,7 +367,7 @@ def _job_run_daily(ctx: JobContext) -> dict[str, Any]:
     with ctx.stage("ingest") as stage:
         stage.detail = f"{len(pipe.clients)} source(s)"
         ctx.log_line(f"ingesting from {len(pipe.clients)} source(s) for {bd.isoformat()}")
-        ingest_report = pipe.ingest(bd)
+        ingest_report = pipe.ingest(bd, force=bool(ctx.params.get("force", False)))
         stage.detail = f"{ingest_report.total_bars} bars from {len(ingest_report.per_source)} source(s)"
         for name, count in ingest_report.per_source.items():
             ctx.log_line(f"  {name}: {count} bars")
@@ -488,7 +497,91 @@ def _job_screen(ctx: JobContext) -> dict[str, Any]:
     }
 
 
+def _job_backfill(ctx: JobContext) -> dict[str, Any]:
+    from nepse_trader.ingest.history import backfill_history
+
+    pipe = ctx.pipeline()
+    symbols = _job_symbols(ctx)
+    with ctx.stage("history") as stage:
+        report = backfill_history(pipe, symbols, since=ctx.param_date("since"),
+                                  until=ctx.param_date("until"), on_progress=ctx.progress,
+                                  source=str(ctx.params.get("source", "sharesansar")),
+                                  check_cancelled=ctx.check_cancelled)
+        stage.detail = f"{report.bars} bars, {len(report.errors)} symbols without history"
+    if not report.bars:
+        raise ValueError("No history returned. Verify the public source endpoint.")
+    return {"summary": report.as_dict(), "rows": [
+        {"symbol": symbol, "bars": count, "error": report.errors.get(symbol)}
+        for symbol, count in report.per_symbol.items()
+    ]}
+
+
+def _job_symbols(ctx: JobContext) -> list[str]:
+    raw = ctx.params.get("symbols")
+    if raw is None or raw == "":
+        return ctx.storage.symbols()
+    if isinstance(raw, str):
+        return [s.strip().upper() for s in raw.split(",") if s.strip()]
+    if isinstance(raw, list) and all(isinstance(s, str) and s.strip() for s in raw):
+        return [s.strip().upper() for s in raw]
+    raise ValueError("Symbols must be a comma-separated string or a list of tickers.")
+
+
+def _job_fundamentals(ctx: JobContext) -> dict[str, Any]:
+    from nepse_trader.ingest.base import BaseClient
+    from nepse_trader.ingest.fundamentals import MeroLaganiFundamentalsClient
+
+    if not ctx.settings.online:
+        raise ValueError("Fundamentals download requires online mode.")
+    names = sorted(set(_job_symbols(ctx)))
+    if not 1 <= len(names) <= 500:
+        raise ValueError("Provide 1–500 symbols.")
+    rows = []
+    with BaseClient(ctx.settings, cache_raw=False) as http:
+        client = MeroLaganiFundamentalsClient(client=http)
+        with ctx.stage("fundamentals") as stage:
+            for index, name in enumerate(names, 1):
+                ctx.check_cancelled()
+                data = client.fetch_fundamentals(name)
+                if data is not None and (data.eps is not None or data.market_price is not None):
+                    ctx.storage.upsert_fundamental(data)
+                    rows.append(data.model_dump(mode="json"))
+                ctx.progress(index, len(names), name)
+            stage.detail = f"{len(rows)} company snapshots stored"
+    if not rows:
+        raise ValueError("No fundamentals returned; verify the public source.")
+    return {"summary": {"symbols": len(names), "stored": len(rows)}, "rows": rows}
+
+
+def _job_floorsheet(ctx: JobContext) -> dict[str, Any]:
+    from nepse_trader.analysis.market import broker_flows
+    from nepse_trader.ingest.base import BaseClient
+    from nepse_trader.ingest.chukul import ChukulClient
+    from nepse_trader.ingest.sharesansar import ShareSansarClient
+
+    if not ctx.settings.online:
+        raise ValueError("Floorsheet download requires online mode.")
+    bd = ctx.param_date("business_date") or ctx.storage.latest_price_date() or date.today()
+    with ctx.stage("floorsheet") as stage, BaseClient(ctx.settings, cache_raw=False) as http:
+        entries = ShareSansarClient(client=http).fetch_floorsheet(bd)
+        if not entries:
+            entries = ChukulClient(client=http).fetch_floorsheet(bd)
+        if not entries:
+            raise ValueError("No matched contracts returned for this date.")
+        ctx.storage.upsert_floorsheet(entries)
+        stage.detail = f"{len(entries)} matched contracts"
+    flows = broker_flows(entries)
+    displayed = flows if len(flows) <= 200 else flows[:100] + flows[-100:]
+    return {"summary": {"contracts": len(entries), "broker_rows": len(flows), "displayed_rows": len(displayed)},
+            "rows": displayed}
+
+
+
 HANDLERS: dict[str, Handler] = {
+    "refresh-today": refresh_today,
+    "backfill": _job_backfill,
+    "fundamentals": _job_fundamentals,
+    "floorsheet": _job_floorsheet,
     "ingest": _job_ingest,
     "reconcile": _job_reconcile,
     "run-daily": _job_run_daily,

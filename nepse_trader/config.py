@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import functools
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import BaseModel, Field, field_validator
@@ -28,7 +28,8 @@ class Settings(BaseSettings):
     # silently dropped every NEPSE_* value — MeroShare credentials included —
     # and the integration reported itself disabled instead of misconfigured.
     model_config = SettingsConfigDict(
-        env_prefix="NEPSE_", env_file=PROJECT_ROOT / ".env", extra="ignore"
+        env_prefix="NEPSE_", env_file=PROJECT_ROOT / ".env", extra="ignore",
+        hide_input_in_errors=True
     )
 
     db_path: Path = DATA_DIR / "nepse.db"
@@ -37,10 +38,15 @@ class Settings(BaseSettings):
     # log_dir/<component>/. Override with NEPSE_LOG_DIR (tests redirect it so
     # unit runs don't pollute the real logs/ tree).
     log_dir: Path = PROJECT_ROOT / "logs"
+    log_format: Literal["text", "json"] = "text"
     request_timeout: float = 20.0
     max_retries: int = 3
     # Politeness: minimum seconds between requests to the SAME host.
     min_request_interval: float = 1.5
+    respect_robots: bool = True
+    raw_cache_retention_days: int = Field(30, ge=0)
+    circuit_failure_threshold: int = Field(3, ge=1)
+    circuit_cooldown_seconds: int = Field(900, ge=0)
     user_agent: str = "nepse-trader/0.1 (+public-data-aggregator; respects robots & ToS)"
     # Enabled ingestion sources (by SourceName value).
     enabled_sources: list[str] = Field(
@@ -93,12 +99,12 @@ class Settings(BaseSettings):
             "google/gemma-2-9b-it:free",
         ]
     )
-    openrouter_api_key: str = ""
+    openrouter_api_key: str = Field(default="", repr=False, exclude=True)
     openrouter_base_url: str = "https://openrouter.ai/api/v1"
     # Path to the Claude Code CLI used by the claude_cli provider.
     claude_cli_path: str = "claude"
     claude_cli_model: str = ""  # empty = whatever the CLI defaults to
-    anthropic_api_key: str = ""
+    anthropic_api_key: str = Field(default="", repr=False, exclude=True)
     anthropic_model: str = "claude-opus-5"
     llm_timeout: float = 180.0
 
@@ -130,9 +136,9 @@ class Settings(BaseSettings):
     # logged, never written to the DB. See nepse_trader/meroshare/credentials.py.
     meroshare_enabled: bool = False
     meroshare_base_url: str = "https://webbackend.cdsc.com.np/api"
-    meroshare_dp_id: str = ""
-    meroshare_username: str = ""
-    meroshare_password: str = ""
+    meroshare_dp_id: str = Field(default="", repr=False, exclude=True)
+    meroshare_username: str = Field(default="", repr=False, exclude=True)
+    meroshare_password: str = Field(default="", repr=False, exclude=True)
     # Read the password from the OS keyring instead of env (service/user below).
     meroshare_use_keyring: bool = False
     meroshare_keyring_service: str = "nepse-trader-meroshare"

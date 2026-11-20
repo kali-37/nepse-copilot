@@ -28,7 +28,7 @@ sources:
         url: "https://www.sharesansar.com/today-share-price"
         params: { }            # add date=YYYY-MM-DD at call time
         confidence: high
-        notes: "Whole-market EOD OHLCV HTML table. ?date=YYYY-MM-DD for backfill."
+        notes: "Latest whole-market EOD OHLCV. GET date filtering is ignored; use company_price_history for backfill."
       live_trading:
         method: GET
         url: "https://www.sharesansar.com/live-trading"
@@ -97,30 +97,43 @@ sources:
         params: { }            # symbol=NABIL
         confidence: high
 
-  # ---- Chukul: optional versioned JSON API (paths inferred — verify via HAR) ----
+  # ---- Chukul: public data URLs observed in its frontend, verified 2026-11-19 ----
   chukul:
     name: chukul
-    base_url: "https://api.chukul.com"
+    base_url: "https://chukul.com"
     access_method: public_json_api
     requires_auth: false
-    enabled: false
+    enabled: true
     rate_limit_seconds: 1.5
     notes: >
-      Versioned /v1/ JSON backend powering chukul.com. Paths below are INFERRED
-      and must be confirmed by capturing chukul.com/nepse-live-market in DevTools
-      and running `nepse-trader har analyze`. Disabled until verified.
+      Public endpoints observed in the deployed frontend and verified with HTTP
+      200 on 2026-11-19. Live rows carry NPT timestamps; history is unadjusted.
     endpoints:
       live:
         method: GET
-        url: "https://api.chukul.com/v1/market/live/"
-        confidence: low
-      stock:
+        url: "https://chukul.com/api/data/v2/live-market/"
+        confidence: high
+      history:
         method: GET
-        url: "https://api.chukul.com/v1/stock/"
-        confidence: low
-      index:
+        url: "https://live.chukul.com/api/data/historydata/data/"
+        confidence: high
+        notes: "Per-symbol raw t/o/h/l/c/vol history. Query symbol=<ticker>; times convert to NPT."
+      floorsheet:
         method: GET
-        url: "https://api.chukul.com/v1/index/"
+        url: "https://chukul.com/api/data/floorsheet/bydate/"
+        confidence: high
+        notes: "Verified public matched contracts on 2026-11-19. Dates are also encoded in transaction IDs."
+
+  nepsealpha:
+    name: nepsealpha
+    base_url: "https://www.nepsealpha.com"
+    access_method: public_json_api
+    enabled: false
+    notes: "The previously configured UDF path returned HTTP 403 on 2026-11-19. Disabled pending an accessible public datafeed; no access-control bypass."
+    endpoints:
+      history:
+        method: GET
+        url: "https://www.nepsealpha.com/api/tradingview/history"
         confidence: low
 
   # ---- NEPSE official: optional, via user-installed nepse-scraper lib or HAR ----

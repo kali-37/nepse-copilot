@@ -12,20 +12,23 @@ Design goals:
 
 from __future__ import annotations
 
+import asyncio
+import gzip
 import hashlib
 import json
+import threading
 import time
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from pathlib import Path
 from typing import Any
+from urllib.robotparser import RobotFileParser
 
 import httpx
 from tenacity import (
     retry,
     retry_if_exception_type,
     stop_after_attempt,
-    wait_exponential,
 )
 
 from nepse_trader.config import Settings, get_settings
@@ -35,6 +38,7 @@ from nepse_trader.ingest.engines import (
     TransportFailure,
     build_engine,
 )
+from nepse_trader.ingest.http_policy import retry_after_seconds, retry_wait, robots_rules
 from nepse_trader.models import (
     FloorsheetEntry,
     IndexValue,
@@ -46,6 +50,10 @@ from nepse_trader.models import (
 
 class RateLimitedError(Exception):
     """Raised when a source signals 429/403 — we back off, never bypass."""
+
+    def __init__(self, message: str, retry_after: float | None = None):
+        super().__init__(message)
+        self.retry_after = retry_after
 
 
 class FetchError(Exception):
@@ -70,26 +78,28 @@ class _HostThrottle:
     def __init__(self, min_interval: float):
         self.min_interval = min_interval
         self._last: dict[str, float] = {}
+        self._sync_locks: dict[str, threading.Lock] = {}
+        self._async_locks: dict[str, asyncio.Lock] = {}
 
     def wait(self, host: str, sleep=time.sleep, clock=time.monotonic) -> None:
-        last = self._last.get(host)
-        now = clock()
-        if last is not None:
-            elapsed = now - last
-            if elapsed < self.min_interval:
-                sleep(self.min_interval - elapsed)
-        self._last[host] = clock()
+        with self._sync_locks.setdefault(host, threading.Lock()):
+            last = self._last.get(host)
+            now = clock()
+            if last is not None:
+                elapsed = now - last
+                if elapsed < self.min_interval:
+                    sleep(self.min_interval - elapsed)
+            self._last[host] = clock()
 
     async def async_wait(self, host: str, clock=time.monotonic) -> None:
-        import asyncio
-
-        last = self._last.get(host)
-        now = clock()
-        if last is not None:
-            elapsed = now - last
-            if elapsed < self.min_interval:
-                await asyncio.sleep(self.min_interval - elapsed)
-        self._last[host] = clock()
+        async with self._async_locks.setdefault(host, asyncio.Lock()):
+            last = self._last.get(host)
+            now = clock()
+            if last is not None:
+                elapsed = now - last
+                if elapsed < self.min_interval:
+                    await asyncio.sleep(self.min_interval - elapsed)
+            self._last[host] = clock()
 
 
 class BaseClient:
@@ -116,6 +126,8 @@ class BaseClient:
             self.engine = build_engine(self.settings)
         self.throttle = throttle or _HostThrottle(self.settings.min_request_interval)
         self.cache_raw = cache_raw
+        self._robots: dict[str, RobotFileParser] = {}
+        self._blocked_until: dict[str, float] = {}
 
     def close(self) -> None:
         self.engine.close()
@@ -134,6 +146,19 @@ class BaseClient:
         headers: dict[str, str] | None = None,
         json_body: Any | None = None,
     ) -> FetchResult:
+        self._check_available(url)
+        if self.settings.respect_robots:
+            origin = str(httpx.URL(url).copy_with(path="/", query=None, fragment=None)).rstrip("/")
+            if origin not in self._robots:
+                self.throttle.wait(httpx.URL(url).host)
+                response = self.engine.raw_request(origin + "/robots.txt")
+                self._check_retry_after(response.status_code, response.headers, origin + "/robots.txt")
+                try:
+                    self._robots[origin] = robots_rules(origin + "/robots.txt", response.status_code, response.text)
+                except ValueError as exc:
+                    raise FetchError(str(exc)) from exc
+            if not self._robots[origin].can_fetch(self.settings.user_agent, url):
+                raise FetchError("robots.txt disallows this path.")
         host = httpx.URL(url).host or "unknown"
         self.throttle.wait(host)
         result = self._do_request(url, method, params, headers, json_body)
@@ -149,6 +174,19 @@ class BaseClient:
         headers: dict[str, str] | None = None,
         json_body: Any | None = None,
     ) -> FetchResult:
+        self._check_available(url)
+        if self.settings.respect_robots:
+            origin = str(httpx.URL(url).copy_with(path="/", query=None, fragment=None)).rstrip("/")
+            if origin not in self._robots:
+                await self.throttle.async_wait(httpx.URL(url).host)
+                response = await self.engine.async_raw_request(origin + "/robots.txt")
+                self._check_retry_after(response.status_code, response.headers, origin + "/robots.txt")
+                try:
+                    self._robots[origin] = robots_rules(origin + "/robots.txt", response.status_code, response.text)
+                except ValueError as exc:
+                    raise FetchError(str(exc)) from exc
+            if not self._robots[origin].can_fetch(self.settings.user_agent, url):
+                raise FetchError("robots.txt disallows this path.")
         host = httpx.URL(url).host or "unknown"
         await self.throttle.async_wait(host)
         result = await self._async_do_request(url, method, params, headers, json_body)
@@ -158,7 +196,7 @@ class BaseClient:
 
     @retry(
         retry=retry_if_exception_type((httpx.TransportError, TransportFailure, RateLimitedError)),
-        wait=wait_exponential(multiplier=1.5, min=2, max=30),
+        wait=retry_wait,
         stop=stop_after_attempt(3),
         reraise=True,
     )
@@ -171,6 +209,7 @@ class BaseClient:
         json_body: Any | None,
     ) -> FetchResult:
         resp = self.engine.raw_request(url, method, params, headers, json_body)
+        self._check_retry_after(resp.status_code, resp.headers, url)
         if resp.status_code in (429, 403):
             raise RateLimitedError(
                 f"{resp.status_code} from {url}: backing off (we do not bypass limits)"
@@ -188,7 +227,7 @@ class BaseClient:
 
     @retry(
         retry=retry_if_exception_type((httpx.TransportError, TransportFailure, RateLimitedError)),
-        wait=wait_exponential(multiplier=1.5, min=2, max=30),
+        wait=retry_wait,
         stop=stop_after_attempt(3),
         reraise=True,
     )
@@ -201,6 +240,7 @@ class BaseClient:
         json_body: Any | None,
     ) -> FetchResult:
         resp = await self.engine.async_raw_request(url, method, params, headers, json_body)
+        self._check_retry_after(resp.status_code, resp.headers, url)
         if resp.status_code in (429, 403):
             raise RateLimitedError(
                 f"{resp.status_code} from {url}: backing off (we do not bypass limits)"
@@ -216,14 +256,40 @@ class BaseClient:
             headers=resp.headers,
         )
 
+    def _check_available(self, url: str) -> None:
+        if not self.settings.online:
+            raise FetchError("Network access is disabled in offline mode.")
+        if self._blocked_until.get(httpx.URL(url).host, 0) > time.monotonic():
+            raise FetchError("Server-requested Retry-After is still active.")
+
+    def _check_retry_after(self, status: int, headers: dict[str, str], url: str) -> None:
+        if status not in (429, 503):
+            return
+        value = next((value for key, value in headers.items() if key.lower() == "retry-after"), None)
+        delay = retry_after_seconds(value)
+        if delay is None:
+            return
+        self._blocked_until[httpx.URL(url).host] = time.monotonic() + delay
+        if delay > 60:
+            # Skip this run rather than blocking a worker for minutes/hours.
+            raise FetchError("Server requested a long Retry-After; skipping this host for now.")
+        raise RateLimitedError(f"{status}: server requested Retry-After.", retry_after=delay)
+
     def _cache(self, url: str, result: FetchResult) -> None:
         try:
             cache_dir: Path = self.settings.raw_cache_dir
             cache_dir.mkdir(parents=True, exist_ok=True)
-            key = hashlib.sha256(url.encode()).hexdigest()[:16]
+            key = hashlib.sha256(result.url.encode()).hexdigest()[:16]
             stamp = result.fetched_at.strftime("%Y%m%d")
-            path = cache_dir / f"{stamp}_{key}.txt"
-            path.write_text(result.text, encoding="utf-8")
+            path = cache_dir / f"{stamp}_{key}.txt.gz"
+            with gzip.open(path, "wt", encoding="utf-8") as output:
+                output.write(result.text)
+            retention = self.settings.raw_cache_retention_days
+            if retention:
+                cutoff = time.time() - retention * 86400
+                for old in cache_dir.glob("????????_????????????????.txt.gz"):
+                    if old.stat().st_mtime < cutoff:
+                        old.unlink()
         except OSError:
             # Caching is best-effort; never let it break ingestion.
             pass
@@ -252,7 +318,7 @@ class SourceClient:
         return None
 
     async def async_fetch_prices(self, business_date: date | None = None) -> list[PriceBar]:
-        return self.fetch_prices(business_date) if callable(getattr(self, "fetch_prices", None)) else []
+        return await asyncio.to_thread(self.fetch_prices, business_date)
 
     async def async_fetch_indices(self, business_date: date | None = None) -> list[IndexValue]:
-        return self.fetch_indices(business_date) if callable(getattr(self, "fetch_indices", None)) else []
+        return await asyncio.to_thread(self.fetch_indices, business_date)

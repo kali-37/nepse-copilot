@@ -63,9 +63,9 @@ def test_buy_weighted_average_cost_across_two_buys(engine: CostEngine) -> None:
 
     pos = pf.positions["HDL"]
     assert pos.quantity == 200
-    # WAC is weighted by the total cost of each buy (cost_per_share rounded to 2dp).
-    assert pos.avg_cost == Decimal("150.82")
-    assert pos.cost_basis == pos.quantity * pos.avg_cost
+    # Average cost is display-rounded; inventory retains the exact paid basis.
+    assert pos.avg_cost == Decimal("150.81")
+    assert pos.cost_basis == sum(trade.net_amount for trade in pf.trades)
 
 
 def test_buy_insufficient_funds_raises(engine: CostEngine) -> None:
@@ -130,8 +130,7 @@ def test_fifo_partial_sell_uses_oldest_lot_for_long_term_cgt(engine: CostEngine)
     oldest_holding_days = (sell_date - date(2022, 1, 1)).days
     assert oldest_holding_days > 365
 
-    per_share = pf.positions["SCB"].avg_cost  # both buys identical -> WAC == lot basis
-    basis_50 = round(50 * per_share, 2)
+    basis_50 = round(engine.compute(OrderSide.BUY, 100.0, 100).net_amount / 2, 2)
     expected_sell = engine.compute(
         OrderSide.SELL,
         200.0,
@@ -164,8 +163,8 @@ def test_fifo_sell_spanning_two_lots_uses_oldest_lot_date(engine: CostEngine) ->
     pf.buy("SCB", 100.0, 100, date(2024, 1, 1))
     sell_date = date(2024, 3, 1)
 
-    per_share = pf.positions["SCB"].avg_cost
-    basis_150 = round(150 * per_share, 2)
+    buy_basis = engine.compute(OrderSide.BUY, 100.0, 100).net_amount
+    basis_150 = buy_basis + round(buy_basis / 2, 2)
     # Holding period is measured from the OLDEST contributing lot (2022).
     expected = engine.compute(
         OrderSide.SELL,
@@ -229,8 +228,7 @@ def test_valuations_and_summary(engine: CostEngine) -> None:
     assert pf.market_value(prices) == pytest.approx(6_000.0)
     assert float(pf.equity(prices)) == pytest.approx(round(float(pf.cash) + 6_000.0, 2))
 
-    pos = pf.positions["NABIL"]
-    assert float(pf.unrealized_pnl(prices)) == pytest.approx(round(10 * (600.0 - float(pos.avg_cost)), 2))
+    assert pf.unrealized_pnl(prices) == pf.equity(prices) - pf.initial_cash
 
     # holdings returns Position objects; to_dict / summary are structured.
     assert all(isinstance(p, Position) for p in pf.holdings())

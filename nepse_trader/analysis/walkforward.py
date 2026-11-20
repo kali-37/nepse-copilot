@@ -61,7 +61,7 @@ def _param_grid(strategy_name: str) -> list[dict[str, Any]]:
             if f < s
         ],
         "rsi": [
-            {"rsi_period": p, "oversold": os, "overbought": ob}
+            {"period": p, "oversold": os, "overbought": ob}
             for p in [7, 14, 21]
             for os in [25, 30]
             for ob in [70, 75]
@@ -105,6 +105,9 @@ def walk_forward(
     expanding: bool = True,
     backtester_kwargs: dict[str, Any] | None = None,
 ) -> WFResult:
+    if not 0 < train_pct < 1 or not 0 < val_pct < 1 or train_pct + val_pct > 1:
+        raise ValueError("Training and validation fractions must be positive and total at most 1.")
+    build_strategy(strategy_name)
     if not bars:
         return WFResult(strategy_name=strategy_name)
 
@@ -132,8 +135,9 @@ def walk_forward(
             start += step
             continue
 
-        best_params: dict[str, Any] = {}
+        best_params: dict[str, Any] | None = None
         best_return = -float("inf")
+        best_score = -float("inf")
 
         for params in _param_grid(strategy_name):
             try:
@@ -142,14 +146,24 @@ def walk_forward(
                 continue
             bt = Backtester(**bt_kw)
             r = bt.run(strat, train_slice)
-            if r.total_return_pct > best_return:
+            if r.sharpe > best_score:
+                best_score = r.sharpe
                 best_return = r.total_return_pct
                 best_params = dict(params)
 
-        if best_params:
+        if best_params is not None:
             val_strat = build_strategy(strategy_name, **best_params)
+            # Indicators may use training history, but fills and account state
+            # start afresh at the validation boundary.
+            class WarmStrategy:
+                name = val_strat.name
+
+                def generate(self, validation_bars, strategy=val_strat, prefix=train_slice):
+                    wanted = {bar.business_date for bar in validation_bars}
+                    return [s for s in strategy.generate([*prefix, *validation_bars]) if s.business_date in wanted]
+
             oos_bt = Backtester(**bt_kw)
-            oos_result = oos_bt.run(val_strat, val_slice)
+            oos_result = oos_bt.run(WarmStrategy(), val_slice)
             oos_return = oos_result.total_return_pct
         else:
             oos_return = 0.0
@@ -160,8 +174,8 @@ def walk_forward(
                 train_end=train_slice[-1].business_date if train_slice else bars[0].business_date,
                 val_start=val_slice[0].business_date if val_slice else bars[0].business_date,
                 val_end=val_slice[-1].business_date if val_slice else bars[0].business_date,
-                best_params=best_params,
-                in_sample_return_pct=best_return,
+                best_params=best_params or {},
+                in_sample_return_pct=best_return if best_params is not None else 0.0,
                 out_of_sample_return_pct=oos_return,
                 num_train_bars=len(train_slice),
                 num_val_bars=len(val_slice),

@@ -21,9 +21,11 @@ rate limits.
 from __future__ import annotations
 
 import logging
+import math
 import re
 from datetime import date
 from decimal import Decimal
+from urllib.parse import quote
 
 import httpx
 from selectolax.parser import HTMLParser
@@ -55,10 +57,11 @@ _DEFAULT_URLS: dict[str, str] = {
     "top_gainers": "https://www.sharesansar.com/top-gainers",
     "top_losers": "https://www.sharesansar.com/top-losers",
     "announcements": "https://www.sharesansar.com/announcements",
+    "company_page": "https://www.sharesansar.com/company/{symbol}",
+    "company_price_history": "https://www.sharesansar.com/company-price-history",
 }
 
 _XHR_HEADERS = {"X-Requested-With": "XMLHttpRequest"}
-
 log = logging.getLogger("nepse_trader.ingest.sharesansar")
 
 # ``<h5>As of : <span class="text-org">2026-08-27</span></h5>`` above the board.
@@ -82,6 +85,24 @@ def parse_as_of_date(html: str) -> date | None:
         return date.fromisoformat(match.group(1))
     except ValueError:
         return None
+
+
+# ``<div id="companyid" style="display: none;">16</div>`` plus the Laravel CSRF
+# token: both live on /company/<symbol> and both are required to POST the
+# per-company price history.
+def parse_company_ref(html: str) -> tuple[int, str] | None:
+    """``(company_id, csrf_token)`` from a ``/company/<symbol>`` page.
+
+    ``None`` when either is absent, which is the signal to skip the symbol
+    rather than POST a request that would come back empty.
+    """
+    tree = HTMLParser(html or "")
+    company = tree.css_first("#companyid")
+    token = tree.css_first('input[name="_token"], meta[name="csrf-token"]')
+    if company is None or token is None or not company.text(strip=True).isdigit():
+        return None
+    value = token.attributes.get("value") or token.attributes.get("content")
+    return (int(company.text(strip=True)), value) if value else None
 
 
 _TAG_RE = re.compile(r"<[^>]+>")
@@ -193,7 +214,8 @@ def _num(value: object) -> float | None:
     if text in ("", "-", "--", "N/A", "n/a"):
         return None
     try:
-        return float(text)
+        value = float(text)
+        return value if math.isfinite(value) else None
     except (TypeError, ValueError):
         return None
 
@@ -302,10 +324,53 @@ class ShareSansarClient(SourceClient):
         return bars
 
     @staticmethod
+    def parse_price_history(
+        payload: dict,
+        symbol: str,
+        source: SourceName = SourceName.SHARESANSAR,
+    ) -> list[PriceBar]:
+        """Parse a ``company-price-history`` payload into one bar per session.
+
+        Rows arrive newest-first with ``published_date`` and no previous-close
+        column, so each bar takes its previous close from the next row — the
+        preceding trading session, which is what "previous close" means. That
+        makes ``change``/``change_percent`` derive correctly instead of staying
+        empty for the whole backfilled series.
+        """
+        if not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+            return []
+        by_date: dict[date, PriceBar] = {}
+        for row in payload["data"]:
+            if not isinstance(row, dict):
+                continue
+            bdate = _parse_date(row.get("published_date"))
+            close = _num(row.get("close"))
+            if bdate is None or close is None or close <= 0:
+                continue
+            by_date[bdate] = PriceBar(
+                    symbol=symbol.upper(),
+                    business_date=bdate,
+                    open=_num(row.get("open")),
+                    high=_num(row.get("high")),
+                    low=_num(row.get("low")),
+                    close=close,
+                    volume=_int(row.get("traded_quantity")),
+                    turnover=_num(row.get("traded_amount")),
+                    source=source,
+            )
+        bars = sorted(by_date.values(), key=lambda bar: bar.business_date)
+        for previous, current in zip(bars, bars[1:], strict=False):
+            current.previous_close = previous.close
+        bars.reverse()
+        return bars
+
+    @staticmethod
     def parse_floorsheet(
         payload: dict,
         business_date: date,
         source: SourceName = SourceName.SHARESANSAR,
+        *,
+        require_source_date: bool = False,
     ) -> list[FloorsheetEntry]:
         """Parse a floorsheet DataTables JSON payload into entries.
 
@@ -315,6 +380,11 @@ class ShareSansarClient(SourceClient):
         rows = (payload or {}).get("data") or []
         entries: list[FloorsheetEntry] = []
         for row in rows:
+            if not isinstance(row, dict):
+                continue
+            observed = _parse_date(row.get("date_") or row.get("date"))
+            if require_source_date and observed is None:
+                continue
             symbol = _strip_html(row.get("symbol"))
             if not symbol:
                 continue
@@ -326,7 +396,7 @@ class ShareSansarClient(SourceClient):
                 FloorsheetEntry(
                     contract_id=_strip_html(row.get("contract_no")) or None,
                     symbol=symbol,
-                    business_date=business_date,
+                    business_date=observed or business_date,
                     buyer_broker=_strip_html(row.get("buyer")) or None,
                     seller_broker=_strip_html(row.get("seller")) or None,
                     quantity=quantity,
@@ -487,6 +557,59 @@ class ShareSansarClient(SourceClient):
             bar.fetched_at = result.fetched_at
         return bars
 
+    def fetch_company_history(
+        self,
+        symbol: str,
+        since: date | None = None,
+    ) -> list[PriceBar]:
+        """Every published session for *symbol*, newest first.
+
+        This is the project's only working backfill: ``/today-share-price`` is
+        whole-market but not date-filterable, so per-symbol history is the way
+        to get more than one trading day. Two requests per symbol — the company
+        page for its numeric id and CSRF token, then the DataTables POST with
+        ``length=-1`` for the full series.
+
+        *since* trims the result client-side; the endpoint has no date filter.
+        """
+        sym = symbol.strip().upper()
+        if not sym:
+            return []
+        page_url = self._url("company_page").replace("{symbol}", quote(sym.lower(), safe=""))
+        try:
+            page = self.client.fetch(page_url)
+        except (FetchError, RateLimitedError, ValueError, httpx.TransportError):
+            return []
+        ref = parse_company_ref(page.text)
+        if ref is None:
+            log.warning("no company id / CSRF token on %s — skipping %s", page_url, sym)
+            return []
+        company_id, token = ref
+        try:
+            result = self.client.fetch(
+                self._url("company_price_history"),
+                method="POST",
+                headers={**_XHR_HEADERS, "X-CSRF-TOKEN": token, "Referer": page_url},
+                json_body={
+                    "draw": 1,
+                    "company": company_id,
+                    "_token": token,
+                    "start": 0,
+                    # -1 returns the whole series in one response. A large
+                    # explicit length is answered with an empty HTTP 202 instead.
+                    "length": -1,
+                },
+            )
+            payload = result.json()
+        except (FetchError, RateLimitedError, ValueError, httpx.TransportError):
+            return []
+        bars = self.parse_price_history(payload, sym, self.name)
+        for bar in bars:
+            bar.fetched_at = result.fetched_at
+        if since is not None:
+            bars = [bar for bar in bars if bar.business_date >= since]
+        return bars
+
     def fetch_floorsheet(self, business_date: date | None = None) -> list[FloorsheetEntry]:
         params = {"date": business_date.isoformat()} if business_date else None
         try:
@@ -497,7 +620,8 @@ class ShareSansarClient(SourceClient):
         except (FetchError, RateLimitedError, ValueError):
             return []
         bdate = business_date or _today()
-        return self.parse_floorsheet(payload, bdate, self.name)
+        entries = self.parse_floorsheet(payload, bdate, self.name, require_source_date=True)
+        return [entry for entry in entries if business_date is None or entry.business_date == business_date]
 
     def fetch_indices(self, business_date: date | None = None) -> list[IndexValue]:
         params = {"date": business_date.isoformat()} if business_date else None
