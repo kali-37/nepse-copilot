@@ -119,6 +119,14 @@ export const handlers = [
   http.get('*/api/ai/models', () => HttpResponse.json(fx.aiModels)),
   http.post('*/api/ai/test', () => HttpResponse.json(fx.aiTestOk)),
 
+  http.get('*/api/decisions/history/:symbol', ({params}) => HttpResponse.json({ symbol: params.symbol, trades: [], events: [] })),
+  http.get('*/api/decisions/fundamentals/:symbol', () => HttpResponse.json({
+    source: 'MeroLagani public snapshot', snapshot_date: '2026-11-19', rating: 'supported',
+    eps: 50, book_value: 500, current_pe: 25.5, current_pbv: 2.55, multiplier: 1,
+    needs_refresh: false, reasons: ['Positive reported earnings and moderate valuation.'],
+    limitations: ['Cash flow, debt and bank bad loans are not verified.'],
+  })),
+
   // ---------------------------------------------------------------- journal
   http.get('*/api/journal/review-queue', () => HttpResponse.json([fx.journalHistory[1]])),
   http.get('*/api/journal/calibration', () => HttpResponse.json(fx.journalCalibration)),

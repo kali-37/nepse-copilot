@@ -66,7 +66,12 @@ def _refresh_today(ctx, pipe) -> dict:
         from nepse_trader.ingest.base import BaseClient
         from nepse_trader.ingest.chukul import ChukulClient
         from nepse_trader.ingest.fundamentals import MeroLaganiFundamentalsClient
-        names = sorted(owned | {idea["symbol"] for group in board["buys"].values() for idea in group})[:10]
+        watchlist = {p['symbol'] for p in board.get('investments',{}).get('candidates',[])}
+        snapshots_to_refresh = {symbol for symbol, data in ctx.storage.fundamentals().items()
+            if data.eps and data.eps>0 and data.pe_ratio and 0<data.pe_ratio<=30 and data.book_value and data.book_value>0}
+        priority = board.get("fundamental_checks_needed",[]) + sorted(watchlist | snapshots_to_refresh)
+        trade_names = sorted(owned | {idea['symbol'] for group in board['buys'].values() for idea in group})
+        names = list(dict.fromkeys(priority+trade_names))[:14]
         snapshots = contracts = 0
         with BaseClient(ctx.settings, cache_raw=False) as http:
             client = MeroLaganiFundamentalsClient(client=http)

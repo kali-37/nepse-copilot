@@ -23,6 +23,7 @@ from nepse_trader.ingest.reconcile import reconcile_bars
 from nepse_trader.models import (
     CorporateAction,
     CorporateActionType,
+    FundamentalData,
     OrderSide,
     PriceBar,
     SourceName,
@@ -56,6 +57,8 @@ def pipe(tmp_path):
                                      low=close-1, close=close, volume=30000+i*50, source=source))
     storage.upsert_price_bars(rows)
     storage.upsert_reconciled(reconcile_bars(rows))
+    for symbol in ['AAA','BBB','CCC','DDD','EEE','FFF']:
+        storage.upsert_fundamental(FundamentalData(symbol=symbol,eps=15,book_value=200), LAST)
     yield p
     storage.close()
 
@@ -294,6 +297,73 @@ def test_cached_advice_is_invalidated_by_purchase_even_if_cash_remains_zero(pipe
             save_decisions(pipe, old)
         new = publish_decisions(pipe, old)
     assert new['holdings'][0]['symbol'] == 'AAA'
+
+
+def test_refresh_report_survives_retry_and_later_concurrent_publication(pipe):
+    import json
+
+    from nepse_trader.advisor.decisions import publish_decisions
+
+    with freeze_time('2026-11-20 15:00:00'):
+        old_reader = build_decisions(pipe)
+        refresh_board = build_decisions(pipe)
+        refresh_board['refresh'] = {'sources': {'chukul': 1}, 'warnings': ['history unavailable']}
+        # A real mutation invalidates the worker's first analysis.
+        set_cash(pipe.storage, Decimal(120000))
+    with freeze_time('2026-11-20 15:01:00'):
+        refreshed = publish_decisions(pipe, refresh_board)
+        assert refreshed['refresh'] == refresh_board['refresh']
+    with freeze_time('2026-11-20 15:02:00'):
+        latest = publish_decisions(pipe, old_reader)
+        assert latest['refresh'] == refreshed['refresh']
+        assert latest['available_cash'] == 120000
+        stored = pipe.storage._conn.execute(
+            'SELECT payload FROM decision_runs ORDER BY generated_at DESC LIMIT 1'
+        ).fetchone()
+        assert json.loads(stored[0])['id'] == latest['id']
+        assert latest['generated_at'] > refreshed['generated_at']
+
+
+def test_changing_market_returns_actionable_conflict_instead_of_server_error(pipe, monkeypatch):
+    from nepse_trader.advisor.decisions import DecisionsChanged
+
+    def changing(*args):
+        raise DecisionsChanged('Market changed')
+
+    monkeypatch.setattr('nepse_trader.web.decisions.publish_decisions', changing)
+    _state.update(storage=pipe.storage, settings=pipe.settings)
+    with freeze_time('2026-11-20'), TestClient(app) as client:
+        response = client.get('/api/decisions')
+        assert response.status_code == 409
+        assert 'refresh to finish' in response.json()['detail']
+    _state.clear()
+
+
+def test_mutation_conflicts_report_saved_changes_and_keep_trade_retry_idempotent(pipe, monkeypatch):
+    from nepse_trader.advisor.decisions import DecisionsChanged
+
+    def changing(*args):
+        raise DecisionsChanged('Market changed')
+
+    monkeypatch.setattr('nepse_trader.web.decisions.publish_decisions', changing)
+    _state.update(storage=pipe.storage, settings=pipe.settings)
+    with freeze_time('2026-11-20'), TestClient(app) as client:
+        cash = client.put('/api/decisions/cash', json={'cash': 120000})
+        assert cash.status_code == 409 and 'cash was saved' in cash.json()['detail']
+        assert available_cash(pipe.storage) == 120000
+        trade = {'symbol': 'AAA', 'side': 'buy', 'quantity': 10, 'price': 100,
+                 'business_date': LAST.isoformat(), 'record_id': 'b' * 32}
+        for _ in range(2):
+            response = client.post('/api/decisions/trades', json=trade)
+            assert response.status_code == 409 and 'recorded successfully' in response.json()['detail']
+        assert owned_positions(pipe)[0]['quantity'] == 10
+        assert pipe.storage._conn.execute('SELECT COUNT(*) FROM position_records').fetchone()[0] == 1
+        plan = client.put('/api/decisions/holdings/AAA/plan', json={
+            'quantity': 10, 'stop': 90, 'target': 150, 'horizon_days': 22
+        })
+        assert plan.status_code == 409 and 'exit plan was saved' in plan.json()['detail']
+        assert owned_positions(pipe)[0]['stop'] == 90
+    _state.clear()
 
 
 def test_retry_same_execution_id_does_not_double_purchase(pipe):

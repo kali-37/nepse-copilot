@@ -27,7 +27,16 @@ downloads are available under **Research & tools → Operations**.
 Edit **Cash for new purchases** to your own budget. **I bought this** and
 **I sold** record trades you already executed through your broker. **Set exit
 plan** attaches fixed stops/targets to an existing holding without buying more.
-No button places a broker order.
+No button places a broker order. Purchase records retain the original dated
+buy reasons and holding period. Refresh does not reset that plan. A monthly
+trend exit needs three completed weak sessions; a saved stop/target can trigger
+sooner, with T+2 eligibility shown. Use **Original buy reason & past advice**
+or the symbol's **Your past trades & advice** section to inspect the history.
+
+**Lower-risk investments** is a long-term research watchlist, not a guaranteed
+income product or a reserved purchase budget. **Fundamental assessment** on
+symbol pages explains whether earnings and valuation support an idea. See
+[application advantages and limits](docs/ADVANTAGES_AND_LIMITATIONS.md).
 
 For frontend development, run `npm --prefix web run dev` in a second terminal;
 Vite proxies API requests to the local backend. The built production dashboard

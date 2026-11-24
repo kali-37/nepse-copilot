@@ -305,3 +305,21 @@ CI uses Node 24, `npm ci`, lint, tests and a production build. See
 
 Source code is available under the [MIT license](LICENSE). Market data remains
 subject to the source providers' terms.
+
+### Fundamental decisions and remembered holdings
+
+The main advisor combines current chart/history evidence with dated earnings
+and valuation. Missing, stale or non-positive financial support blocks a new
+buy; elevated P/E or price/book reduces confidence. Each symbol's **Fundamental
+assessment** explains the grade and its limits. Refresh queues financial checks
+for promising technical setups before publishing the final recommendations.
+
+Recorded purchases preserve the linked buy reasons, confidence horizon and
+original plan. Monthly trend exits require three consecutive completed sessions;
+stops/targets are immediate named risk triggers, with settlement shown explicitly.
+Original reasons survive top-ups and old-run pruning. Past trades/advice remain
+available from the symbol detail page. Lower-risk long-term candidates form an
+unsized research watchlist, with dated historical price returns and risk metrics.
+
+See [advantages and limitations](docs/ADVANTAGES_AND_LIMITATIONS.md) for what is
+verified, what is modeled, and what still needs judgment.

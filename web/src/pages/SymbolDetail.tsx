@@ -10,6 +10,8 @@ import {
   AreaChart,
 } from 'recharts';
 import { ArrowLeft } from 'lucide-react';
+import { decisionApi, type FundamentalReport, type StockHistory } from '../api/decisions';
+import { FundamentalsPanel } from '../components/decisions/FundamentalsPanel';
 import { api } from '../api/client';
 import type { Fundamentals, QuantStats, ReconciledPrice, Signal } from '../api/types';
 import { Card } from '../components/ui/Card';
@@ -43,6 +45,8 @@ export function SymbolDetailPage() {
   const [prices, setPrices] = useState<ReconciledPrice[]>([]);
   const [signals, setSignals] = useState<Signal[]>([]);
   const [quant, setQuant] = useState<QuantStats | null>(null);
+  const [history, setHistory] = useState<StockHistory | null>(null);
+  const [assessment, setAssessment] = useState<FundamentalReport | null>(null);
   const [fundamentals, setFundamentals] = useState<Fundamentals | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -61,12 +65,16 @@ export function SymbolDetailPage() {
       api.symbolSignals(sym),
       api.symbolQuant(sym),
       api.symbolFundamentals(sym),
-    ]).then(([p, s, q, f]) => {
+      decisionApi.fundamentals(sym),
+      decisionApi.history(sym),
+    ]).then(([p, s, q, f, a, h]) => {
       if (p.status === 'fulfilled') setPrices(p.value);
       else setError(p.reason?.message || 'Failed to load prices');
       if (s.status === 'fulfilled') setSignals(s.value);
       if (q.status === 'fulfilled') setQuant(q.value);
       if (f.status === 'fulfilled') setFundamentals(f.value);
+      setAssessment(a.status === 'fulfilled' ? a.value : null);
+      setHistory(h.status === 'fulfilled' ? h.value : null);
     }).finally(() => setLoading(false));
   }, [sym, range]);
 
@@ -243,6 +251,8 @@ export function SymbolDetailPage() {
           </div>
 
           {/* Fundamentals */}
+          {history && (history.trades.length > 0 || history.events.length > 0) && <Card title="Your past trades & advice"><div className="text-sm space-y-3">{history.trades.map((trade,i) => <details key={`${trade.business_date}-${i}`}><summary className="cursor-pointer">{trade.business_date} · {trade.side.toUpperCase()} {trade.quantity} shares at NPR {Number(trade.price).toFixed(2)}</summary>{trade.entry_plan?.rationale.map(reason => <p key={reason} className="mt-2 text-text-secondary">{reason}</p>)}</details>)}{history.events.map((event,i) => <p key={`${event.evaluated_at}-${i}`} className="text-text-secondary">{event.market_date ?? 'No quote'} · {event.previous_action ? `${event.previous_action.toUpperCase()} → ` : ''}{event.action.toUpperCase()}: {event.reason}</p>)}</div></Card>}
+          {assessment && <Card title="Fundamental assessment"><FundamentalsPanel report={assessment} /></Card>}
           {fundamentals && (
             <Card title="Fundamentals">
               <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">

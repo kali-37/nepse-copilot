@@ -525,6 +525,7 @@ class Storage:
                 ON CONFLICT(symbol,business_date) DO UPDATE SET payload=excluded.payload""",
                 (data.symbol.strip().upper(), observed.isoformat(), data.model_dump_json()))
 
+            self._bump_market_revision(conn)
     def fundamentals(self, as_of: date | None = None) -> dict:
         """Latest available snapshot per name, bounded by an optional date."""
         from nepse_trader.models import FundamentalData

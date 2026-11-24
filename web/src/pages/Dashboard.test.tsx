@@ -1,22 +1,72 @@
-import { describe, it, expect, beforeEach } from 'vitest';
-import { screen, waitFor, within } from '@testing-library/react';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { act, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { http, HttpResponse } from 'msw';
 import { DashboardPage } from './Dashboard';
 import { server } from '../test/server';
 import { renderWithProviders } from '../test/renderWithProviders';
 import { decisionBoard } from '../test/decisionFixture';
+import { decisionApi } from '../api/decisions';
 
 beforeEach(() => {
   server.use(http.get('*/api/decisions', () => HttpResponse.json(decisionBoard)));
 });
 describe('decision dashboard', () => {
+  it.each(['success', 'failure'])('keeps saved cash when an older refresh read ends in %s', async outcome => {
+    let resolveOld!: (board: typeof decisionBoard) => void;
+    let rejectOld!: (error: Error) => void;
+    const pending = new Promise<typeof decisionBoard>((resolve, reject) => {
+      resolveOld = resolve; rejectOld = reject;
+    });
+    const reads = vi.spyOn(decisionApi, 'board')
+      .mockResolvedValueOnce(decisionBoard).mockReturnValueOnce(pending);
+    server.use(
+      http.post('*/api/jobs', () => HttpResponse.json({ id: 'cash-race', kind: 'refresh-today', status: 'queued', stages: [] })),
+      http.get('*/api/jobs/cash-race', () => HttpResponse.json({ id: 'cash-race', kind: 'refresh-today', status: 'done', stages: [] })),
+      http.put('*/api/decisions/cash', () => HttpResponse.json({ ...decisionBoard, available_cash: 250000 }))
+    );
+    try {
+      renderWithProviders(<DashboardPage />);
+      await screen.findByText('NABIL');
+      await userEvent.click(screen.getByRole('button', { name: 'Refresh today' }));
+      await waitFor(() => expect(reads).toHaveBeenCalledTimes(2), { timeout: 4000 });
+      await userEvent.click(screen.getByRole('button', { name: 'Edit' }));
+      const input = screen.getByRole('spinbutton', { name: 'Available cash (NPR)' });
+      await userEvent.clear(input); await userEvent.type(input, '250000');
+      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await screen.findByText('NPR 250,000.00');
+      await act(async () => {
+        if (outcome === 'success') resolveOld(decisionBoard);
+        else rejectOld(new Error('Late refresh error'));
+      });
+      expect(screen.getByText('NPR 250,000.00')).toBeInTheDocument();
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+    } finally { reads.mockRestore(); }
+  });
+  it('keeps completed refresh advice when an older request fails afterwards', async () => {
+    let rejectOld!: (error: Error) => void;
+    const first = new Promise<never>((_, reject) => { rejectOld = reject; });
+    const reads = vi.spyOn(decisionApi, 'board')
+      .mockReturnValueOnce(first).mockResolvedValue(decisionBoard);
+    server.use(
+      http.get('*/api/jobs', () => HttpResponse.json({ jobs: [], running: 'race', kinds: [] })),
+      http.get('*/api/jobs/race', () => HttpResponse.json({ id: 'race', kind: 'refresh-today', status: 'done', stages: [] }))
+    );
+    try {
+      renderWithProviders(<DashboardPage />);
+      await screen.findByText('NABIL');
+      expect(reads).toHaveBeenCalledTimes(2);
+      await act(async () => { rejectOld(new Error('Market data was still changing')); });
+      expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+      expect(screen.getByText('NABIL')).toBeInTheDocument();
+    } finally { reads.mockRestore(); }
+  });
   it('puts daily buys, confidence and held-stock exits first', async () => {
     renderWithProviders(<DashboardPage />);
     expect(await screen.findByText('NABIL')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Your next move.' })).toBeInTheDocument();
     expect(screen.getByText('64% confidence')).toBeInTheDocument();
-    expect(screen.getByText('88% confidence')).toBeInTheDocument();
+    expect(screen.getByText('88% holding evidence')).toBeInTheDocument();
     expect(screen.getByText('Consider selling')).toBeInTheDocument();
     expect(screen.getByText(/using the last published session/)).toBeInTheDocument();
     expect(screen.getByText('2026-11-19', { selector: 'strong' })).toBeInTheDocument();
@@ -145,4 +195,43 @@ it('rounds a fractional source quote to a valid trade-price input', async () => 
   const price = screen.getByLabelText('Actual price (NPR)') as HTMLInputElement;
   expect(price).toHaveValue(550.12);
   expect(price.checkValidity()).toBe(true);
+});
+
+it('shows the buy reasons openly and remembers the original holding plan', async () => {
+  server.use(http.get('*/api/decisions', () => HttpResponse.json({ ...decisionBoard, holdings: [{ ...decisionBoard.holdings[0],
+    holding_horizon: 'monthly', review_on: '2026-11-02', plan_key: 'entry1',
+    original_plan: { id: 'original1', opened_on: '2026-10-01', horizon_days: 22, purchase_price: 500,
+      stop: 470, target: 540, rationale: ['Monthly earnings and trend supported entry.'],
+      confidence: { value: .72, basis: 'Entry evidence from completed historical setups.', label: 'Combined evidence' }, origin: null },
+    advice_history: [{ market_date: '2026-11-19', previous_action: 'hold', action: 'sell', plan_key: 'entry1',
+      trigger_code: 'target_hit', reason: 'Saved target reached.', evaluated_at: '2026-11-19T15:01:00Z' }],
+  }] })));
+  renderWithProviders(<DashboardPage />);
+  await screen.findByText('NABIL');
+  expect(screen.getByText('Why buy NABIL?')).toBeInTheDocument();
+  expect(screen.getByText('Medium-term trend is rising')).toBeVisible();
+  expect(screen.getByText(/Changed HOLD → SELL on 2026-11-19/)).toBeInTheDocument();
+  await userEvent.click(screen.getByText('Original buy reason & past advice'));
+  expect(screen.getByText('Monthly earnings and trend supported entry.')).toBeVisible();
+  expect(screen.getByText(/72% entry confidence/)).toBeVisible();
+});
+
+it('shows lower-risk investments as a dated watchlist without promised bank returns', async () => {
+  server.use(http.get('*/api/decisions', () => HttpResponse.json({ ...decisionBoard, investments: {
+    candidates: [{ symbol: 'SCB', company_name: 'Standard Chartered Bank', sector: 'Bank', horizon_days: 252,
+      reference_price: 650, rationale: ['Positive reported EPS and reasonable valuation.'], owned: false,
+      score: .74, confidence: { value: .74, label: 'Screen evidence', basis: 'Valuation and historical risk.' },
+      chart: [], snapshot_date: '2026-11-19', history_from: '2025-10-15', history_to: '2026-11-19',
+      historical_net_annual_return: 8.4, max_drawdown: 9.1, annual_volatility: 13.2,
+      pe: 24, pbv: 2.8, eps: 27, declared_dividend_pct: null, limitations: 'Cash dividends are excluded.' }],
+    checked_fundamentals: 15, fundamentals_missing: 333, criteria: 'Positive EPS and limited historical drawdown.', note: 'Research watchlist.',
+  } })));
+  renderWithProviders(<DashboardPage />);
+  await screen.findByText('SCB');
+  expect(screen.getByRole('heading', { name: 'Lower-risk investments' })).toBeInTheDocument();
+  expect(screen.getByText('+8.40% / year')).toBeInTheDocument();
+  expect(screen.getByText('9.1%')).toBeInTheDocument();
+  expect(screen.getByText(/Historical growth is not a promised return/)).toBeInTheDocument();
+  await userEvent.click(screen.getByRole('button', { name: 'I bought this investment' }));
+  expect(screen.getByLabelText('Planned holding period')).toHaveValue('252');
 });

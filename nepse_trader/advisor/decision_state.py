@@ -33,7 +33,8 @@ def decision_state(pipe, today: date) -> str:
     # Historical repairs can change indicators even when today's close does not.
     revision = pipe.storage._conn.execute("SELECT value FROM app_settings WHERE key='market_revision'").fetchone()
     history = revision[0] if revision else '0'
-    payload = dict(day=today.isoformat(), phase=session_dates(today)[2], quotes=quotes, history=history,
+    events = pipe.storage._conn.execute("SELECT MAX(id) FROM holding_advice_events").fetchone()[0]
+    payload = dict(events=events,day=today.isoformat(), phase=session_dates(today)[2], quotes=quotes, history=history,
                    cash=str(available_cash(pipe.storage)), positions=sorted(owned_positions(pipe), key=lambda p: p['symbol']),
                    actions=[ca.model_dump(mode='json') for ca in pipe.storage.corporate_actions()])
     return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()

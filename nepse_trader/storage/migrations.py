@@ -967,6 +967,18 @@ def _m0020_position_plan_review(conn) -> None:
     conn.execute("ALTER TABLE tracked_positions ADD COLUMN plan_reviewed_on TEXT")
 
 
+def _m0021_decision_memory(conn) -> None:
+    conn.execute("ALTER TABLE tracked_positions ADD COLUMN entry_thesis TEXT")
+    conn.execute("ALTER TABLE tracked_positions ADD COLUMN plan_revision INTEGER NOT NULL DEFAULT 0")
+    conn.execute("ALTER TABLE position_records ADD COLUMN entry_thesis TEXT")
+    conn.execute("""CREATE TABLE holding_advice_events (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, symbol TEXT NOT NULL, plan_key TEXT NOT NULL,
+        market_date TEXT, action TEXT NOT NULL, trigger_code TEXT NOT NULL,
+        previous_action TEXT, reason TEXT NOT NULL, confidence REAL NOT NULL,
+        evaluated_at TEXT NOT NULL)""")
+    conn.execute("CREATE INDEX idx_holding_advice_plan ON holding_advice_events(symbol,plan_key,id)")
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
@@ -990,6 +1002,7 @@ MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0018_decision_board", _m0018_decision_board),
     ("0019_position_entry", _m0019_position_entry),
     ("0020_position_plan_review", _m0020_position_plan_review),
+    ("0021_decision_memory", _m0021_decision_memory),
 ]
 
 

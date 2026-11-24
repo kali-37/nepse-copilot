@@ -13,7 +13,7 @@ export function PositionPlanForm({ holding, board, onClose, onSaved }: { holding
     <form onSubmit={async event => {
       event.preventDefault(); const data = new FormData(event.currentTarget); setSaving(true); setError('');
       try {
-        onSaved(await decisionApi.plan(holding.symbol, { quantity: Number(data.get('quantity')), stop: Number(data.get('stop')), target: Number(data.get('target')),
+        onSaved(await decisionApi.plan(holding.symbol, { quantity: Number(data.get('quantity')), stop: Number(data.get('stop')), target: Number(data.get('target')), horizon_days: Number(data.get('horizon')),
           ...(data.get('cost') ? { average_cost: Number(data.get('cost')) } : {}), ...(data.get('date') ? { bought_on: String(data.get('date')) } : {}),
         })); onClose();
       } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
@@ -22,6 +22,7 @@ export function PositionPlanForm({ holding, board, onClose, onSaved }: { holding
       <label>Current shares<input name="quantity" type="number" min="1" defaultValue={holding.quantity} required autoFocus /></label>
       <label>Average cost per share, including buy fees (optional)<input name="cost" type="number" min="0.01" step="any" defaultValue={holding.average_cost ?? ''} placeholder="Your broker's WACC" /></label>
       <label>Purchase date (optional)<input name="date" type="date" max={board.requested_date} defaultValue={holding.bought_on ?? ''} /></label>
+      <label>Holding plan<select name="horizon" defaultValue={holding.horizon_days}><option value="3">Daily · 3 sessions</option><option value="22">Monthly · 22 sessions</option><option value="252">Long-term · 252 sessions</option></select></label>
       <div className="trade-grid"><label>Stop loss<input name="stop" type="number" step="0.01" min="0.01" defaultValue={holding.stop ?? (holding.reference_price ? (holding.reference_price * .95).toFixed(2) : '')} required /></label><label>Take profit<input name="target" type="number" step="0.01" min="0.01" defaultValue={holding.target ?? (holding.reference_price ? (holding.reference_price * 1.1).toFixed(2) : '')} required /></label></div>
       <p className="trade-note">Suggested starting levels use the current quote. Change them to your plan. Unknown cost stays unknown until you enter your WACC.</p>
       {error && <p role="alert" className="decision-error">{error}</p>}

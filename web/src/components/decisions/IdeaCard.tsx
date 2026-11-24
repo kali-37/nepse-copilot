@@ -15,8 +15,8 @@ export function Sparkline({ points, symbol }: { points: PricePoint[]; symbol: st
   </svg>;
 }
 
-export function Score({ score }: { score: EvidenceScore }) {
-  return <span className="decision-score" title={score.basis}><span className="score-dot" />{score.value > 0 ? `${Math.round(score.value * 100)}% confidence` : 'Not enough data'}</span>;
+export function Score({ score, label = 'confidence', emptyLabel = 'Not enough data' }: { score: EvidenceScore; label?: string; emptyLabel?: string }) {
+  return <span className="decision-score" title={score.basis}><span className="score-dot" />{score.value > 0 ? `${Math.round(score.value * 100)}% ${label}` : emptyLabel}</span>;
 }
 
 export function IdeaCard({ idea, onBuy, rank }: { idea: BuyIdea; onBuy: (idea: BuyIdea) => void; rank: number }) {
@@ -26,9 +26,9 @@ export function IdeaCard({ idea, onBuy, rank }: { idea: BuyIdea; onBuy: (idea: B
     <Sparkline points={idea.chart} symbol={idea.symbol} />
     <div className="entry-zone"><span>Look to buy around</span><strong>NPR {money(idea.entry_low)}–{money(idea.entry_high)}</strong></div>
     <div className="idea-levels"><div><span>Take profit</span><strong className="text-positive">{money(idea.target)}</strong></div><div><span>Stop loss</span><strong>{money(idea.stop)}</strong></div><div><span>Suggested size</span><strong>{idea.quantity} shares</strong></div></div>
-    <p className="idea-why">{idea.rationale[0]}. {idea.rationale[2]}.</p>
+    <p className="fundamental-rating">Fundamentals: {idea.fundamental_report?.rating ?? 'not assessed'}</p><div className="visible-buy-reasons"><strong>Why buy {idea.symbol}?</strong><ul>{idea.rationale.map(reason => <li key={reason}>{reason}</li>)}</ul>{idea.confidence.historical_samples != null && <p>{idea.confidence.historical_hits}/{idea.confidence.historical_samples} comparable completed setups were profitable after modeled fees (100-share benchmark).</p>}</div>
     <div className="idea-return"><span>Net gain if target fills</span><strong>+ NPR {money(idea.estimated_net)}</strong></div>
     <button className="decision-secondary buy-record" onClick={() => onBuy(idea)}><Plus size={16} /> I bought this</button>
-    <details className="idea-details"><summary>Why this recommendation <ChevronDown size={14} /></summary><p>{idea.confidence.basis}</p><ul>{idea.rationale.map(reason => <li key={reason}>{reason}</li>)}</ul><p>RSI {idea.metrics.rsi} · Volume {idea.metrics.volume_ratio}× recent average.</p><p>Estimated outlay NPR {money(idea.outlay)}, modeled round-trip fees NPR {money(idea.estimated_fees)}. Earliest exit after settlement: {idea.earliest_sell_date}. Targets and stops are planned levels; fills may differ.</p></details>
+    <details className="idea-details"><summary>Why this recommendation <ChevronDown size={14} /></summary><p>{idea.confidence.basis}</p><p>RSI {idea.metrics.rsi} · Volume {idea.metrics.volume_ratio}× recent average.</p><p>Estimated outlay NPR {money(idea.outlay)}, modeled round-trip fees NPR {money(idea.estimated_fees)}. Earliest exit after settlement: {idea.earliest_sell_date}. Targets and stops are planned levels; fills may differ.</p></details>
   </article>;
 }

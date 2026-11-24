@@ -1,4 +1,53 @@
-# Public repository and CI preparation — 20 November 2026
+# Fundamental decisions and purchase continuity — 24 November 2026
+
+The requested decision features are implemented. Open
+http://127.0.0.1:8000/ for daily/monthly ideas, the lower-risk research watchlist
+and personal hold/exit advice. Company pages show the fundamental assessment
+and dated trade/advice history.
+
+- New buys require recent positive EPS and book value. Current P/E and
+  price/book reduce confidence when valuations raise concern; missing, stale
+  or unsupported financial data blocks a new buy. Visible reasons explain
+  the technical, liquidity and financial evidence.
+- Recording a purchase copies its linked, dated recommendation into permanent
+  entry memory. Original reasons, source confidence, horizon and exit levels
+  survive refreshes, top-ups and partial sales. Unrecorded reasons remain unknown.
+- A monthly holding needs three consecutive completed weak sessions for a
+  trend exit; daily plans need two and long-term plans five. Saved stops and
+  targets remain immediate exit conditions, with settlement eligibility shown.
+  Confirmed exits persist until a recorded sale or explicit plan review. Horizon
+  expiry requests review rather than forcing a sale.
+- A lower-risk investment watchlist checks profitability, valuation, liquidity,
+  at least a year of observed history, drawdowns, volatility and positive
+  historical price growth after modeled fees. It is unsized research and makes
+  no promised return or deposit-safety claim.
+- Fundamentals updates invalidate cached advice. Repeated refreshes do not
+  duplicate action history; confirmed dates restore review deadlines for holdings
+  initially imported without purchase dates. Recently sold stocks have a
+  re-entry cooldown.
+- Concurrent advice rebuilds preserve the completed refresh report and use
+  publication order. An older request cannot overwrite newly saved cash,
+  holdings or plans. If market updates prevent advice publication after a
+  mutation, the API explicitly says the change was saved and requests an
+  advice retry; repeated trade IDs remain idempotent.
+
+See [advantages and limitations](ADVANTAGES_AND_LIMITATIONS.md) for the delivered
+strengths and the remaining financial-data, execution and hosting limits.
+
+The live refresh on 24 November returned 700 source price rows, reconciled 350
+symbols for the published **2026-11-24** session, repaired 272 history rows,
+updated 14 financial snapshots and loaded 52,387 broker contracts. One symbol's
+history was unavailable; successful data was retained. Account data and trade
+records were preserved.
+
+Verification: **1,460 Python tests passed, 1 skipped on Python 3.12; 191 frontend
+tests passed**. Ruff, frontend lint, TypeScript and the production build pass;
+npm audit reports zero vulnerabilities. Browser checks found no horizontal
+overflow at 390px, no page exceptions, one refresh control and working company
+fundamental assessments. Purchase/exit checks use isolated test databases.
+GitHub CI checks clean Python 3.11/3.12 installs and the frontend.
+
+## Earlier release: public repository and CI preparation — 20 November 2026
 
 The Python 3.11/3.12 CI failure is fixed: Ruff and test tools are in uv's default
 `dev` group, the matrix explicitly selects its Python interpreter, and JSON

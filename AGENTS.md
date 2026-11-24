@@ -109,7 +109,8 @@ webhook), not in a separate package.
 4.5 Dashboard command (symbols, date range, source coverage, reconciliation health, portfolio)
 
 ## Current State
-- **Tests:** 1429 passing, 2 skipped (Python 3.11 and 3.12 clean installs); 186 passing (frontend)
+- **Tests:** 1460 passing, 1 skipped (Python 3.12); 191 passing (frontend).
+  GitHub CI also checks clean Python 3.11 and 3.12 installs.
 - **Lint:** ruff clean
 - **Schema:** sources.jsonc config validation shipped
 - **Current completion:** historical backfill, persisted price adjustments,
@@ -118,6 +119,14 @@ webhook), not in a separate package.
 - **Decision UI:** daily/monthly evidence-scored buy ideas, saved personal exit
   plans, atomic/idempotent manual trade records, and one-button public-source
   refresh are shipped. Advice remains offline-readable; orders stay manual.
+- **Fundamental decisions:** dated EPS/book value gates new buys, valuation
+  affects confidence, and visible reasons explain the evidence. An unsized
+  lower-risk investment watchlist checks profitability, valuation, liquidity,
+  historical losses and net price growth without promising deposit-like safety.
+- **Purchase continuity:** permanent original reasons/horizon/levels survive
+  refreshes and top-ups. Trend exits require 2/3/5 completed weak sessions for
+  daily/monthly/long-term plans; hard levels and T+2 remain explicit. Dated
+  advice history, sticky confirmed exits and re-entry cooldowns are shipped.
 - **Status details:** `docs/COMPLETION_STATUS.md`
 
 ## Completed advisor scope
