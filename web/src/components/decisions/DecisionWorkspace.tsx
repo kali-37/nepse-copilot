@@ -11,6 +11,7 @@ import type { OwnedAdvice } from '../../api/decisions';
 import { Capabilities } from './Capabilities';
 import { HoldingMemory } from './HoldingMemory';
 import { InvestmentCard } from './InvestmentCard';
+import { PerformanceEvidence } from './PerformanceEvidence';
 import { TradeForm, type RecordIntent } from './TradeForm';
 import './decisions.css';
 
@@ -87,6 +88,7 @@ export function DecisionWorkspace({ title = 'Your next move.', initialTab = 'day
           <details className="holding-details"><summary>Exit plan & evidence <ChevronDown size={13} /></summary><p>Average cost NPR {money(p.average_cost)} · Saved stop NPR {money(p.stop)} · Saved target NPR {money(p.target)} · Quote {p.quote_date ?? 'unavailable'}</p><p>Estimated net PnL if sold at the reference price: NPR {money(p.net_exit_pnl)} after modeled fees and tax.</p><p>{p.confidence.basis}</p><button className="decision-secondary" onClick={() => setPlanHolding(p)}>Set exit plan</button></details>
         </article>)}</div>}
       </section>
+      <PerformanceEvidence key={board.id ?? board.generated_at} />
       <Capabilities />
       <div className="decision-footnote"><CircleHelp size={17} /><p>{board.confidence_note} Scores use comparable completed historical setups, current indicators, liquidity and source agreement. Daily and monthly ideas share one cash budget. Recording trades never places an order.</p></div>
       <details className="source-details"><summary>{board.coverage.analysable} charts analysed · source & refresh details <ChevronDown size={14} /></summary><p>Requested {board.requested_date} · Published market session {board.market_date ?? 'none'} · Advice generated {new Date(board.generated_at).toLocaleString('en-NP')}</p>{board.refresh ? <><p>{Object.entries(board.refresh.sources).map(([name, count]) => `${name}: ${count} price rows`).join(' · ') || 'No sources returned prices.'}</p>{board.refresh.warnings.length > 0 && <ul>{board.refresh.warnings.map((warning, i) => <li key={`${i}-${warning}`}>{warning}</li>)}</ul>}</> : <p>Built from stored data. Refresh today downloads enabled public sources and rebuilds chart analysis, daily/monthly evidence, company context and your exit advice.</p>}<Link to="/operations">Open detailed operations <ArrowUpRight size={13} /></Link></details>

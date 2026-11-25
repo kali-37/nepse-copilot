@@ -12,6 +12,8 @@ benchmarked it against other products or established guaranteed returns.
 | Original purchase memory | Entry reasons, confidence, horizon and fixed risk levels survive refreshes, top-ups and removal of old cached advice runs. |
 | Stable, explicit holding decisions | Monthly weakness needs three completed sessions; stops and targets remain separate immediate risk conditions. |
 | Dated changes and archived trades | Shows what changed and why, including completed sales and previous exit plans. |
+| Prospective recommendation track record | Freezes fresh calls before later prices, reports fee-adjusted simulated outcomes and discloses unfilled/excluded calls. |
+| Efficient analysis | Rolling chart calculations and shared cost/price reads reduce repeated work while preserving rankings. |
 | Nepal cost and settlement modelling | Uses modeled fees/CGT, shared cash sizing and T+2 eligibility instead of ignoring costs. |
 | Lower-risk investment watchlist | Requires financial data, liquidity coverage, at least a year of history, restrained drawdowns/volatility and positive historical net price growth. |
 | Offline operation and private configuration | Your data and credentials remain local; public source code contains no account database. |
@@ -27,6 +29,14 @@ Current limitations:
   reporting period. Company ratios are not a mutual-fund NAV analysis.
 - Fundamentals currently come from one provider. Prices can be delayed or
   missing, selectors can break, and reconciliation does not prove correctness.
+- Mutual funds are separated from company EPS/book-value rules. They receive
+  a fund/NAV review request; verified NAV, fund terms and distributions are not
+  yet ingested, so funds do not enter the company-based buying screens.
+- Prospective outcome metrics are simulations, not actual broker fills. Missing
+  sessions, unfilled zones and corporate actions are disclosed exclusions.
+  Evidence-score groups can be small and correlated; Wilson intervals do not
+  account for cross-stock dependence. The same-stock holding comparison is not
+  an index benchmark, and late source corrections require manual outcome audit.
 - A lower-risk stock can still lose capital. It does not have the same risk
   profile as a bank deposit. A declared dividend percentage is not a confirmed
   cash yield; historical price returns exclude unconfirmed cash dividends.

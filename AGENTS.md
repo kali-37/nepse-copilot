@@ -109,7 +109,7 @@ webhook), not in a separate package.
 4.5 Dashboard command (symbols, date range, source coverage, reconciliation health, portfolio)
 
 ## Current State
-- **Tests:** 1460 passing, 1 skipped (Python 3.12); 191 passing (frontend).
+- **Tests:** 1483 passing, 1 skipped (Python 3.12); 194 passing (frontend).
   GitHub CI also checks clean Python 3.11 and 3.12 installs.
 - **Lint:** ruff clean
 - **Schema:** sources.jsonc config validation shipped
@@ -127,6 +127,14 @@ webhook), not in a separate package.
   refreshes and top-ups. Trend exits require 2/3/5 completed weak sessions for
   daily/monthly/long-term plans; hard levels and T+2 remain explicit. Dated
   advice history, sticky confirmed exits and re-entry cooldowns are shipped.
+- **Recommendation evidence:** first fresh ideas are permanently journaled
+  under `decision_v1`; completed-session, fee-aware 100-share simulations track
+  entry-zone fills, T+2, gaps, missing data and corporate actions. Dashboard
+  score-group outcomes/Wilson intervals are research evidence, not win odds.
+- **Fund classification:** mutual funds receive NAV/fund review; company EPS
+  placeholders are not treated as deterioration or eligible stock fundamentals.
+- **Efficiency:** rolling validity/volume and shared cost/quote reads preserve
+  rankings; local full-analysis cProfile time fell 66.284s→24.610s, SELECTs 1541→811.
 - **Status details:** `docs/COMPLETION_STATUS.md`
 
 ## Completed advisor scope

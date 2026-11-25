@@ -68,7 +68,18 @@ export interface TradeRecord {
   symbol: string; side: 'buy' | 'sell'; quantity: number; price: number;
   business_date: string; record_id?: string; origin_decision_id?: string; origin_horizon?: 'day' | 'month' | 'investment'; horizon_days: number; stop?: number; target?: number;
 }
+export interface RecommendationPerformance {
+  engine_version: string; total: number; resolved: number; tracking_since: string | null;
+  status: 'collecting_evidence' | 'measured_history'; outcomes: Record<string, number>;
+  method: string; note: string;
+  buckets: { lower: number; upper: number; samples: number; profitable_rate: number | null;
+    interval_low: number | null; interval_high: number | null; mean_score: number | null;
+    mean_net_return: number | null; mean_excess_return: number | null }[];
+  recent: { prediction_id: string; symbol: string; made_on: string; horizon: string;
+    confidence: number; outcome: string | null; status: string; evaluation_net_return: number | null }[];
+}
 export const decisionApi = {
+  performance: () => fetchJson<RecommendationPerformance>('/decisions/performance'),
   history: (symbol: string) => fetchJson<StockHistory>(`/decisions/history/${encodeURIComponent(symbol)}`),
   fundamentals: (symbol: string) => fetchJson<FundamentalReport>(`/decisions/fundamentals/${encodeURIComponent(symbol)}`),
   board: () => fetchJson<DecisionBoard>('/decisions'),

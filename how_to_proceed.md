@@ -38,6 +38,13 @@ income product or a reserved purchase budget. **Fundamental assessment** on
 symbol pages explains whether earnings and valuation support an idea. See
 [application advantages and limits](docs/ADVANTAGES_AND_LIMITATIONS.md).
 
+Expand **Recommendation track record** on the dashboard to inspect outcomes of
+fresh ideas recorded before future prices. **Refresh today** updates the outcome
+journal using completed sessions and stored prices. Scores remain evidence
+strength, not win probabilities. Fund holdings require NAV-specific review;
+zero company ratios are not treated as proof of fund deterioration. See
+[technology and evaluation standards](docs/TECHNOLOGY_AND_EVALUATION.md).
+
 For frontend development, run `npm --prefix web run dev` in a second terminal;
 Vite proxies API requests to the local backend. The built production dashboard
 is served by FastAPI when `web/dist` exists.

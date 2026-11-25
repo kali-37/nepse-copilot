@@ -1,4 +1,39 @@
-# Fundamental decisions and purchase continuity — 24 November 2026
+# Recommendation evidence and efficiency — 25 November 2026
+
+This release improves measurement and computation without claiming a validated
+investment edge or superiority over commercial AI tools.
+
+- Fresh buy ideas are permanently logged before outcomes under `decision_v1`.
+  The first publication per symbol/horizon/market session retains its evidence
+  score, reasons, entry zone and fixed exits. Past/stale boards cannot create a
+  retrospective successful track record.
+- Publication time in Kathmandu freezes the first future opening session,
+  including today's open before 11:00 and the next trading day afterward. Horizon
+  deadlines start from that entry. The 100-share simulator uses actual opens
+  inside saved zones, completed OHLC, T+2, conservative stops/gaps and fees.
+  Missing data, unfilled entries and corporate actions are disclosed separately.
+  Generic journal scoring cannot bypass this evaluator, and bounded retries
+  rotate instead of starving newer calls.
+- **Recommendation track record** shows outcome counts, net profitability by
+  original score group and Wilson intervals. The baseline holds the same stock
+  to each modeled exit date. It is not an index benchmark or actual broker fill.
+- Mutual funds receive fund/NAV-specific review instead of false company-EPS
+  deterioration warnings. Verified fund NAV ingestion remains unavailable.
+- Same-dataset profiling fell from 66.284s/1,541 SELECTs to 24.610s/811 SELECTs.
+  Buy ideas and investment candidates were identical. Rolling calculations,
+  shared fee configuration and one quote-metadata read remove repeated work;
+  concurrent first reconciliation uses the normal retry path.
+- Market forecasts remain capped at 0.90. Misleading deposit-safety wording was
+  removed. Optional AI synthesis remains grounded research, not a trained model
+  whose predictive edge has been proven.
+
+Verification: **1483 Python tests passed, 1 skipped; 194 frontend tests passed**.
+Ruff, frontend lint, TypeScript/build and npm audit pass. Local timing results
+are profiler measurements, not runtime guarantees. See
+[technology and evaluation standards](TECHNOLOGY_AND_EVALUATION.md) for
+methodology and remaining validation requirements.
+
+## Previous release: fundamental decisions and purchase continuity — 24 November 2026
 
 The requested decision features are implemented. Open
 http://127.0.0.1:8000/ for daily/monthly ideas, the lower-risk research watchlist

@@ -3,9 +3,9 @@
 **Expert-grade NEPSE public-data aggregation, analysis, backtesting and paper-trading engine.**
 
 NEPSE Trader collects *publicly available* Nepal Stock Exchange market data from
-multiple Nepali sources, **cross-validates** it so you can trust it ("genuine
-information"), computes technical indicators and strategy signals, **backtests**
-with an accurate Nepal cost & tax model, and runs a **paper-trading** portfolio
+multiple Nepali sources, **cross-checks** their prices and exposes disagreements,
+computes technical indicators and strategy signals, **backtests**
+with modeled Nepal costs and taxes, and runs a **paper-trading** portfolio
 with full fee/CGT accounting. It also ships a **HAR toolkit** to discover and
 verify each site's real data endpoints from your own browser captures.
 
@@ -221,8 +221,8 @@ The advisor produces four disjoint doses over one capital pool: day (3 trading
 days, 10%), week (10, 20%), month (22, 30%) and year (250, 40%). Every card is
 assigned to exactly one dose and all expected PnL is net of the same Nepal
 `CostEngine` used by paper trading. Confidence is a 0-1 value with a visible
-band; market forecasts are capped below certainty and the `0.95-0.99` wording is
-“still money in the bank”. It is a forecast, never a guarantee.
+band; market forecasts are capped at 0.90. Evidence labels do not establish
+calibrated win probabilities, guaranteed returns or deposit-like safety.
 
 Each saved call follows `open -> scored -> reviewed -> retired`. Scoring checks a
 stop before a target on a bar that touches both; only `TARGET_HIT` counts as a
@@ -323,3 +323,21 @@ unsized research watchlist, with dated historical price returns and risk metrics
 
 See [advantages and limitations](docs/ADVANTAGES_AND_LIMITATIONS.md) for what is
 verified, what is modeled, and what still needs judgment.
+
+### Recommendation performance and efficiency
+
+The dashboard's **Recommendation track record** permanently records the first
+fresh idea per symbol/horizon/market session before future prices are known.
+Its fixed 100-share research benchmark enters at the first future session open
+inside the saved entry zone, including today's open for pre-open publication.
+It respects T+2, fixed exits, conservative ambiguous/gap fills and modeled fees.
+Unfilled entries, missing sessions and corporate-action exclusions are disclosed.
+Refresh today evaluates completed sessions; it never imports past calls as wins.
+The report shows profitability by original evidence score, sample counts and
+Wilson intervals. A same-stock holding baseline is not an index/portfolio benchmark.
+
+Fund holdings receive fund/NAV review explanations instead of company EPS checks;
+fund-specific NAV ingestion is still unavailable. Optimized chart calculations
+and shared price/cost reads preserve buy rankings while reducing repeated work.
+See [technology and evaluation standards](docs/TECHNOLOGY_AND_EVALUATION.md)
+for measured performance, comparison limits and the remaining path to validated AI.
