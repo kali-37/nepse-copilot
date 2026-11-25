@@ -65,15 +65,15 @@ export interface QuantStats {
   symbol: string;
   n: number;
   last_close: number | null;
-  total_return_pct: number;
-  annualized_return_pct: number;
-  annualized_vol_pct: number;
-  sharpe: number;
-  sortino: number;
-  max_drawdown_pct: number;
-  skewness: number;
-  kurtosis: number;
-  var_95_pct: number;
+  total_return_pct: number | null;
+  annualized_return_pct: number | null;
+  annualized_vol_pct: number | null;
+  sharpe: number | null;
+  sortino: number | null;
+  max_drawdown_pct: number | null;
+  skewness: number | null;
+  kurtosis: number | null;
+  var_95_pct: number | null;
 }
 
 export interface Fundamentals {

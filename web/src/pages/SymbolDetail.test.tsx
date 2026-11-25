@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { http, HttpResponse, delay } from 'msw';
-import { screen, waitFor } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { SymbolDetailPage } from './SymbolDetail';
 import { renderWithProviders } from '../test/renderWithProviders';
@@ -77,6 +77,44 @@ describe('SymbolDetailPage', () => {
 
     // The chart container renders; recharts SVG internals are not asserted.
     expect(screen.queryByText('No price data')).not.toBeInTheDocument();
+  });
+
+  it.each(['short_history', 'missing_statistics'])('keeps fund analysis visible with %s', async scenario => {
+    const missing = scenario === 'short_history'
+      ? { skewness: null, kurtosis: null }
+      : { total_return_pct: null, annualized_return_pct: null, annualized_vol_pct: null,
+        sharpe: null, sortino: null, max_drawdown_pct: null, skewness: null,
+        kurtosis: null, var_95_pct: null };
+    server.use(
+      http.get('*/api/symbols/:symbol/quant', () => HttpResponse.json({ ...fx.quantStats, symbol: 'MNMF2', n: 3, ...missing })),
+      http.get('*/api/symbols/:symbol/fundamentals', () => HttpResponse.json({ ...fx.fundamentals,
+        company_name: 'Muktinath Mutual Fund 2', sector: 'Mutual Fund', eps: null, book_value: null })),
+      http.get('*/api/decisions/fundamentals/:symbol', () => HttpResponse.json({
+        asset_kind: 'mutual_fund', rating: 'fund_review', source: 'Public snapshot',
+        snapshot_date: '2026-11-25', eps: null, book_value: null, current_pe: null,
+        current_pbv: null, multiplier: 0, needs_refresh: false,
+        reasons: ['Dated NAV and fund terms need review.'], limitations: ['NAV is not verified.'],
+      }))
+    );
+    renderDetail('MNMF2');
+
+    expect(await screen.findByText('Mutual fund · valuation review needed')).toBeInTheDocument();
+    expect(screen.getByText('Dated NAV and fund terms need review.')).toBeInTheDocument();
+    expect(screen.queryByText(/deterioration/)).not.toBeInTheDocument();
+    const skewness = screen.getByText('Skewness').parentElement!;
+    expect(within(skewness).getByText('—')).toBeInTheDocument();
+    expect(within(skewness).queryByText('0.000')).not.toBeInTheDocument();
+    if (scenario === 'missing_statistics') {
+      for (const label of ['Total Return', 'Ann. Return', 'Ann. Volatility', 'Sharpe', 'Sortino', 'Max Drawdown', 'VaR (95%)']) {
+        expect(within(screen.getByText(label).parentElement!).getByText('—')).toBeInTheDocument();
+      }
+    }
+  });
+
+  it('highlights a large drawdown reported as a positive loss magnitude', async () => {
+    server.use(http.get('*/api/symbols/:symbol/quant', () => HttpResponse.json({ ...fx.quantStats, max_drawdown_pct: 31.44 })));
+    renderDetail();
+    expect(await screen.findByText('31.44%')).toHaveClass('text-negative');
   });
 
   it('renders empty states when every endpoint returns nothing', async () => {

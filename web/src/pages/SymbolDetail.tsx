@@ -233,18 +233,19 @@ export function SymbolDetailPage() {
 
             {/* Quant stats */}
             <Card title="Quantitative stats">
+              {quant && <p className="mb-3 text-sm text-text-tertiary">Based on {quant.n} price observations. Annualized historical figures are not forecasts.</p>}
               {!quant ? (
                 <p className="py-8 text-center text-sm text-text-tertiary">Not enough data</p>
               ) : (
                 <div className="grid grid-cols-2 gap-3 text-sm">
-                  <QItem label="Total Return" value={`${quant.total_return_pct.toFixed(2)}%`} />
-                  <QItem label="Ann. Return" value={`${quant.annualized_return_pct.toFixed(2)}%`} />
-                  <QItem label="Ann. Volatility" value={`${quant.annualized_vol_pct.toFixed(2)}%`} />
-                  <QItem label="Sharpe" value={quant.sharpe.toFixed(3)} />
-                  <QItem label="Sortino" value={quant.sortino.toFixed(3)} />
-                  <QItem label="Max Drawdown" value={`${quant.max_drawdown_pct.toFixed(2)}%`} highlight={quant.max_drawdown_pct < -20} />
-                  <QItem label="VaR (95%)" value={`${quant.var_95_pct.toFixed(2)}%`} />
-                  <QItem label="Skewness" value={quant.skewness.toFixed(3)} />
+                  <QItem label="Total Return" value={formatStat(quant.total_return_pct, 2, '%')} />
+                  <QItem label="Ann. Return" value={formatStat(quant.annualized_return_pct, 2, '%')} />
+                  <QItem label="Ann. Volatility" value={formatStat(quant.annualized_vol_pct, 2, '%')} />
+                  <QItem label="Sharpe" value={formatStat(quant.sharpe, 3)} />
+                  <QItem label="Sortino" value={formatStat(quant.sortino, 3)} />
+                  <QItem label="Max Drawdown" value={formatStat(quant.max_drawdown_pct, 2, '%')} highlight={quant.max_drawdown_pct !== null && Number.isFinite(quant.max_drawdown_pct) && Math.abs(quant.max_drawdown_pct) > 20} />
+                  <QItem label="VaR (95%)" value={formatStat(quant.var_95_pct, 2, '%')} />
+                  <QItem label="Skewness" value={formatStat(quant.skewness, 3)} />
                 </div>
               )}
             </Card>
@@ -275,6 +276,12 @@ export function SymbolDetailPage() {
       )}
     </div>
   );
+}
+
+function formatStat(value: number | null, digits: number, suffix = ''): string {
+  return typeof value === 'number' && Number.isFinite(value)
+    ? `${value.toFixed(digits)}${suffix}`
+    : '—';
 }
 
 function QItem({

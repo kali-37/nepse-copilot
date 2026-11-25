@@ -109,7 +109,7 @@ webhook), not in a separate package.
 4.5 Dashboard command (symbols, date range, source coverage, reconciliation health, portfolio)
 
 ## Current State
-- **Tests:** 1483 passing, 1 skipped (Python 3.12); 194 passing (frontend).
+- **Tests:** 1483 passing, 1 skipped (Python 3.12); 197 passing (frontend).
   GitHub CI also checks clean Python 3.11 and 3.12 installs.
 - **Lint:** ruff clean
 - **Schema:** sources.jsonc config validation shipped

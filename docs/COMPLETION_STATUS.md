@@ -27,7 +27,12 @@ investment edge or superiority over commercial AI tools.
   removed. Optional AI synthesis remains grounded research, not a trained model
   whose predictive edge has been proven.
 
-Verification: **1483 Python tests passed, 1 skipped; 194 frontend tests passed**.
+Sparse-history company/fund detail pages display unavailable statistics as
+unknown instead of crashing; drawdown warnings use the loss magnitude. The
+statistics panel states its observation count and labels annualization as
+historical rather than a forecast.
+
+Verification: **1483 Python tests passed, 1 skipped; 197 frontend tests passed**.
 Ruff, frontend lint, TypeScript/build and npm audit pass. Local timing results
 are profiler measurements, not runtime guarantees. See
 [technology and evaluation standards](TECHNOLOGY_AND_EVALUATION.md) for
