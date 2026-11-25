@@ -989,14 +989,14 @@ def journal_score_endpoint(body: JournalScoreRequest):
     if body.prediction_id:
         rows = conn.execute(
             """SELECT * FROM predictions
-               WHERE (prediction_id=? OR CAST(id AS TEXT)=?) AND status='open'""",
+               WHERE (prediction_id=? OR CAST(id AS TEXT)=?) AND status='open' AND kind!='decision_v1'""",
             (body.prediction_id, body.prediction_id),
         ).fetchall()
         if not rows:
-            raise HTTPException(404, "no open prediction matched that id")
+            raise HTTPException(404, "No open advisor prediction matched that id. Dashboard recommendations are evaluated by Refresh today.")
     else:
         rows = conn.execute(
-            "SELECT * FROM predictions WHERE status='open' ORDER BY made_on, id LIMIT ?",
+            "SELECT * FROM predictions WHERE status='open' AND kind!='decision_v1' ORDER BY made_on, id LIMIT ?",
             (body.limit,),
         ).fetchall()
 

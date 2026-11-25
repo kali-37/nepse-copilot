@@ -38,6 +38,28 @@ def decision_board():
     return _publish_advice(pipe)
 
 
+@router.get("/performance")
+def recommendation_performance():
+    from nepse_trader.advisor.track_record import performance_report
+    from nepse_trader.web.api import _storage
+    return performance_report(_storage())
+
+
+@router.post("/performance/score")
+def update_recommendation_performance():
+    from datetime import timedelta
+
+    from nepse_trader.advisor.decision_state import session_dates
+    from nepse_trader.advisor.track_record import performance_report, score_recommendations
+    from nepse_trader.calendar import previous_trading_day
+    from nepse_trader.web.api import _pipeline
+    pipe = _pipeline()
+    today = date.today()
+    completed = today if session_dates(today)[2] == "after_close" else previous_trading_day(today-timedelta(days=1))
+    scored = score_recommendations(pipe, completed=completed)
+    return {"scored": scored, "performance": performance_report(pipe.storage)}
+
+
 class CashRequest(BaseModel):
     cash: Decimal = Field(ge=0, le=10**12, allow_inf_nan=False)
 

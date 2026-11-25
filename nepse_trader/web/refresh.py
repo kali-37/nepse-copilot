@@ -97,6 +97,11 @@ def _refresh_today(ctx, pipe) -> dict:
                     warnings.append("Broker contracts could not be refreshed.")
         stage.detail = f"{snapshots} company snapshots; {contracts} broker contracts"
     with ctx.stage("save") as stage:
+        from nepse_trader.advisor.decision_state import session_dates
+        from nepse_trader.advisor.track_record import score_recommendations
+        from nepse_trader.calendar import previous_trading_day
+        completed = date.today() if session_dates(date.today())[2] == "after_close" else previous_trading_day(date.today()-timedelta(days=1))
+        scored = score_recommendations(pipe, completed=completed)
         board["refresh"] = {"sources": report.per_source, "warnings": warnings,
                             "downloaded_prices": report.total_bars, "fundamentals": snapshots,
                             "contracts": contracts}
@@ -106,4 +111,5 @@ def _refresh_today(ctx, pipe) -> dict:
             board["refresh"] = refresh_status
             board = publish_decisions(pipe, board)
         stage.detail = "Buy ideas, holdings, charts and source status saved"
+        ctx.log_line(f"Recommendation outcomes: {scored['checked']} checked, {scored['resolved']} resolved, {scored['excluded']} excluded or unfilled")
     return {"board": board, "ingest": report.as_dict(), "warnings": warnings}

@@ -60,6 +60,15 @@ def build_decisions(
     }
     completed = today if phase == "after_close" else previous_trading_day(today - timedelta(days=1))
     names = sorted(owned) + sorted(set(pipe.storage.symbols()) - owned)[: max(0, 500 - len(owned))]
+    quote_metadata = {
+        row["symbol"]: row
+        for row in pipe.storage._conn.execute(
+            """SELECT symbol, confidence, sources_present FROM reconciled_prices r
+            WHERE business_date=(SELECT MAX(business_date) FROM reconciled_prices
+                WHERE symbol=r.symbol AND business_date<=?)""",
+            ((observed or today).isoformat(),),
+        )
+    }
     for index, symbol in enumerate(names, 1):
         if check_cancelled:
             check_cancelled()
@@ -79,13 +88,11 @@ def build_decisions(
                 for bar in bars[-45:]
                 if bar.close is not None
             ]
-            reconciled = next(
-                r
-                for r in reversed(pipe.storage.reconciled_history(symbol))
-                if r.business_date == bars[-1].business_date
-            )
-            quality = max(0.2, reconciled.confidence) * (
-                1 if len(reconciled.sources_present) >= 2 else 0.88
+            metadata = quote_metadata.get(symbol)
+            if metadata is None:
+                raise DecisionsChanged("A symbol received its first reconciled quote during analysis.")
+            quality = max(0.2, metadata["confidence"] or 0) * (
+                1 if len((metadata["sources_present"] or "").split(",")) >= 2 else 0.88
             )
             details[symbol] = (
                 state,
@@ -97,14 +104,6 @@ def build_decisions(
                 states,
             )
         if state:
-            reconciled = next(
-                r
-                for r in reversed(pipe.storage.reconciled_history(symbol))
-                if r.business_date == bars[-1].business_date
-            )
-            quality = max(0.2, reconciled.confidence) * (
-                1 if len(reconciled.sources_present) >= 2 else 0.88
-            )
             if bars[-1].business_date < expected:
                 quality *= 0.55
             if state.average_volume < 1000:
@@ -131,6 +130,7 @@ def build_decisions(
                     snapshot_date=snapshot_dates.get(symbol),
                     today=today,
                     owned=symbol in owned,
+                    cost_engine=engine,
                 )
                 if candidate:
                     observed_sessions = pipe.storage._conn.execute(
@@ -164,6 +164,7 @@ def build_decisions(
                     completed_through=expected
                     if phase not in ("pre_open", "market_hours")
                     else previous_trading_day(today - timedelta(days=1)),
+                    cost_engine=engine,
                 )
                 confidence = evidence_confidence(state, days, hits, total, quality)
                 technical_value = confidence["value"]
@@ -397,6 +398,8 @@ def save_decisions(pipe, board: dict) -> dict:
         # Publication order determines the latest board, even when an earlier
         # analysis finishes after another request or the refresh worker.
         board["generated_at"] = datetime.now(UTC).isoformat()
+        from nepse_trader.advisor.track_record import record_recommendations
+        record_recommendations(conn, board)
         conn.execute(
             "INSERT INTO decision_runs(id,generated_at,payload) VALUES(?,?,?)",
             (board["id"], board["generated_at"], json.dumps(board)),
@@ -414,10 +417,10 @@ class DecisionsChanged(ValueError):
 def publish_decisions(pipe, board: dict | None = None) -> dict:
     refresh = board.get("refresh") if board else None
     for _ in range(3):
-        board = board or build_decisions(pipe)
-        if refresh is not None:
-            board["refresh"] = refresh
         try:
+            board = board or build_decisions(pipe)
+            if refresh is not None:
+                board["refresh"] = refresh
             return save_decisions(pipe, board)
         except DecisionsChanged:
             board = None

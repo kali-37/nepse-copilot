@@ -796,14 +796,14 @@ def journal_score_cmd(
     try:
         if prediction_id:
             rows = storage._conn.execute(
-                "SELECT * FROM predictions WHERE (prediction_id=? OR CAST(id AS TEXT)=?) AND status='open'",
+                "SELECT * FROM predictions WHERE (prediction_id=? OR CAST(id AS TEXT)=?) AND status='open' AND kind!='decision_v1'",
                 (prediction_id, prediction_id),
             ).fetchall()
             if not rows:
-                raise ValueError("no open prediction matched that id")
+                raise ValueError("No open advisor prediction matched that id. Dashboard recommendations are evaluated by Refresh today.")
         else:
             rows = storage._conn.execute(
-                "SELECT * FROM predictions WHERE status='open' ORDER BY made_on, id LIMIT ?",
+                "SELECT * FROM predictions WHERE status='open' AND kind!='decision_v1' ORDER BY made_on, id LIMIT ?",
                 (max(1, limit),),
             ).fetchall()
         pipe = DailyPipeline(settings=get_settings(), storage=storage, clients=[])

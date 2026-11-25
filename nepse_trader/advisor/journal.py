@@ -119,6 +119,7 @@ def confidence_for_prediction(
         "outcome NOT IN ('UNRESOLVED','NO_DATA')",
         "kind = ?",
         "horizon_days = ?",
+        "hit IS NOT NULL",
     ]
 
     buckets = [
@@ -334,6 +335,8 @@ def record_score(conn: sqlite3.Connection, prediction_id: str, result: object) -
             int(row["id"]),
         ),
     )
+    from nepse_trader.advisor.outcomes import _persist_evaluation
+    _persist_evaluation(conn, row["prediction_id"], result)
     if terminal:
         _refresh_calibration(conn, int(row["id"]))
     conn.commit()
@@ -347,8 +350,8 @@ def score_prediction(conn: sqlite3.Connection, prediction_id: str, result: objec
 
 def _refresh_calibration(conn: sqlite3.Connection, row_id: int) -> None:
     """Rebuild the materialised symbol/horizon roll-up after a score."""
-    row = conn.execute("SELECT symbol, horizon FROM predictions WHERE id = ?", (row_id,)).fetchone()
-    if row is None:
+    row = conn.execute("SELECT symbol, horizon, kind FROM predictions WHERE id = ?", (row_id,)).fetchone()
+    if row is None or row["kind"] == "decision_v1":
         return
     stats = conn.execute(
         """
@@ -358,6 +361,7 @@ def _refresh_calibration(conn: sqlite3.Connection, row_id: int) -> None:
                AVG(realized_net_pnl) AS realized_pnl
         FROM predictions
         WHERE symbol = ? AND horizon = ?
+          AND kind != 'decision_v1' AND hit IS NOT NULL
           AND status IN ('scored', 'reviewed', 'retired')
           AND outcome NOT IN ('UNRESOLVED', 'NO_DATA')
         """,
@@ -421,6 +425,7 @@ def _lesson_stats(conn: sqlite3.Connection, symbol: str, horizon: str) -> tuple[
         SELECT COUNT(*) AS n, COALESCE(SUM(CASE WHEN hit=1 THEN 1 ELSE 0 END), 0) AS hits
         FROM predictions
         WHERE symbol=? AND horizon=? AND status IN ('scored','reviewed','retired')
+          AND kind != 'decision_v1' AND hit IS NOT NULL
           AND outcome NOT IN ('UNRESOLVED','NO_DATA')
         """,
         (symbol, horizon),

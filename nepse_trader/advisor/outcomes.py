@@ -37,6 +37,8 @@ class Outcome(str, Enum):
     EXPIRED_FLAT = "EXPIRED_FLAT"
     UNRESOLVED = "UNRESOLVED"
     NO_DATA = "NO_DATA"
+    NOT_ENTERED = "NOT_ENTERED"
+    EXCLUDED = "EXCLUDED"
 
 
 # String aliases make the public contract convenient for SQLite and callers
@@ -49,6 +51,8 @@ EXPIRED_DOWN = Outcome.EXPIRED_DOWN.value
 EXPIRED_FLAT = Outcome.EXPIRED_FLAT.value
 UNRESOLVED = Outcome.UNRESOLVED.value
 NO_DATA = Outcome.NO_DATA.value
+NOT_ENTERED = Outcome.NOT_ENTERED.value
+EXCLUDED = Outcome.EXCLUDED.value
 
 # Names used by a few integrations/documentation drafts.
 OutcomeStatus = Outcome
@@ -145,6 +149,10 @@ class OutcomeResult:
     bars_seen: int = 0
     basis: str = ""
     scored_at: datetime | None = None
+    entry_on: date | None = None
+    entry_price: float | None = None
+    net_return_pct: float | None = None
+    benchmark_return_pct: float | None = None
 
     @property
     def status(self) -> str:
@@ -193,6 +201,10 @@ class OutcomeResult:
             "bars_seen": self.bars_seen,
             "basis": self.basis,
             "scored_at": self.scored_at.isoformat() if self.scored_at else None,
+            "entry_on": self.entry_on.isoformat() if self.entry_on else None,
+            "entry_price": self.entry_price,
+            "net_return_pct": self.net_return_pct,
+            "benchmark_return_pct": self.benchmark_return_pct,
         }
 
 
@@ -284,6 +296,9 @@ def score_prediction(
     the stop, the conservative fill mandated by the journal contract.
     """
 
+    if _value(prediction, "kind") == "decision_v1":
+        from nepse_trader.advisor.track_record import evaluate_recommendation
+        return evaluate_recommendation(prediction, list(bars), as_of=_date(as_of), cost_engine=cost_engine)
     symbol = _prediction_symbol(prediction)
     made_on = _date(_value(prediction, "made_on"))
     if made_on is None:
@@ -496,6 +511,20 @@ def score_predictions(
     return out
 
 
+def _persist_evaluation(conn, prediction_id, result) -> None:
+    entry_on = _date(_value(result, "entry_on"))
+    if entry_on is None:
+        return
+    conn.execute(
+        """UPDATE predictions SET evaluation_entry_on=?,evaluation_entry_price=?,
+        evaluation_net_return=?,evaluation_benchmark_return=?,evaluation_note=?,
+        evaluation_checked_at=? WHERE prediction_id=?""",
+        (entry_on.isoformat(), _value(result, "entry_price"), _value(result, "net_return_pct"),
+         _value(result, "benchmark_return_pct"), _value(result, "basis"),
+         datetime.now(UTC).isoformat(), prediction_id),
+    )
+
+
 def persist_score(conn: object, result: OutcomeResult, *, scored_at: datetime | None = None) -> bool:
     """Update one ``predictions`` row with a score.
 
@@ -510,7 +539,7 @@ def persist_score(conn: object, result: OutcomeResult, *, scored_at: datetime | 
     if not prediction_id:
         return False
     stamp = scored_at or result.scored_at or datetime.now(UTC)
-    terminal = result.calibration_eligible
+    terminal = result.calibration_eligible or result.outcome in {NOT_ENTERED, EXCLUDED}
     cursor = conn.execute(
         """UPDATE predictions
            SET outcome=?, resolved_on=?, realized_exit_price=?, realized_net_pnl=?,
@@ -533,6 +562,8 @@ def persist_score(conn: object, result: OutcomeResult, *, scored_at: datetime | 
         ),
     )
     updated = bool(getattr(cursor, "rowcount", 0))
+    if updated:
+        _persist_evaluation(conn, prediction_id, result)
     if updated and terminal:
         # Keep the materialised calibration table correct when this lower-level
         # helper is used directly.  Importing lazily avoids a module cycle and
@@ -566,6 +597,8 @@ __all__ = [
     "EXPIRED_FLAT",
     "UNRESOLVED",
     "NO_DATA",
+    "NOT_ENTERED",
+    "EXCLUDED",
     "score_prediction",
     "score_outcome",
     "score_predictions",

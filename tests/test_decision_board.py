@@ -299,6 +299,30 @@ def test_cached_advice_is_invalidated_by_purchase_even_if_cash_remains_zero(pipe
     assert new['holdings'][0]['symbol'] == 'AAA'
 
 
+def test_first_reconciliation_during_analysis_retries_instead_of_missing_metadata_error(pipe, monkeypatch):
+    from nepse_trader.advisor.decisions import DecisionsChanged, publish_decisions
+
+    raw = PriceBar(symbol='LATE',business_date=LAST,open=100,high=102,low=99,close=100,
+        volume=30000,source=SourceName.MANUAL)
+    pipe.storage.upsert_price_bars([raw])
+    original = pipe.reconciled_bars
+    changed = False
+
+    def raced(symbol, **kwargs):
+        nonlocal changed
+        if symbol == 'LATE' and not changed:
+            changed = True
+            pipe.storage.upsert_reconciled(reconcile_bars([raw]))
+        return original(symbol,**kwargs)
+
+    monkeypatch.setattr(pipe,'reconciled_bars',raced)
+    with freeze_time('2026-11-20'):
+        with pytest.raises(DecisionsChanged):
+            build_decisions(pipe)
+        board = publish_decisions(pipe)
+    assert changed and board['market_date'] == LAST.isoformat()
+
+
 def test_refresh_report_survives_retry_and_later_concurrent_publication(pipe):
     import json
 

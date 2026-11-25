@@ -979,6 +979,18 @@ def _m0021_decision_memory(conn) -> None:
     conn.execute("CREATE INDEX idx_holding_advice_plan ON holding_advice_events(symbol,plan_key,id)")
 
 
+def _m0022_decision_track_record(conn) -> None:
+    for name, column_type in (
+        ("forecast_entry_on", "TEXT"),
+        ("evaluation_entry_on", "TEXT"), ("evaluation_entry_price", "REAL"),
+        ("evaluation_net_return", "REAL"), ("evaluation_benchmark_return", "REAL"),
+        ("evaluation_note", "TEXT"),
+        ("evaluation_checked_at", "TEXT"),
+    ):
+        conn.execute(f"ALTER TABLE predictions ADD COLUMN {name} {column_type}")
+    conn.execute("CREATE INDEX idx_prediction_engine_status ON predictions(kind,status,made_on)")
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
@@ -1003,6 +1015,7 @@ MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0019_position_entry", _m0019_position_entry),
     ("0020_position_plan_review", _m0020_position_plan_review),
     ("0021_decision_memory", _m0021_decision_memory),
+    ("0022_decision_track_record", _m0022_decision_track_record),
 ]
 
 
