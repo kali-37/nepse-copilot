@@ -1,8 +1,9 @@
 import { fetchJson } from './client';
 
 export interface FundamentalReport {
+  asset_kind?: 'stock' | 'mutual_fund';
   source: string; snapshot_date: string | null;
-  rating: 'supported' | 'caution' | 'expensive' | 'unsupported' | 'missing' | 'stale' | 'incomplete';
+  rating: 'supported' | 'caution' | 'expensive' | 'unsupported' | 'missing' | 'stale' | 'incomplete' | 'fund_review';
   eps: number | null; book_value: number | null; current_pe: number | null; current_pbv: number | null;
   multiplier: number; needs_refresh: boolean; reasons: string[]; limitations: string[];
 }

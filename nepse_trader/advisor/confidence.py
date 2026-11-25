@@ -27,7 +27,7 @@ DEFAULT_PRIOR = 0.45
 # (floor, band, label) descending. `band_for` walks this in order.
 BANDS: tuple[tuple[float, str, str], ...] = (
     (1.00, "CERTAIN", "arithmetic, not a forecast"),
-    (0.95, "NEAR_CERTAIN", "still money in the bank"),
+    (0.95, "NEAR_CERTAIN", "very strong evidence"),
     (0.80, "STRONG", "strongly favoured"),
     (0.60, "LIKELY", "more likely than not"),
     (0.40, "COIN_FLIP", "a coin flip — size it small"),

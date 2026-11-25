@@ -16,7 +16,7 @@ from nepse_trader.advisor.confidence import (
 
 def test_user_facing_bands_preserve_the_pinned_wording() -> None:
     assert band_for(1.0) == ("CERTAIN", "arithmetic, not a forecast")
-    assert band_for(0.95) == ("NEAR_CERTAIN", "still money in the bank")
+    assert band_for(0.95) == ("NEAR_CERTAIN", "very strong evidence")
     assert band_for(0.80) == ("STRONG", "strongly favoured")
     assert band_for(0.60) == ("LIKELY", "more likely than not")
     assert band_for(0.40) == ("COIN_FLIP", "a coin flip — size it small")

@@ -9,7 +9,6 @@ from __future__ import annotations
 import math
 from dataclasses import dataclass
 from datetime import date
-from statistics import mean
 
 from nepse_trader.advisor.confidence import market
 from nepse_trader.analysis import indicators as ind
@@ -68,14 +67,20 @@ def chart_states(bars: list[PriceBar]) -> list[ChartState | None]:
         14,
     )
     out = []
+    valid_run = volume_sum = volume_count = 0
     for i, bar in enumerate(bars):
-        window = bars[max(0, i - 19) : i + 1]
-        complete = i >= 49 and all(
-            all(v is not None and v > 0 and math.isfinite(v) for v in (b.close, b.high, b.low))
-            for b in bars[i - 49 : i + 1]
-        )
+        valid = all(v is not None and v > 0 and math.isfinite(v) for v in (bar.close, bar.high, bar.low))
+        valid_run = valid_run + 1 if valid else 0
+        if bar.volume is not None and bar.volume >= 0:
+            volume_sum += bar.volume
+            volume_count += 1
+        if i >= 20:
+            old_volume = bars[i - 20].volume
+            if old_volume is not None and old_volume >= 0:
+                volume_sum -= old_volume
+                volume_count -= 1
         if (
-            not complete
+            valid_run < 50
             or atr[i] is None
             or not math.isfinite(atr[i])
             or atr[i] <= 0
@@ -83,8 +88,7 @@ def chart_states(bars: list[PriceBar]) -> list[ChartState | None]:
         ):
             out.append(None)
             continue
-        volumes = [b.volume for b in window if b.volume is not None and b.volume >= 0]
-        average = mean(volumes) if volumes else 0
+        average = volume_sum / volume_count if volume_count else 0
         out.append(
             ChartState(
                 float(bar.close),
@@ -95,7 +99,7 @@ def chart_states(bars: list[PriceBar]) -> list[ChartState | None]:
                 closes[i] / closes[i - 5] - 1,
                 (bar.volume or 0) / average if average else 0,
                 average,
-                volume_samples=len(volumes),
+                volume_samples=volume_count,
             )
         )
     return out
@@ -107,13 +111,14 @@ def historical_evidence(
     horizon: int,
     *,
     completed_through: date | None = None,
+    cost_engine: CostEngine | None = None,
 ) -> tuple[int, int]:
     current = states[-1] if states else None
     if current is None:
         return 0, 0
     hits = total = 0
     next_allowed = 49
-    engine = CostEngine()
+    engine = cost_engine or CostEngine()
     for i in range(49, len(bars) - horizon):
         state = states[i]
         if state is None or i < next_allowed:

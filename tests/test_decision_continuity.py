@@ -14,7 +14,7 @@ from nepse_trader.advisor.decisions import publish_decisions
 from nepse_trader.advisor.holding_advice import holding_advice, record_advice_history
 from nepse_trader.advisor.positions import owned_positions, record_trade, set_position_plan
 from nepse_trader.calendar import add_trading_days
-from nepse_trader.models import PriceBar, SourceName
+from nepse_trader.models import FundamentalData, PriceBar, SourceName
 
 
 @pytest.fixture
@@ -133,6 +133,23 @@ def test_hard_stop_overrides_monthly_patience_but_waits_for_settlement(pipe):
     assert advice["exit_status"] == "waiting_settlement"
     assert advice["earliest_sell_date"] == "2026-11-22"
     assert "90.00" in advice["reason"]
+
+
+def test_mutual_fund_placeholder_ratios_are_not_reported_as_earnings_deterioration(pipe):
+    from nepse_trader.advisor.fundamentals import assess_fundamentals
+
+    position = purchase(pipe)
+    day = date(2026, 11, 23)
+    bars = [PriceBar(symbol="DOLTI", business_date=day, close=100, source=SourceName.MANUAL)]
+    report = assess_fundamentals(FundamentalData(symbol="DOLTI", sector="Mutual Fund", eps=0, book_value=0),
+        quote=100, snapshot_date=day, today=day)
+    args = dict(quality=.95, expected=day, completed=day, today=day, fundamental_report=report)
+    advice = holding_advice(pipe, position, bars, [STRONG], quote=100, **args)
+    assert advice["trigger_code"] == "fund_analysis_needed" and "NAV" in advice["reason"]
+    missing = holding_advice(pipe, position, [], [], quote=None, **args)
+    assert missing["trigger_code"] == "fund_valuation_needed" and "do not establish a loss" in missing["reason"]
+    stopped = holding_advice(pipe, position, bars, [STRONG], quote=89, **args)
+    assert stopped["action"] == "sell" and stopped["trigger_code"] == "stop_hit"
 
 
 def test_missing_completed_session_and_recovering_trend_break_confirmations(pipe):

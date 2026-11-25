@@ -24,7 +24,7 @@ function confidenceValue(value: unknown): number {
 
 function confidenceLabel(value: unknown, band?: string) {
   const score = confidenceValue(value);
-  if (score >= 0.95) return 'still money in the bank';
+  if (score >= 0.95) return 'very strong evidence';
   if (score >= 0.8) return 'strongly favoured';
   if (score >= 0.6) return 'more likely than not';
   if (score >= 0.4) return 'a coin flip - size it small';

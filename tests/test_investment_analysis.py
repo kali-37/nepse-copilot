@@ -119,6 +119,32 @@ def test_fundamental_grade_is_calculated_from_current_quote_and_penalises_expens
     assert expensive["rating"] == "expensive" and expensive["multiplier"] < supported["multiplier"]
 
 
+@pytest.mark.parametrize("eps,book_value", [(0, 0), (10, 100)])
+def test_mutual_funds_require_nav_review_even_when_company_ratios_look_positive(eps, book_value):
+    data = FundamentalData(symbol="FUND", sector="Mutual Fund", eps=eps, book_value=book_value)
+    report = assess_fundamentals(data, quote=10, snapshot_date=LAST, today=TODAY)
+    assert report["asset_kind"] == "mutual_fund" and report["rating"] == "fund_review"
+    assert report["multiplier"] == 0 and not report["needs_refresh"]
+    assert report["eps"] is None and "NAV" in report["reasons"][1]
+    bars = history()
+    assert investment_candidate("FUND", bars, chart_states(bars)[-1], .95, data,
+        snapshot_date=LAST, today=TODAY) is None
+
+
+def test_rolling_volume_and_chart_validity_recover_at_the_correct_window_boundary():
+    bars = history()[-90:]
+    bars[30].high = None
+    for i, bar in enumerate(bars):
+        bar.volume = None if i % 3 == 0 else i * 100
+    states = chart_states(bars)
+    assert states[79] is None  # The missing high remains in the last 50 sessions.
+    assert states[80] is not None
+    for i in range(80, len(bars)):
+        known = [b.volume for b in bars[i - 19:i + 1] if b.volume is not None]
+        assert states[i].volume_samples == len(known)
+        assert states[i].average_volume == sum(known) / len(known)
+
+
 def test_losing_company_is_removed_from_buys_even_when_charts_are_strong(pipe):
     with freeze_time("2026-11-20"):
         initial = build_decisions(pipe)

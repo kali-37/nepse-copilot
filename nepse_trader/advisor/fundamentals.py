@@ -13,10 +13,18 @@ LIMITATIONS = [
 ]
 
 
+def is_mutual_fund(snapshot) -> bool:
+    if snapshot is None:
+        return False
+    description = f"{snapshot.sector} {snapshot.company_name}".casefold().replace("-", " ")
+    return "mutual fund" in description
+
+
 def assess_fundamentals(
     snapshot, *, quote: float | None, snapshot_date: date | None, today: date
 ) -> dict:
     base = dict(
+        asset_kind="mutual_fund" if is_mutual_fund(snapshot) else "stock",
         source="MeroLagani public snapshot",
         snapshot_date=snapshot_date.isoformat() if snapshot_date else None,
         eps=None,
@@ -26,6 +34,22 @@ def assess_fundamentals(
         reasons=[],
         limitations=LIMITATIONS,
     )
+    if base["asset_kind"] == "mutual_fund":
+        return {
+            **base,
+            "rating": "fund_review",
+            "multiplier": 0,
+            "needs_refresh": False,
+            "reasons": [
+                "This is a mutual fund; company EPS, P/E and book-value rules do not establish its investment quality.",
+                "Dated NAV, market discount/premium (where traded), fund terms, portfolio and distributions need fund-specific review.",
+            ],
+            "limitations": [
+                "Fund NAV, expense ratios, maturity/redemption terms and distribution history are not verified here.",
+                "A missing exchange quote is not proof that a fund has lost value; valuation may require published NAV.",
+                "Mutual funds are excluded from company-based buy and lower-risk screens.",
+            ],
+        }
     if snapshot is None or snapshot_date is None or snapshot_date > today:
         return {
             **base,

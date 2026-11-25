@@ -6,17 +6,19 @@ import math
 from datetime import timedelta
 
 from nepse_trader.advisor.decision_signals import reliable_volume
+from nepse_trader.advisor.fundamentals import is_mutual_fund
 from nepse_trader.analysis import quant
 from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.models import OrderSide
 
 
 def investment_candidate(
-    symbol, bars, state, quality, snapshot, *, snapshot_date, today, owned=False
+    symbol, bars, state, quality, snapshot, *, snapshot_date, today, owned=False, cost_engine=None
 ):
     if (
         state is None
         or snapshot is None
+        or is_mutual_fund(snapshot)
         or quality < 0.8
         or state.average_volume < 10000
         or not reliable_volume(bars, 18)
@@ -42,7 +44,7 @@ def investment_candidate(
     volatility = quant.annualized_volatility(
         quant.returns(prices), (len(prices) - 1) * 365 / elapsed
     )
-    engine = CostEngine()
+    engine = cost_engine or CostEngine()
     buy = engine.compute(OrderSide.BUY, prices[0], 100)
     sell = engine.compute(
         OrderSide.SELL, prices[-1], 100, buy_cost_basis=buy.net_amount, holding_days=elapsed

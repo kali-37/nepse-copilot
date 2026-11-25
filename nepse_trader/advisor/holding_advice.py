@@ -76,6 +76,9 @@ def holding_advice(
     reason = f"Keep your {name} plan. Its saved stop and target have not triggered."
     if quote is None:
         action, trigger, reason = "review", "no_quote", "No usable quote yet. Refresh market data."
+        if fundamental_report and fundamental_report["rating"] == "fund_review":
+            trigger = "fund_valuation_needed"
+            reason = "No usable exchange quote is available for this mutual fund. Confirm published NAV and redemption or trading terms; missing prices do not establish a loss."
     elif bars[-1].business_date < expected:
         action, trigger, reason = (
             "review",
@@ -105,6 +108,9 @@ def holding_advice(
     elif sticky:
         action, trigger = "sell", sticky["trigger_code"]
         reason = f"Your exit condition was confirmed on {sticky['market_date']}. It stays pending until you record a sale or explicitly review your exit plan."
+    elif fundamental_report and fundamental_report["rating"] == "fund_review":
+        action, trigger = "review", "fund_analysis_needed"
+        reason = " ".join(fundamental_report["reasons"])
     elif fundamental_report and fundamental_report["rating"] == "unsupported":
         action, trigger = "review", "fundamental_deterioration"
         entry_fundamentals = ((thesis or {}).get("origin") or {}).get("fundamental_report") or {}
