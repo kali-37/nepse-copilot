@@ -109,7 +109,7 @@ webhook), not in a separate package.
 4.5 Dashboard command (symbols, date range, source coverage, reconciliation health, portfolio)
 
 ## Current State
-- **Tests:** 1483 passing, 1 skipped (Python 3.12); 197 passing (frontend).
+- **Tests:** 1539 passing, 1 skipped (Python 3.12), and 212 passing (frontend).
   GitHub CI also checks clean Python 3.11 and 3.12 installs.
 - **Lint:** ruff clean
 - **Schema:** sources.jsonc config validation shipped
@@ -131,6 +131,12 @@ webhook), not in a separate package.
   under `decision_v1`; completed-session, fee-aware 100-share simulations track
   entry-zone fills, T+2, gaps, missing data and corporate actions. Dashboard
   score-group outcomes/Wilson intervals are research evidence, not win odds.
+- **Verified financial evidence:** issuer excerpts and reviewed Nepal Rastra
+  Bank reports retain document hashes and point-in-time provenance. Research
+  shows partial coverage and missing sector checks.
+- **Trained model research:** offline 3- and 22-session classifiers use purged
+  chronological splits, separate calibration and held-out baselines. Models
+  need a passing gate and explicit activation to display an advisory estimate.
 - **Fund classification:** mutual funds receive NAV/fund review; company EPS
   placeholders are not treated as deterioration or eligible stock fundamentals.
 - **Efficiency:** rolling validity/volume and shared cost/quote reads preserve

@@ -1,12 +1,13 @@
 # NEPSE trading holidays
 # Fixed-date (Gregorian) holidays plus variable Bikram Sambat ranges.
 holidays:
-  - { name: New Year, month: 1, day: 1 }
-  - { name: Martyrs' Day, month: 1, day: 29 }
   - { name: Democracy Day, month: 2, day: 19 }
   - { name: International Women's Day, month: 3, day: 8 }
   - { name: Constitution Day, month: 9, day: 20 }
   - { name: Christmas, month: 12, day: 25 }
+  # April 14 in these years is Baisakh 1, the Nepali New Year.
+  - { name: Nepali New Year, year: 2025, month: 4, day: 14 }
+  - { name: Nepali New Year, year: 2026, month: 4, day: 14 }
 
 # Variable-date holidays (ranges of dates, typically for Bikram Sambat festivals).
 # These are approximate; update yearly based on official NEPSE notice.

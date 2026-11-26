@@ -1,4 +1,5 @@
 import { fetchJson } from './client';
+import type { FinancialVerification } from './decisions';
 import type { BacktestRun } from './types';
 
 export interface WalkForwardFold {
@@ -27,7 +28,22 @@ export interface MarketResearch {
   indices: Array<{ name: string; value: number; change_percent: number | null; source: string }>;
 }
 
+export interface FinancialCoverage {
+  provider_symbols: number;
+  matched_symbols: number;
+  complete_symbols: number;
+  symbols: Array<{
+    symbol: string;
+    period_end: string | null;
+    period_basis: string | null;
+    metrics: string[];
+    status: FinancialVerification['status'];
+  }>;
+}
+
 export const researchApi = {
+  financialEvidence: (signal?: AbortSignal) =>
+    fetchJson<FinancialCoverage>('/research/financial-evidence', { signal }),
   portfolio: (symbols: string, strategy: string, cash: number, mode: 'shared' | 'equal', rebalanceEvery: number) =>
     fetchJson<BacktestRun>(`/research/portfolio?${new URLSearchParams({ symbols, strategy, cash: String(cash), mode, rebalance_every: String(rebalanceEvery) })}`),
   walkForward: (symbol: string, strategy: string, rolling: boolean) =>

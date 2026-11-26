@@ -365,14 +365,24 @@ class Storage:
             )
         return [self._row_to_bar(r) for r in cur.fetchall()]
 
-    def reconciled_history(self, symbol: str) -> list[ReconciledPrice]:
+    def reconciled_history(
+        self, symbol: str, *, as_of: date | None = None, limit: int | None = None
+    ) -> list[ReconciledPrice]:
         symbol = symbol.strip().upper()
-        cur = self._conn.execute(
-            "SELECT * FROM reconciled_prices WHERE symbol=? ORDER BY business_date",
-            (symbol,),
-        )
+        query = "SELECT * FROM reconciled_prices WHERE symbol=?"
+        params: list[str | int] = [symbol]
+        if as_of is not None:
+            query += " AND business_date<=?"
+            params.append(as_of.isoformat())
+        if limit is None:
+            rows = self._conn.execute(query + " ORDER BY business_date", params).fetchall()
+        else:
+            rows = self._conn.execute(
+                query + " ORDER BY business_date DESC LIMIT ?", [*params, limit]
+            ).fetchall()
+            rows.reverse()
         out = []
-        for r in cur.fetchall():
+        for r in rows:
             out.append(
                 ReconciledPrice(
                     symbol=r["symbol"],

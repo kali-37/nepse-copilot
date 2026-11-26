@@ -1,10 +1,54 @@
 import { fetchJson } from './client';
 
+interface FinancialSourceDocument {
+  evidence_id: string;
+  source_url: string;
+  source_kind?: 'issuer' | 'regulator';
+  period_label?: string | null;
+  document_sha256: string | null;
+  available_at: string;
+  published_on: string | null;
+  verified_at: string | null;
+}
+
+export interface FinancialVerification {
+  status: 'unverified' | 'attested_only' | 'matched_official_excerpt' | 'conflict' | 'stale';
+  period_start: string | null;
+  period_end: string | null;
+  period_basis: string | null;
+  period_label?: string | null;
+  available_at: string | null;
+  matched_metrics: string[];
+  missing_metrics: string[];
+  conflicts: string[];
+  source_documents: FinancialSourceDocument[];
+  note: string;
+}
+
+export interface FinancialCheck {
+  metric: string;
+  label: string;
+  value: number | null;
+  unit: string | null;
+  verdict: 'pass' | 'caution' | 'fail' | 'unknown';
+  reason: string;
+  source_kind?: 'issuer' | 'regulator' | null;
+}
+
 export interface FundamentalReport {
   asset_kind?: 'stock' | 'mutual_fund';
   source: string; snapshot_date: string | null;
+  source_url?: string | null;
+  reporting_period_end?: string | null;
   rating: 'supported' | 'caution' | 'expensive' | 'unsupported' | 'missing' | 'stale' | 'incomplete' | 'fund_review';
   eps: number | null; book_value: number | null; current_pe: number | null; current_pbv: number | null;
+  indicative_price_eps?: number | null;
+  valuation_basis?: 'verified_annual_eps' | 'verified_annualized_eps' | 'verified_ttm_eps' | 'verified_quarterly_eps' | 'reported_annualized_eps' | 'reported_quarterly_eps' | 'unverified_provider_basis';
+  verified_nav_per_unit?: number | null;
+  market_premium_discount_pct?: number | null;
+  verification?: FinancialVerification;
+  financial_checks?: FinancialCheck[];
+  verified_eligibility?: boolean;
   multiplier: number; needs_refresh: boolean; reasons: string[]; limitations: string[];
 }
 export interface EvidenceScore {
@@ -12,12 +56,25 @@ export interface EvidenceScore {
   historical_hits?: number; historical_samples?: number;
 }
 export interface PricePoint { date: string; close: number }
+
+export interface ModelEstimate {
+  model_id: string;
+  probability: number;
+  event: string;
+  horizon_days: number;
+  as_of: string;
+  label: string;
+  limitations: string[];
+  eligible_for_advisory: boolean;
+}
+
 export interface BuyIdea {
   fundamental_report?: FundamentalReport; symbol: string; horizon: 'day' | 'month'; horizon_days: number;
   reference_price: number; entry_low: number; entry_high: number;
   stop: number; target: number; quantity: number; outlay: number;
   estimated_net: number; estimated_fees: number; earliest_sell_date: string;
   confidence: EvidenceScore; rationale: string[]; chart: PricePoint[];
+  model_estimate?: ModelEstimate | null;
   metrics: { rsi: number; volume_ratio: number; trend_20: number; trend_50: number };
 }
 export interface EntryPlan {

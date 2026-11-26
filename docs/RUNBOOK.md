@@ -6,10 +6,13 @@ ethics/scope note first — this tool reads **public** data politely and does
 
 ## 1. Daily lifecycle
 
-NEPSE trades **Sunday–Thursday, 11:00–15:00 NPT** (UTC+5:45); Friday and
-Saturday are non-trading days (`nepse_trader/calendar.py`). EOD data on
-ShareSansar finalizes roughly **17:45 NPT**. So the daily job should run in the
-early evening NPT.
+The app schedules NEPSE sessions **Monday–Friday, 11:00–15:00 NPT** (UTC+5:45).
+The historical calendar uses the Sunday–Thursday week before 6 April 2026.
+Verified 26 November 2026 against the cabinet decision and published trading
+dates. [Cabinet decisions for Chaitra 2082](https://www.opmcm.gov.np/content/532/cabinet-chaitra/)
+
+Run the daily job in the early evening after ShareSansar publishes its
+end-of-day data, typically around **17:45 NPT**.
 
 ```bash
 PY=.venv/bin/python
@@ -40,13 +43,14 @@ emit signals or backtest meaningfully.
 limit on the in-app scheduler does **not** apply to system cron.
 
 ```cron
-# Example: server in UTC. 18:00 NPT = 12:15 UTC. Sunday–Thursday (cron 0-4).
-15 12 * * 0-4  cd /path/to/nepse-trader && .venv/bin/python -m nepse_trader.cli.main run-daily --report data/$(date +\%F).md >> data/cron.log 2>&1
+# Server in UTC. 18:00 NPT = 12:15 UTC. Monday–Friday.
+15 12 * * 1-5  cd /path/to/nepse-trader && .venv/bin/python -m nepse_trader.cli.main run-daily --report data/$(date +\%F).md >> data/cron.log 2>&1
 ```
 
 A non-trading day (weekend/holiday) simply ingests 0 rows and the job is a no-op —
 safe to leave scheduled year-round. NEPSE holidays follow the Bikram Sambat
-calendar and ad-hoc government declarations; the bot does not hardcode them.
+calendar and ad-hoc government declarations. Update `config/holidays.yaml`
+when a NEPSE closure is confirmed.
 
 ## 3. Sources & enabling/disabling
 

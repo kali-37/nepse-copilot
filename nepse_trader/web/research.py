@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
-from datetime import date
+from datetime import UTC, date, datetime
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Query
@@ -15,6 +15,37 @@ from nepse_trader.analysis.strategies import build_strategy
 from nepse_trader.analysis.walkforward import walk_forward
 
 router = APIRouter(prefix="/api/research", tags=["research"])
+
+
+@router.get("/financial-evidence")
+def financial_evidence_coverage():
+    from nepse_trader.advisor.financial_quality import financial_quality
+    from nepse_trader.storage.research import evidence_by_symbol
+    from nepse_trader.web.api import _storage
+
+    storage = _storage()
+    today = date.today()
+    now = datetime.now(UTC)
+    snapshots = storage.fundamentals(as_of=today)
+    symbols = []
+    complete = 0
+    for symbol, records in evidence_by_symbol(storage, as_of=now).items():
+        quality = financial_quality(snapshots.get(symbol), records, today=today, symbol=symbol, as_of=now)
+        verification = quality["verification"]
+        complete += quality["verified_eligibility"]
+        symbols.append({
+            "symbol": symbol,
+            "period_end": verification["period_end"],
+            "period_basis": verification["period_basis"],
+            "metrics": verification["matched_metrics"],
+            "status": verification["status"],
+        })
+    return {
+        "provider_symbols": len(snapshots),
+        "matched_symbols": sum(row["status"] == "matched_official_excerpt" for row in symbols),
+        "complete_symbols": complete,
+        "symbols": symbols,
+    }
 
 
 @router.get("/walk-forward")

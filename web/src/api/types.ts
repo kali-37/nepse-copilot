@@ -90,6 +90,15 @@ export interface Fundamentals {
   high_52w: number | null;
   low_52w: number | null;
   avg_volume_30d: number | null;
+  source_name?: string;
+  fetched_at?: string | null;
+  reporting_period?: string | null;
+  reporting_period_end?: string | null;
+  roe_pct?: number | null;
+  npl_pct?: number | null;
+  capital_adequacy_pct?: number | null;
+  nav_per_unit?: number | null;
+  nav_date?: string | null;
 }
 
 export interface PortfolioSummary {
@@ -469,7 +478,7 @@ export interface HealthSnapshot {
 }
 
 // --------------------------------------------------------------- background jobs
-export type JobKind = 'refresh-today' | 'ingest' | 'reconcile' | 'run-daily' | 'rag-index' | 'screen' | 'backfill' | 'fundamentals' | 'floorsheet';
+export type JobKind = 'refresh-today' | 'ingest' | 'reconcile' | 'run-daily' | 'rag-index' | 'screen' | 'backfill' | 'fundamentals' | 'floorsheet' | 'train-model';
 
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed' | 'cancelled';
 

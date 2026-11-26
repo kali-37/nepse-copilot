@@ -75,9 +75,9 @@ def test_scores_vary_with_evidence_and_quality_and_stay_bounded():
 
 
 def test_budget_shared_daily_monthly_and_dates_honest(pipe):
-    with freeze_time('2026-11-20 09:00:00'):
+    with freeze_time('2026-11-20 03:00:00'):
         board = build_decisions(pipe)
-    assert board['session'] == 'closed' and not board['stale']
+    assert board['session'] == 'trading_day' and not board['stale']
     assert board['market_date'] == LAST.isoformat() and board['requested_date'] == TODAY.isoformat()
     ideas = board['buys']['day'] + board['buys']['month']
     assert ideas and board['buys']['month']
@@ -90,14 +90,14 @@ def test_budget_shared_daily_monthly_and_dates_honest(pipe):
 
 
 def test_preopen_previous_session_usable_and_postclose_entry_moves(pipe):
-    with freeze_time('2026-11-22 03:00:00'):  # 08:45 NPT before Sunday open
+    with freeze_time('2026-11-20 03:00:00'):  # 08:45 NPT before Friday open
         board = build_decisions(pipe)
     assert board['session_phase'] == 'pre_open' and not board['stale']
-    assert board['earliest_entry_date'] == '2026-11-22'
-    with freeze_time('2026-11-19 10:00:00'):  # 15:45 NPT
+    assert board['earliest_entry_date'] == '2026-11-20'
+    with freeze_time('2026-11-20 10:00:00'):  # 15:45 NPT
         board = build_decisions(pipe)
     assert board['session_phase'] == 'after_close'
-    assert board['earliest_entry_date'] == '2026-11-22'
+    assert board['earliest_entry_date'] == '2026-11-23'
 
 
 def test_saved_exit_does_not_move_and_target_triggers_sell(pipe):

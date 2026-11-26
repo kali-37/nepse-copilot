@@ -524,6 +524,7 @@ class TestJobRoutes:
             "refresh-today",
             "run-daily",
             "screen",
+            "train-model",
         ]
         assert body["jobs"][0]["id"] == job_id
         assert "log" not in body["jobs"][0]

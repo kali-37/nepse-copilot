@@ -117,11 +117,11 @@ def holding_advice(
         entry_note = ""
         if entry_fundamentals.get("eps") is not None:
             entry_note = f"At entry, reported EPS was {entry_fundamentals['eps']:.2f} and book value was {entry_fundamentals.get('book_value')}. "
-        reason = (
-            entry_note
-            + " ".join(fundamental_report["reasons"])
-            + f" Snapshot {fundamental_report['snapshot_date']}; review the financial thesis before adding risk."
-        )
+        reason = entry_note + " ".join(fundamental_report["reasons"])
+        evidence_date = fundamental_report.get("reporting_period_end") or fundamental_report.get("snapshot_date")
+        if evidence_date:
+            reason += f" Latest financial evidence is dated {evidence_date}."
+        reason += " Review the financial thesis before adding risk."
     elif state is None:
         action, trigger = "review", "insufficient_history"
         reason = "A quote is available, but there is not enough history to judge the holding trend."
@@ -145,7 +145,7 @@ def holding_advice(
         reason += " Confirm settlement with your broker before selling."
     if action == "hold" and fundamental_report:
         if fundamental_report["rating"] in ("caution", "expensive"):
-            reason += " " + fundamental_report["reasons"][-1]
+            reason += " " + " ".join(fundamental_report["reasons"])
         elif fundamental_report["needs_refresh"]:
             reason += (
                 " Financial support is unconfirmed; refresh its snapshot before adding shares."

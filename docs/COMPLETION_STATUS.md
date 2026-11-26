@@ -1,4 +1,29 @@
-# Recommendation evidence and efficiency — 25 November 2026
+# Official financial evidence and model validation — 26 November 2026
+
+- Research shows official financial evidence by symbol, with reporting dates,
+  source documents, SHA-256 and missing checks. The reviewed NRB reports cover
+  capital ratios and non-performing loans for 48 listed lenders. The import
+  is repeatable and preserves first availability for point-in-time decisions.
+- Issuer excerpt verification and sector checks affect buy and investment
+  assessment when the relevant evidence is available. Provider estimates retain
+  their source and valuation basis.
+- The current market calendar uses Monday through Friday from 6 April 2026.
+  Existing forecasts retain their published dates and invalid dates are
+  excluded from simulated return statistics.
+- Both local models ran through 26 November 2026 data. The 3-session model
+  failed to beat base-rate forecasts on 1,232 held-out trades across 44 dates.
+  The 22-session model had 119 held-out trades across 16 dates, missed the
+  calibration baseline, and averaged a 3.68% net loss on 63 selected simulations.
+  Both are saved in **Research** with activation blocked.
+
+The public-source refresh completed for 26 November and the production
+dashboard showed the research and symbol evidence views in Chromium at 390 px
+with no JavaScript exceptions or horizontal overflow.
+Local verification passed 1,539 Python tests with one skip and 212 frontend
+tests. Ruff, frontend lint and the production build passed.
+[Technology and evaluation standards](TECHNOLOGY_AND_EVALUATION.md)
+
+## Previous release: recommendation evidence and efficiency — 25 November 2026
 
 This release improves measurement and computation without claiming a validated
 investment edge or superiority over commercial AI tools.

@@ -991,6 +991,35 @@ def _m0022_decision_track_record(conn) -> None:
     conn.execute("CREATE INDEX idx_prediction_engine_status ON predictions(kind,status,made_on)")
 
 
+def _m0023_verified_research(conn) -> None:
+    conn.executescript("""
+        BEGIN IMMEDIATE;
+        CREATE TABLE IF NOT EXISTS financial_evidence (
+            evidence_id TEXT PRIMARY KEY, symbol TEXT NOT NULL, period_end TEXT NOT NULL,
+            published_on TEXT, available_at TEXT NOT NULL,
+            verification_kind TEXT NOT NULL CHECK(verification_kind IN ('matched_official_excerpt','manual_attestation')),
+            payload TEXT NOT NULL);
+        CREATE INDEX IF NOT EXISTS idx_financial_evidence_available ON financial_evidence(symbol,available_at,period_end);
+        CREATE TABLE IF NOT EXISTS trained_models (
+            model_id TEXT PRIMARY KEY, horizon_days INTEGER NOT NULL,
+            created_at TEXT NOT NULL, data_as_of TEXT NOT NULL,
+            artifact TEXT NOT NULL, summary TEXT NOT NULL);
+        CREATE INDEX IF NOT EXISTS idx_trained_models_created ON trained_models(created_at);
+        CREATE TABLE IF NOT EXISTS model_deployments (
+            horizon_days INTEGER PRIMARY KEY, model_id TEXT NOT NULL REFERENCES trained_models(model_id),
+            activated_at TEXT NOT NULL);
+        CREATE TABLE IF NOT EXISTS model_deployment_events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT, horizon_days INTEGER NOT NULL,
+            model_id TEXT REFERENCES trained_models(model_id), action TEXT NOT NULL,
+            created_at TEXT NOT NULL);
+    """)
+    columns = {row[1] for row in conn.execute("PRAGMA table_info(predictions)")}
+    if "forecast_model_id" not in columns:
+        conn.execute("ALTER TABLE predictions ADD COLUMN forecast_model_id TEXT")
+    if "forecast_model_probability" not in columns:
+        conn.execute("ALTER TABLE predictions ADD COLUMN forecast_model_probability REAL")
+
+
 # Ordered list of (version_name, migration_fn).  New migrations append at the end.
 MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0000_initial", _m0000_initial),
@@ -1016,6 +1045,7 @@ MIGRATIONS: list[tuple[str, _Migration]] = [
     ("0020_position_plan_review", _m0020_position_plan_review),
     ("0021_decision_memory", _m0021_decision_memory),
     ("0022_decision_track_record", _m0022_decision_track_record),
+    ("0023_verified_research", _m0023_verified_research),
 ]
 
 

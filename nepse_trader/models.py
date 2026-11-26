@@ -244,6 +244,29 @@ class FundamentalData(_Base):
     low_52w: float | None = None
     avg_volume_30d: int | None = None
     fetched_at: datetime | None = None
+    source_name: str = ""
+    source_url: str | None = None
+    reporting_period: str | None = None
+    reporting_period_start: date | None = None
+    reporting_period_end: date | None = None
+    published_on: date | None = None
+    financial_units: str = "unknown"
+    eps_basis: str = "unknown"
+    roe_pct: float | None = Field(None, allow_inf_nan=False)
+    operating_cash_flow: float | None = Field(None, allow_inf_nan=False)
+    net_income: float | None = Field(None, allow_inf_nan=False)
+    total_debt: float | None = Field(None, allow_inf_nan=False)
+    total_equity: float | None = Field(None, allow_inf_nan=False)
+    total_assets: float | None = Field(None, allow_inf_nan=False)
+    cash_and_equivalents: float | None = Field(None, allow_inf_nan=False)
+    interest_expense: float | None = Field(None, allow_inf_nan=False)
+    ebit: float | None = Field(None, allow_inf_nan=False)
+    npl_pct: float | None = Field(None, allow_inf_nan=False)
+    capital_adequacy_pct: float | None = Field(None, allow_inf_nan=False)
+    core_capital_pct: float | None = Field(None, allow_inf_nan=False)
+    nav_per_unit: float | None = Field(None, allow_inf_nan=False)
+    nav_date: date | None = None
+    expense_ratio_pct: float | None = Field(None, allow_inf_nan=False)
 
     @field_validator("symbol")
     @classmethod

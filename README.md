@@ -202,13 +202,13 @@ Worked example (individual, short-term): BUY 100 @ 1000 → cash out **Rs 100,37
 
 ## Daily automation
 
-NEPSE trades **Sunday–Thursday, 11:00–15:00 NPT**; Friday and Saturday are
+NEPSE trades **Monday–Friday, 11:00–15:00 NPT**; Saturday and Sunday are
 non-trading days. Schedule the daily run after close (data finalizes ~17:45 NPT).
 Example cron (system local time):
 
 ```cron
-# 18:15 NPT, Sunday–Thursday  (adjust to your server's timezone)
-15 18 * * 0-4  cd /path/to/nepse-trader && .venv/bin/python -m nepse_trader.cli.main run-daily --report data/$(date +\%F).md
+# 18:15 NPT, Monday–Friday  (adjust to your server's timezone)
+15 18 * * 1-5  cd /path/to/nepse-trader && .venv/bin/python -m nepse_trader.cli.main run-daily --report data/$(date +\%F).md
 ```
 
 Add `--advisor` to `run-daily` to append and save the deterministic prescription;
@@ -340,4 +340,22 @@ Fund holdings receive fund/NAV review explanations instead of company EPS checks
 fund-specific NAV ingestion is still unavailable. Optimized chart calculations
 and shared price/cost reads preserve buy rankings while reducing repeated work.
 See [technology and evaluation standards](docs/TECHNOLOGY_AND_EVALUATION.md)
-for measured performance, comparison limits and the remaining path to validated AI.
+for measured performance and evaluation limits.
+
+### Official financial evidence and model validation
+
+Open **Research** for financial coverage and model validation. Symbol pages
+list matched values, reporting periods, source links and gaps. Use
+`nepse-trader fundamentals import-nrb` to import the reviewed Nepal Rastra Bank
+reports for commercial banks, development banks and finance companies. Use
+`nepse-trader fundamentals verify-statement <manifest.json>` for an allowlisted
+issuer filing with cited rows. PDF imports require `pdftotext`. The importer
+archives source bytes by SHA-256 and the dashboard reads the resulting records
+offline.
+
+**Model validation** evaluates a 3- or 22-session predictor on local price
+history. It reports chronological training, calibration and held-out test
+windows, simple baselines, fee-adjusted returns and date-block uncertainty.
+An eligible model requires explicit activation before its estimate can appear
+on a buy idea. The estimate covers a simulated 100-share trade conditional on
+entry. Evidence scores continue to drive ranking.

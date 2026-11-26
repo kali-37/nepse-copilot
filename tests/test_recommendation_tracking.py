@@ -17,6 +17,7 @@ from nepse_trader.advisor.track_record import (
     score_recommendations,
 )
 from nepse_trader.analysis.costs import CostEngine
+from nepse_trader.calendar import add_trading_days
 from nepse_trader.models import (
     CorporateAction,
     CorporateActionType,
@@ -26,7 +27,7 @@ from nepse_trader.models import (
 )
 
 MADE = date(2026, 11, 18)
-ENTRY, SECOND, DEADLINE = date(2026, 11, 19), date(2026, 11, 22), date(2026, 11, 23)
+ENTRY, SECOND, DEADLINE = date(2026, 11, 19), date(2026, 11, 20), date(2026, 11, 23)
 
 
 @pytest.fixture
@@ -222,8 +223,8 @@ def test_bounded_scoring_rotates_past_missing_data_instead_of_starving_new_calls
 @pytest.mark.parametrize(
     "made,stamp,expected_entry,expected_deadline",
     [
-        ("2026-11-20", "2026-11-20T10:00:00+00:00", "2026-11-22", "2026-11-24"),
-        ("2026-11-18", "2026-11-18T03:00:00+00:00", "2026-11-18", "2026-11-22"),
+        ("2026-11-20", "2026-11-20T10:00:00+00:00", "2026-11-23", "2026-11-25"),
+        ("2026-11-18", "2026-11-18T03:00:00+00:00", "2026-11-18", "2026-11-20"),
     ],
 )
 def test_first_future_open_and_horizon_are_frozen_at_publication(
@@ -242,7 +243,8 @@ def test_first_future_open_and_horizon_are_frozen_at_publication(
 
 def test_delayed_scoring_does_not_exclude_a_prediction_that_exited_before_corporate_action(pipe):
     p = prediction(pipe)
-    p["deadline"] = "2026-12-17"
+    p["horizon_days"] = 22
+    p["deadline"] = add_trading_days(ENTRY, 21).isoformat()
     action = CorporateAction(
         symbol="TEST",
         ex_date=date(2026, 11, 26),
@@ -257,6 +259,14 @@ def test_delayed_scoring_does_not_exclude_a_prediction_that_exited_before_corpor
     delayed = evaluate_recommendation(p, tape, as_of=date(2026, 11, 30), corporate_actions=[action])
     assert immediate.outcome == delayed.outcome == "STOP_HIT"
     assert immediate.realized_net_pnl == delayed.realized_net_pnl
+
+
+def test_old_sunday_forecast_is_excluded_with_its_original_dates(pipe):
+    p = prediction(pipe)
+    p.update(forecast_entry_on="2026-11-22", deadline="2026-11-24")
+    outcome = evaluate_recommendation(p, [], as_of=date(2026, 11, 25))
+    assert outcome.outcome == "EXCLUDED" and outcome.entry_on == date(2026, 11, 22)
+    assert outcome.net_return_pct is None and "calendar" in outcome.basis
 
 
 def test_generic_journal_api_cannot_terminally_score_dashboard_forecasts(pipe):

@@ -93,6 +93,8 @@ export function SymbolDetailPage() {
     close: p.close,
     volume: p.volume,
   }));
+  const fund = assessment?.asset_kind === 'mutual_fund' ||
+    /mutual fund/i.test(`${fundamentals?.sector ?? ''} ${fundamentals?.company_name ?? ''}`);
 
   return (
     <div className="space-y-6">
@@ -255,14 +257,33 @@ export function SymbolDetailPage() {
           {history && (history.trades.length > 0 || history.events.length > 0) && <Card title="Your past trades & advice"><div className="text-sm space-y-3">{history.trades.map((trade,i) => <details key={`${trade.business_date}-${i}`}><summary className="cursor-pointer">{trade.business_date} · {trade.side.toUpperCase()} {trade.quantity} shares at NPR {Number(trade.price).toFixed(2)}</summary>{trade.entry_plan?.rationale.map(reason => <p key={reason} className="mt-2 text-text-secondary">{reason}</p>)}</details>)}{history.events.map((event,i) => <p key={`${event.evaluated_at}-${i}`} className="text-text-secondary">{event.market_date ?? 'No quote'} · {event.previous_action ? `${event.previous_action.toUpperCase()} → ` : ''}{event.action.toUpperCase()}: {event.reason}</p>)}</div></Card>}
           {assessment && <Card title="Fundamental assessment"><FundamentalsPanel report={assessment} /></Card>}
           {fundamentals && (
-            <Card title="Fundamentals">
+            <Card title="Provider fundamentals">
+              <p className="mb-4 text-sm text-text-secondary">
+                {fundamentals.source_name || 'Public provider snapshot'}
+                {fundamentals.fetched_at && ` · Fetched ${fundamentals.fetched_at.slice(0, 10)}`}
+                {fundamentals.reporting_period_end
+                  ? ` · Period ends ${fundamentals.reporting_period_end}`
+                  : fundamentals.reporting_period && ` · ${fundamentals.reporting_period}`}
+              </p>
               <div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
                 <FItem label="Sector" value={fundamentals.sector || '—'} />
                 <FItem label="Market Price" value={fundamentals.market_price !== null ? `NPR ${fundamentals.market_price.toFixed(2)}` : '—'} />
-                <FItem label="EPS" value={fundamentals.eps !== null ? fundamentals.eps.toFixed(2) : '—'} />
-                <FItem label="P/E" value={fundamentals.pe_ratio !== null ? fundamentals.pe_ratio.toFixed(2) : '—'} />
-                <FItem label="Book Value" value={fundamentals.book_value !== null ? fundamentals.book_value.toFixed(2) : '—'} />
-                <FItem label="PBV" value={fundamentals.pbv !== null ? fundamentals.pbv.toFixed(2) : '—'} />
+                {fund ? (
+                  <>
+                    <FItem label="Reported NAV per unit" value={formatStat(fundamentals.nav_per_unit, 2)} />
+                    <FItem label="Provider NAV date" value={fundamentals.nav_date ?? '—'} />
+                  </>
+                ) : (
+                  <>
+                    <FItem label="EPS" value={formatStat(fundamentals.eps, 2)} />
+                    <FItem label="P/E" value={formatStat(fundamentals.pe_ratio, 2)} />
+                    <FItem label="Book Value" value={formatStat(fundamentals.book_value, 2)} />
+                    <FItem label="PBV" value={formatStat(fundamentals.pbv, 2)} />
+                    {fundamentals.roe_pct != null && <FItem label="Reported ROE" value={formatStat(fundamentals.roe_pct, 2, '%')} />}
+                    {fundamentals.npl_pct != null && <FItem label="Reported NPL" value={formatStat(fundamentals.npl_pct, 2, '%')} />}
+                    {fundamentals.capital_adequacy_pct != null && <FItem label="Reported capital adequacy" value={formatStat(fundamentals.capital_adequacy_pct, 2, '%')} />}
+                  </>
+                )}
                 <FItem label="Dividend" value={fundamentals.dividend_pct !== null ? `${fundamentals.dividend_pct.toFixed(2)}%` : '—'} />
                 <FItem label="Market Cap" value={fundamentals.market_cap !== null ? `NPR ${(fundamentals.market_cap / 1e7).toFixed(1)}Cr` : '—'} />
                 <FItem label="52W High" value={fundamentals.high_52w !== null ? `NPR ${fundamentals.high_52w.toFixed(2)}` : '—'} />
@@ -278,7 +299,7 @@ export function SymbolDetailPage() {
   );
 }
 
-function formatStat(value: number | null, digits: number, suffix = ''): string {
+function formatStat(value: number | null | undefined, digits: number, suffix = ''): string {
   return typeof value === 'number' && Number.isFinite(value)
     ? `${value.toFixed(digits)}${suffix}`
     : '—';

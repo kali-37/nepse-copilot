@@ -134,9 +134,8 @@ def _parse_date(value: str | None) -> date | None:
 def _latest_market_date() -> date:
     """The date the dashboard should show when the caller did not pick one.
 
-    ``date.today()`` is the wrong default: NEPSE is shut on Friday and Saturday
-    and on every public holiday, so on those days a "today" query returns an
-    empty market and the UI looks broken rather than closed.
+    Use the latest published session so the dashboard retains market data
+    during weekends, holidays and publication delays.
     """
     storage = _storage()
     return storage.latest_reconciled_date() or storage.latest_price_date() or date.today()
@@ -1320,7 +1319,7 @@ class JobSubmitRequest(BaseModel):
     surfaces as a failed job with the reason attached.
     """
 
-    kind: Literal["refresh-today", "ingest", "reconcile", "run-daily", "rag-index", "screen", "backfill", "fundamentals", "floorsheet"]
+    kind: Literal["train-model", "refresh-today", "ingest", "reconcile", "run-daily", "rag-index", "screen", "backfill", "fundamentals", "floorsheet"]
     params: dict[str, Any] = Field(default_factory=dict)
 
 
@@ -1740,6 +1739,10 @@ def ai_test(body: AiTestRequest):
 from nepse_trader.web.research import router as _research_router  # noqa: E402
 
 app.include_router(_research_router)
+
+from nepse_trader.web.model_research import router as _model_research_router  # noqa: E402
+
+app.include_router(_model_research_router)
 
 from nepse_trader.web.decisions import router as _decision_router  # noqa: E402
 

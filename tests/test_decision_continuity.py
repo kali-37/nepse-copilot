@@ -95,13 +95,13 @@ def test_confirming_unknown_mirror_purchase_date_restores_review_deadline(pipe, 
     assert json.loads(position["entry_thesis"]) == original
     advice = evaluate(pipe, position, [date(2026, 11, 23)])
     assert advice["review_on"] == add_trading_days(ENTRY, 22).isoformat()
-    assert advice["earliest_sell_date"] == "2026-11-22"
+    assert advice["earliest_sell_date"] == "2026-11-20"
     assert advice["trend_confirmations"] == 1
 
 
 def test_three_completed_weak_sessions_trigger_named_monthly_exit(pipe):
     position = purchase(pipe)
-    advice = evaluate(pipe, position, [date(2026, 11, 19), date(2026, 11, 22), date(2026, 11, 23)])
+    advice = evaluate(pipe, position, [date(2026, 11, 19), date(2026, 11, 20), date(2026, 11, 23)])
     assert advice["action"] == "sell" and advice["trigger_code"] == "confirmed_weakness"
     assert advice["settled"] and advice["trend_confirmations"] == 3
     assert "3 consecutive completed sessions" in advice["reason"]
@@ -109,7 +109,7 @@ def test_three_completed_weak_sessions_trigger_named_monthly_exit(pipe):
 
 def test_live_weak_candle_does_not_count_as_completed_confirmation(pipe):
     position = purchase(pipe)
-    days = [date(2026, 11, 19), date(2026, 11, 22), date(2026, 11, 23)]
+    days = [date(2026, 11, 19), date(2026, 11, 20), date(2026, 11, 23)]
     bars = [
         PriceBar(symbol="DOLTI", business_date=d, close=100, source=SourceName.MANUAL) for d in days
     ]
@@ -131,7 +131,7 @@ def test_hard_stop_overrides_monthly_patience_but_waits_for_settlement(pipe):
     advice = evaluate(pipe, purchase(pipe), [date(2026, 11, 19)], quote=89)
     assert advice["action"] == "sell" and advice["trigger_code"] == "stop_hit"
     assert advice["exit_status"] == "waiting_settlement"
-    assert advice["earliest_sell_date"] == "2026-11-22"
+    assert advice["earliest_sell_date"] == "2026-11-20"
     assert "90.00" in advice["reason"]
 
 
@@ -155,14 +155,14 @@ def test_mutual_fund_placeholder_ratios_are_not_reported_as_earnings_deteriorati
 def test_missing_completed_session_and_recovering_trend_break_confirmations(pipe):
     p = purchase(pipe)
     assert evaluate(pipe, p, [date(2026, 11, 19), date(2026, 11, 23)])["trend_confirmations"] == 1
-    days = [date(2026, 11, 19), date(2026, 11, 22), date(2026, 11, 23)]
+    days = [date(2026, 11, 19), date(2026, 11, 20), date(2026, 11, 23)]
     advice = evaluate(pipe, p, days, [WEAK, STRONG, WEAK])
     assert advice["action"] == "hold" and advice["trend_confirmations"] == 1
 
 
 def test_long_term_plan_requires_more_confirmation_than_daily_plan(pipe):
     long_term = purchase(pipe, horizon=252)
-    days = [date(2026, 11, 19), date(2026, 11, 22), date(2026, 11, 23)]
+    days = [date(2026, 11, 19), date(2026, 11, 20), date(2026, 11, 23)]
     assert evaluate(pipe, long_term, days)["action"] == "hold"
     assert evaluate(pipe, long_term, days)["confirmations_required"] == 5
 
@@ -261,12 +261,12 @@ def test_exit_is_remembered_until_explicit_plan_review_and_events_do_not_duplica
         pipe.storage._conn.execute("SELECT COUNT(*) FROM holding_advice_events").fetchone()[0] == 1
     )
     p = owned_positions(pipe)[0]
-    advice = evaluate(pipe, p, [day, date(2026, 11, 22)], [STRONG, STRONG])
+    advice = evaluate(pipe, p, [day, date(2026, 11, 20)], [STRONG, STRONG])
     assert advice["action"] == "sell" and "confirmed on 2026-11-19" in advice["reason"]
-    with freeze_time("2026-11-22"):
+    with freeze_time("2026-11-20"):
         set_position_plan(pipe, symbol="DOLTI", quantity=100, stop=90, target=150, bought_on=ENTRY)
     new = owned_positions(pipe)[0]
-    assert evaluate(pipe, new, [date(2026, 11, 22)], [STRONG])["action"] == "hold"
+    assert evaluate(pipe, new, [date(2026, 11, 20)], [STRONG])["action"] == "hold"
 
 
 def test_closed_position_has_reentry_cooldown_instead_of_immediate_rebuy(pipe):
@@ -292,7 +292,7 @@ def test_book_value_deterioration_explains_the_failing_financial_condition(pipe)
     from nepse_trader.models import FundamentalData
 
     p = purchase(pipe)
-    day = date(2026, 11, 22)
+    day = date(2026, 11, 20)
     bar = PriceBar(symbol="DOLTI", business_date=day, close=100, source=SourceName.MANUAL)
     assessment = assess_fundamentals(
         FundamentalData(symbol="DOLTI", eps=10, book_value=-1),
@@ -359,7 +359,7 @@ def test_expensive_fundamentals_lower_holding_evidence_and_are_explained(pipe):
     from nepse_trader.models import FundamentalData
 
     p = purchase(pipe)
-    day = date(2026, 11, 22)
+    day = date(2026, 11, 20)
     bar = PriceBar(symbol="DOLTI", business_date=day, close=100, source=SourceName.MANUAL)
     common = dict(quote=100, quality=0.95, expected=day, completed=day, today=day)
     good = assess_fundamentals(

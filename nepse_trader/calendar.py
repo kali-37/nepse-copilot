@@ -2,7 +2,7 @@
 
 Provides holiday detection, trading-day queries, and annualisation period
 counts. Holidays are loaded from ``config/holidays.yaml`` and supplemented
-with the standard weekend (Friday + Saturday, per current NEPSE schedule).
+with the trading-week rule effective for each date.
 """
 
 from __future__ import annotations
@@ -15,15 +15,14 @@ import yaml
 
 from nepse_trader.config import CONFIG_DIR
 
-# NEPSE standard trading weeks: Sunday–Thursday.
-# Friday and Saturday are non-trading days.
-_NON_TRADING_WEEKDAYS = {4, 5}  # Monday=0 … Friday=4, Saturday=5
+# Cabinet meeting 57/082, decision 19 (Chaitra 22, 2082).
+# https://www.opmcm.gov.np/content/532/cabinet-chaitra/
+# Public bodies moved to a Saturday/Sunday weekend from Chaitra 23.
+_MONDAY_FRIDAY_FROM = date(2026, 4, 6)
 
 
 def _default_holidays() -> list[dict[str, Any]]:
     return [
-        {"name": "New Year", "month": 1, "day": 1},
-        {"name": "Martyrs' Day", "month": 1, "day": 29},
         {"name": "Democracy Day", "month": 2, "day": 19},
         {"name": "International Women's Day", "month": 3, "day": 8},
         {"name": "Constitution Day", "month": 9, "day": 20},
@@ -54,7 +53,7 @@ def load_holidays(path: Path | None = None) -> list[date]:
             for y in (2020, 2021, 2022, 2023, 2024, 2025, 2026, 2027, 2028, 2029, 2030):
                 holidays.append(date(y, h["month"], h["day"]))
     # Variable (Bikram Sambat) holidays can specify a range.
-    for span in (raw.get("ranges") or []):
+    for span in raw.get("ranges") or []:
         start = date(span["start_year"], span["start_month"], span["start_day"])
         end = date(span["end_year"], span["end_month"], span["end_day"])
         d = start
@@ -78,9 +77,15 @@ def _get_holidays() -> list[date]:
 
 def is_trading_day(d: date) -> bool:
     """Return ``True`` if *d* is a NEPSE trading day."""
-    if d.weekday() in _NON_TRADING_WEEKDAYS:
+    weekend = (4, 5) if d < _MONDAY_FRIDAY_FROM else (5, 6)
+    if d.weekday() in weekend:
         return False
     return d not in _get_holidays()
+
+
+def session_policy() -> tuple[str, tuple[str, ...]]:
+    """Identity of the date rules and closures used to schedule trades."""
+    return _MONDAY_FRIDAY_FROM.isoformat(), tuple(d.isoformat() for d in _get_holidays())
 
 
 def next_trading_day(d: date) -> date:
@@ -104,8 +109,7 @@ def add_trading_days(d: date, n: int) -> date:
     forward to the next trading day (so a settlement date computed from a
     Friday trade lands on a day the market is actually open).
 
-    This is what T+2 settlement needs: two *trading* days, not two calendar
-    days. A Thursday buy settles the following Monday, not Saturday.
+    T+2 settlement counts two *trading* days across either weekend schedule.
     """
     d = next_trading_day(d) if n >= 0 else previous_trading_day(d)
     step = timedelta(days=1 if n >= 0 else -1)

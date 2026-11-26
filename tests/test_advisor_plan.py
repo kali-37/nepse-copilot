@@ -27,8 +27,7 @@ from nepse_trader.advisor.plan import (
 from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.models import PriceBar, Signal, SignalAction
 
-# A Thursday. Chosen because T+2 from here crosses the Fri/Sat NEPSE weekend,
-# so a naive "+2 calendar days" answer is visibly wrong.
+# A Thursday whose T+2 settlement crosses the weekend.
 THURSDAY = date(2026, 8, 20)
 
 
@@ -251,7 +250,7 @@ class TestCardNumbers:
 
 
 class TestSettlement:
-    """T+2 is *trading* days. Every case here is one a naive +2 gets wrong."""
+    """T+2 follows the trading schedule for the day of the trade."""
 
     def test_thursday_buy_settles_monday(self):
         result = build_plan_card("N", _bars(end_date=THURSDAY), [BUY], equity=1_000_000)
@@ -260,27 +259,23 @@ class TestSettlement:
         assert result.earliest_sell_date == date(2026, 8, 24)
         assert result.earliest_sell_date.strftime("%A") == "Monday"
 
-    def test_wednesday_buy_settles_sunday(self):
+    def test_wednesday_buy_settles_friday(self):
         wednesday = date(2026, 8, 19)
         result = build_plan_card("N", _bars(end_date=wednesday), [BUY], equity=1_000_000)
         assert isinstance(result, PlanCard)
-        # Naive +2 would say Friday the 21st, which is not a trading day.
-        assert result.earliest_sell_date == date(2026, 8, 23)
+        assert result.earliest_sell_date == date(2026, 8, 21)
 
     def test_settlement_skips_a_holiday(self):
-        """Christmas 2026 falls on a Friday, already a weekend — use Constitution Day."""
         from nepse_trader.calendar import add_trading_days, is_trading_day
 
-        constitution_day = date(2026, 9, 20)
-        assert not is_trading_day(constitution_day)
-        # The Friday before (18th) is a weekend; trade on Thursday the 17th.
-        thursday = date(2026, 9, 17)
-        assert is_trading_day(thursday)
-        settle = add_trading_days(thursday, 2)
-        # Sun 20th is the holiday, so T+1 is Mon 21st and T+2 is Tue 22nd.
-        assert settle == date(2026, 9, 22)
+        new_year = date(2026, 4, 14)
+        monday = date(2026, 4, 13)
+        assert not is_trading_day(new_year)
+        assert is_trading_day(monday)
+        settle = add_trading_days(monday, 2)
+        assert settle == date(2026, 4, 16)
 
-        result = build_plan_card("N", _bars(end_date=thursday), [BUY], equity=1_000_000)
+        result = build_plan_card("N", _bars(end_date=monday), [BUY], equity=1_000_000)
         assert isinstance(result, PlanCard)
         assert result.earliest_sell_date == settle
 

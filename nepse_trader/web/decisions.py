@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import json
-from datetime import date
+from datetime import UTC, date, datetime
 from decimal import Decimal
 from typing import Literal
 
@@ -129,6 +129,7 @@ def update_position_plan(symbol: str, body: PositionPlanRequest):
 @router.get('/fundamentals/{symbol}')
 def fundamental_analysis(symbol: str):
     from nepse_trader.advisor.fundamentals import assess_fundamentals
+    from nepse_trader.storage.research import evidence_by_symbol
     from nepse_trader.web.api import _pipeline
     pipe=_pipeline()
     today=date.today()
@@ -140,8 +141,11 @@ def fundamental_analysis(symbol: str):
     from nepse_trader.advisor.decision_state import session_dates
     expected=session_dates(today)[0]
     quote=quote_row[0] if quote_row and date.fromisoformat(quote_row[1])>=expected else None
+    now = datetime.now(UTC)
+    evidence = evidence_by_symbol(pipe.storage, as_of=now, symbol=symbol)
     return {'symbol':symbol,'quote':quote,'quote_date':quote_row[1] if quote_row else None,
-            **assess_fundamentals(snapshot,quote=quote,snapshot_date=snapshot_date,today=today)}
+            **assess_fundamentals(snapshot,quote=quote,snapshot_date=snapshot_date,today=today,
+                                  evidence=evidence.get(symbol, ()),symbol=symbol,as_of=now)}
 
 
 @router.get('/history/{symbol}')

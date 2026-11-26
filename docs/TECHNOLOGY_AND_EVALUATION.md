@@ -14,11 +14,11 @@ this table does not claim that every competing tool has these features.
 | Criterion | Current application | Evidence needed for a stronger claim |
 |---|---|---|
 | Market coverage | NEPSE-focused public sources; source disagreement is visible | Complete licensed/current data with measured freshness and errors |
-| Explanation | Technical indicators, financial checks and saved entry reasons | Verified financial statements and evidence-backed news/event analysis |
-| Financial depth | Dated EPS/book value and quote-based valuation | Cash flow, debt, ROE, bank capital/NPLs and reporting-period verification |
+| Explanation | Technical indicators, financial checks and saved entry reasons | Broader verified filings and evidence-backed news and event analysis |
+| Financial depth | Dated provider snapshots, matched issuer excerpts and NRB loan quality and capital ratios | Consistent statements across sectors, including cash flow, leverage and return on equity |
 | Funds | Correctly separated from company earnings rules; NAV review requested | Verified NAV, distributions, expenses and fund trading/redemption terms |
 | Prediction quality | Versioned prospective journal and simulated outcome measurements | Sustained out-of-sample performance, live execution validation and calibration |
-| AI | Optional grounded synthesis, local retrieval, budgets and caching | A trained predictor evaluated against simple baselines without time leakage |
+| AI | Optional grounded synthesis and an offline, time-ordered model evaluation with explicit activation | A candidate that clears held-out and prospective validation |
 | Personal decisions | Remembered horizon, fixed exits, settlement and recorded trades | Exact per-lot accounting and broker-confirmed execution |
 | Hosting | Private local SQLite dashboard; source code is public | Authentication, user isolation and operational testing for shared hosting |
 
@@ -71,17 +71,83 @@ Actual spread, queue position, slippage, market impact, order rejection and
 unrecorded corporate actions are not verified. Simulated results remain research
 evidence, not confirmed broker performance.
 
-## What remains before claiming a validated AI edge
+## Financial evidence
 
-1. Verify official financial periods and add sector/fund-specific fundamentals.
-2. Collect a sustained prospective record across rising, falling and sideways markets.
-3. Use chronological training/validation/test splits with purging for overlapping horizons.
-4. Compare a candidate model with current rules, cash and appropriate market/portfolio baselines after realistic costs.
-5. Measure calibration, error by sector/horizon, downside risk and confidence intervals on held-out calls.
-6. Monitor source drift and model drift; version each policy before its new predictions.
+The reviewed mid-July 2026 NRB releases cover the core capital adequacy ratio,
+total capital adequacy ratio and non-performing loan ratio for 48 listed
+lenders. The three reports are provisional. Evidence carries the issuer's
+matched row, reporting date, retrieval and verification timestamps, and
+document SHA-256. Sources accessed 2026-11-26.
+[Commercial banks](https://www.nrb.org.np/contents/uploads/2026/09/KFI-ASAR-END-2083-Provisional.pdf)
+[Development banks](https://www.nrb.org.np/contents/uploads/2026/09/KFI_2083_Asar-B.pdf)
+[Finance companies](https://www.nrb.org.np/contents/uploads/2026/09/KFI_2083_Asar_C.pdf)
 
-These are remaining evaluation requirements. The application does not currently
-claim that a trained model, commercial-tool superiority or calibrated win
-probabilities have been delivered.
+Reporting-period and document checks also apply to issuer excerpts. Same-period
+regulator and issuer figures retain their source scope. A material risk finding
+can lower the evidence grade or block a buy, and absent checks remain visible.
+Only records already retrieved and verified at the evaluation time can affect
+advice. The import retains the precise source versions reviewed for this release.
+
+An issuer verification manifest contains the symbol, official HTTPS
+`source_url`, `period_start`, `period_end`, `period_basis` and the source
+`period_quote`. Under `metrics`, each key such as `eps` contains a numeric
+`value`, `unit`, full source row `quote`, `unit_quote` and `context_quote`
+that binds the row and units to that period. Run
+`nepse-trader fundamentals verify-statement manifest.json` to fetch, match
+and archive the source. The verifier requires a retrievable filing on a
+registered issuer host with unambiguous dates, rows and units. The initial
+live import covers regulator ratios. Complete verified sector checklists and
+issuer filings beyond this coverage remain sparse.
+
+The reviewed Everest filing and Nepal Telecom interim filing remain
+unverified in the dashboard. Everest's download path was denied by the
+client's robots parser. The Nepal Telecom PDF exceeded the verifier's
+download limit and its extracted comparative cells needed review.
+Sources inspected 2026-11-26.
+[Everest quarterly filing](https://everestbankltd.com/wp-content/uploads/2026/11/1st-Quarterly-Financial-Report-of-Fiscal-year-2083-84.pdf)
+[Everest robots policy](https://everestbankltd.com/robots.txt)
+[Nepal Telecom filing](https://cms.ntc.net.np/storage/media/F48rpftftCt2ncE6Ip62u35iiC8EP9uqBG09UclI.pdf)
+
+## Validation of trained models
+
+The predictor uses raw price and volume features from a trailing window.
+Labels simulate the subsequent session's open, a fixed entry zone, T+2,
+conservative stops and targets, and the configured cost and tax model. The
+scaler and logistic classifier use the training window. Platt calibration uses
+the following window. The final chronological test excludes labels that span
+partition boundaries. Missing sessions, unfilled entries and known corporate
+actions affect coverage and appear in the report.
+
+The activation gate checks sample size, Brier score and log loss against
+training and calibration base rates, discrimination, calibration error and
+date-block uncertainty. It also tests fee-adjusted results against chart-rule
+and same-stock holding benchmarks where available. Evaluation evidence and
+input fingerprints are saved per model. When a model passes and is activated,
+its estimate remains a separate field on qualifying buy ideas. The historical
+test covers the simulated trade, while live fills and sustained prospective
+calibration require separate observations.
+
+### Local evaluation on 26 November 2026
+
+The latest evaluations used classified stocks and reconciled prices available
+through 2026-11-26. Lower Brier scores indicate more accurate probabilities.
+
+| Horizon | Held-out trades and dates | Model Brier | Training base-rate Brier | Calibration base-rate Brier | AUC | Activation |
+|---|---:|---:|---:|---:|---:|---|
+| 3 sessions | 1,232 trades across 44 dates | 0.22129 | 0.21984 | 0.21984 | 0.506 | Blocked |
+| 22 sessions | 119 trades across 16 dates | 0.31122 | 0.33643 | 0.30088 | 0.440 | Blocked |
+
+The 3-session model fell short of both frozen base-rate baselines. The
+22-session model had insufficient sample and date coverage, fell short of the
+calibration base rate, and averaged a 3.68% net loss across 63 selected
+simulated trades. Both evaluations are available in the local Research panel.
+
+NEPSE session dates use Monday through Friday starting on 2026-04-06. The
+government weekend change and stored exchange sessions agree around the
+cutover. Published forecasts retain their original entry and deadline. Any
+forecast whose dates conflict with the trading calendar is excluded from
+return statistics.
+Government decision accessed 2026-11-26.
+[Cabinet minute 57/082, item 19](https://www.opmcm.gov.np/content/532/cabinet-chaitra/)
 
 Outcome measurements use the data available at scoring time. Later source corrections or newly discovered corporate actions may require manual audit; published outcome rows are not automatically revised.

@@ -43,6 +43,6 @@ describe('recommendation evidence', () => {
       reasons: ['Dated NAV and fund terms need review.'], limitations: ['NAV is not verified.'] }} />);
     expect(screen.getByText('Mutual fund · valuation review needed')).toBeInTheDocument();
     expect(screen.queryByText('Reported EPS')).not.toBeInTheDocument();
-    expect(screen.getByText(/Company earnings rules are not applied/)).toBeInTheDocument();
+    expect(screen.getByText(/stock buying screens exclude this fund/)).toBeInTheDocument();
   });
 });

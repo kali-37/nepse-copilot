@@ -48,6 +48,7 @@ from nepse_trader.calendar import is_trading_day
 from nepse_trader.config import Settings
 from nepse_trader.pipeline import DailyPipeline
 from nepse_trader.storage import Storage
+from nepse_trader.web.model_research import train_model_job
 from nepse_trader.web.refresh import refresh_today
 
 log = logging.getLogger("nepse_trader.web.jobs")
@@ -267,6 +268,10 @@ Handler = Callable[[JobContext], dict[str, Any]]
 #: stage list from this before the thread starts, so the UI can render the whole
 #: shape of a job — including steps not reached yet — from the first poll.
 JOB_STAGES: dict[str, list[tuple[str, str]]] = {
+    "train-model": [
+        ("data", "Load classified stock history"), ("examples", "Build dated trade examples"),
+        ("fit", "Train, calibrate and test"), ("save", "Save validation results"),
+    ],
     "refresh-today": [("ingest", "Download market prices"), ("reconcile", "Cross-check sources"),
                       ("history", "Repair missing history"), ("analyse", "Analyse charts and historical outcomes"),
                       ("context", "Refresh company and broker data"), ("save", "Update buy and sell advice")],
@@ -578,6 +583,7 @@ def _job_floorsheet(ctx: JobContext) -> dict[str, Any]:
 
 
 HANDLERS: dict[str, Handler] = {
+    "train-model": train_model_job,
     "refresh-today": refresh_today,
     "backfill": _job_backfill,
     "fundamentals": _job_fundamentals,

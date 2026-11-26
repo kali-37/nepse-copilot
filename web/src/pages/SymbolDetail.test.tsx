@@ -67,7 +67,7 @@ describe('SymbolDetailPage', () => {
     expect(screen.getByText('-31.44%')).toBeInTheDocument();
 
     // Fundamentals panel.
-    expect(screen.getByText('Fundamentals')).toBeInTheDocument();
+    expect(screen.getByText('Provider fundamentals')).toBeInTheDocument();
     expect(screen.getByText('Commercial Banks')).toBeInTheDocument();
     expect(screen.getByText('NPR 1280.00')).toBeInTheDocument();
     expect(screen.getByText('43.21')).toBeInTheDocument();
@@ -79,6 +79,39 @@ describe('SymbolDetailPage', () => {
     expect(screen.queryByText('No price data')).not.toBeInTheDocument();
   });
 
+  it('shows statement provenance and unknown checks next to the provider snapshot', async () => {
+    const source = 'https://www.nabilbank.com/reports/annual.pdf';
+    const hash = 'a'.repeat(64);
+    server.use(http.get('*/api/decisions/fundamentals/:symbol', () => HttpResponse.json({
+      asset_kind: 'stock', source: 'Official issuer document excerpts', snapshot_date: '2026-11-24',
+      rating: 'supported', eps: 30, book_value: 200, current_pe: 25.5, current_pbv: 2.55,
+      multiplier: 1, needs_refresh: false, reasons: [], limitations: [],
+      verification: {
+        status: 'matched_official_excerpt', period_start: '2025-07-16', period_end: '2026-07-15',
+        period_basis: 'annual', available_at: '2026-11-22T03:00:00Z', matched_metrics: ['eps', 'book_value'],
+        missing_metrics: ['npl_pct'], conflicts: [],
+        source_documents: [{ evidence_id: 'official-a', source_url: source, source_kind: 'issuer', document_sha256: hash,
+          available_at: '2026-11-22T03:00:00Z', published_on: '2026-08-10', verified_at: '2026-11-22T03:00:00Z' }],
+        note: 'The issuer’s statement supplies the matched values.',
+      },
+      financial_checks: [
+        { metric: 'eps', label: 'Earnings per share', value: 30, unit: 'NPR_per_share', verdict: 'pass', reason: 'Positive reported earnings.' },
+        { metric: 'npl_pct', label: 'Non-performing loans', value: null, unit: null, verdict: 'unknown', reason: 'Official evidence unavailable.' },
+      ],
+    })));
+    renderDetail();
+
+    expect(await screen.findByText('Matched official evidence')).toBeInTheDocument();
+    expect(screen.getByText(/2 matched metrics · 1 required item missing/)).toBeInTheDocument();
+    await userEvent.click(screen.getByText('Financial checks & sources'));
+    expect(screen.getByText('Non-performing loans')).toBeVisible();
+    expect(screen.getByText('Unknown')).toBeVisible();
+    expect(screen.getByRole('link', { name: /Open source document/ })).toHaveAttribute('href', source);
+    expect(screen.getByText(hash)).toBeVisible();
+    expect(screen.getByText('Issuer statement')).toBeVisible();
+    expect(screen.getByText('Provider fundamentals')).toBeInTheDocument();
+  });
+
   it.each(['short_history', 'missing_statistics'])('keeps fund analysis visible with %s', async scenario => {
     const missing = scenario === 'short_history'
       ? { skewness: null, kurtosis: null }
@@ -88,7 +121,7 @@ describe('SymbolDetailPage', () => {
     server.use(
       http.get('*/api/symbols/:symbol/quant', () => HttpResponse.json({ ...fx.quantStats, symbol: 'MNMF2', n: 3, ...missing })),
       http.get('*/api/symbols/:symbol/fundamentals', () => HttpResponse.json({ ...fx.fundamentals,
-        company_name: 'Muktinath Mutual Fund 2', sector: 'Mutual Fund', eps: null, book_value: null })),
+        company_name: 'Muktinath Mutual Fund 2', sector: 'Mutual Fund', eps: 0, book_value: 0 })),
       http.get('*/api/decisions/fundamentals/:symbol', () => HttpResponse.json({
         asset_kind: 'mutual_fund', rating: 'fund_review', source: 'Public snapshot',
         snapshot_date: '2026-11-25', eps: null, book_value: null, current_pe: null,
@@ -100,6 +133,7 @@ describe('SymbolDetailPage', () => {
 
     expect(await screen.findByText('Mutual fund · valuation review needed')).toBeInTheDocument();
     expect(screen.getByText('Dated NAV and fund terms need review.')).toBeInTheDocument();
+    expect(screen.queryByText('EPS')).not.toBeInTheDocument();
     expect(screen.queryByText(/deterioration/)).not.toBeInTheDocument();
     const skewness = screen.getByText('Skewness').parentElement!;
     expect(within(skewness).getByText('—')).toBeInTheDocument();
@@ -134,7 +168,7 @@ describe('SymbolDetailPage', () => {
     expect(screen.getByText('No signals')).toBeInTheDocument();
     expect(screen.getByText('Not enough data')).toBeInTheDocument();
     // Fundamentals card is omitted entirely when the fetch fails.
-    expect(screen.queryByText('Fundamentals')).not.toBeInTheDocument();
+    expect(screen.queryByText('Provider fundamentals')).not.toBeInTheDocument();
     // No price means no quoted close.
     expect(screen.queryByText(/^NPR 1275\.00$/)).not.toBeInTheDocument();
   });

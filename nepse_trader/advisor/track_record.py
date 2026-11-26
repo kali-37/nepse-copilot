@@ -58,6 +58,7 @@ def record_recommendations(conn, board: dict) -> None:
             ).fetchone():
                 continue
             buy = engine.compute(OrderSide.BUY, idea["entry_high"], 100)
+            estimate = idea.get("model_estimate")
             sell = engine.compute(
                 OrderSide.SELL,
                 idea["target"],
@@ -85,6 +86,7 @@ def record_recommendations(conn, board: dict) -> None:
                     {
                         "reasons": idea["rationale"],
                         "fundamentals": idea.get("fundamental_report"),
+                        "model_estimate": estimate,
                         "published_at": board["generated_at"],
                         "method": METHOD,
                     }
@@ -102,10 +104,13 @@ def record_recommendations(conn, board: dict) -> None:
                 commit=False,
             )
             conn.execute(
-                "UPDATE predictions SET forecast_entry_on=?,deadline=? WHERE prediction_id=?",
+                """UPDATE predictions SET forecast_entry_on=?,deadline=?,
+                    forecast_model_id=?,forecast_model_probability=? WHERE prediction_id=?""",
                 (
                     entry_on.isoformat(),
                     add_trading_days(entry_on, idea["horizon_days"] - 1).isoformat(),
+                    estimate["model_id"] if estimate else None,
+                    estimate["probability"] if estimate else None,
                     identity,
                 ),
             )
@@ -163,6 +168,8 @@ def evaluate_recommendation(
             benchmark_return_pct=baseline,
         )
 
+    if not is_trading_day(entry_on) or deadline != add_trading_days(entry_on, row["horizon_days"] - 1):
+        return result(EXCLUDED, "The published entry or deadline conflicts with the trading calendar.")
     if cutoff < entry_on:
         return result(UNRESOLVED, "The next-session entry has not completed yet.")
     action_dates = {

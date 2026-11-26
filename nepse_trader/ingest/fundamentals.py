@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import math
 import re
-from datetime import UTC, datetime
+from datetime import UTC, date, datetime
+from urllib.parse import quote
 
 from selectolax.parser import HTMLParser
 
@@ -91,6 +92,18 @@ class MeroLaganiFundamentalsClient(SourceClient):
                 return None
             return v.strip().strip(":").strip()
 
+        def _dated(v: str | None) -> date | None:
+            # A fiscal-year/BS label is not silently converted into a Gregorian date.
+            if v and re.fullmatch(r"\d{4}-\d{2}-\d{2}", v.strip()):
+                try:
+                    return date.fromisoformat(v.strip())
+                except ValueError:
+                    pass
+            return None
+
+        def _financial(*labels: str) -> float | None:
+            return _num(next((data[label] for label in labels if data.get(label)), None))
+
         symbol_data = FundamentalData(
             symbol=symbol,
             company_name=_strip_label(data.get("Company Name")) or "",
@@ -105,6 +118,19 @@ class MeroLaganiFundamentalsClient(SourceClient):
             market_cap=_num(data.get("Market Capitalization")),
             avg_volume_30d=int(_num(data.get("30-Day Avg Volume")) or 0) or None,
             fetched_at=datetime.now(UTC),
+            source_name="MeroLagani public snapshot",
+            source_url=f"{self.BASE_URL}?symbol={quote(symbol.upper(), safe='')}",
+            reporting_period=data.get("Reporting Period") or data.get("Fiscal Year"),
+            reporting_period_start=_dated(data.get("Period Start")),
+            reporting_period_end=_dated(data.get("Period End") or data.get("Report Period End")),
+            published_on=_dated(data.get("Published Date")),
+            roe_pct=_financial("ROE", "Return on Equity"),
+            npl_pct=_financial("NPL", "NPL Ratio", "Non Performing Loan Ratio"),
+            capital_adequacy_pct=_financial("Capital Adequacy Ratio", "CAR"),
+            core_capital_pct=_financial("Core Capital Ratio", "Tier 1 Capital Ratio"),
+            nav_per_unit=_financial("NAV", "Net Asset Value", "NAV Per Unit"),
+            nav_date=_dated(data.get("NAV Date")),
+            expense_ratio_pct=_financial("Expense Ratio", "Total Expense Ratio"),
         )
 
         # Parse 52-week high/low from the "52 Weeks High - Low" field

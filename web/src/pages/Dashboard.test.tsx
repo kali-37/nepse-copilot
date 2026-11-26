@@ -61,19 +61,41 @@ describe('decision dashboard', () => {
       expect(screen.getByText('NABIL')).toBeInTheDocument();
     } finally { reads.mockRestore(); }
   });
-  it('puts daily buys, confidence and held-stock exits first', async () => {
+  it('puts daily buys, evidence scores and held-stock exits first', async () => {
     renderWithProviders(<DashboardPage />);
     expect(await screen.findByText('NABIL')).toBeInTheDocument();
     expect(screen.getByRole('heading', { name: 'Your next move.' })).toBeInTheDocument();
-    expect(screen.getByText('64% confidence')).toBeInTheDocument();
+    expect(screen.getByText('64% evidence score')).toBeInTheDocument();
     expect(screen.getByText('88% holding evidence')).toBeInTheDocument();
     expect(screen.getByText('Consider selling')).toBeInTheDocument();
     expect(screen.getByText(/using the last published session/)).toBeInTheDocument();
     expect(screen.getByText('2026-11-19', { selector: 'strong' })).toBeInTheDocument();
     await userEvent.click(screen.getByRole('tab', { name: 'Monthly' }));
     expect(screen.getByText('EBL')).toBeInTheDocument();
-    expect(screen.getByText('73% confidence')).toBeInTheDocument();
+    expect(screen.getByText('73% evidence score')).toBeInTheDocument();
     expect(screen.queryByText('NABIL')).not.toBeInTheDocument();
+  });
+  it.each([true, false])('shows a separate model probability only when eligible (%s)', async eligible => {
+    const candidate = {
+      ...decisionBoard.buys.day[0],
+      model_estimate: {
+        model_id: 'model-example', probability: .582, event: 'net_profitable_modeled_trade_given_entry',
+        horizon_days: 3, as_of: '2026-11-19', label: 'Validated model estimate',
+        limitations: ['Uses a modeled 100-share trade.'], eligible_for_advisory: eligible,
+      },
+    };
+    server.use(http.get('*/api/decisions', () => HttpResponse.json({
+      ...decisionBoard, buys: { ...decisionBoard.buys, day: [candidate] },
+    })));
+    renderWithProviders(<DashboardPage />);
+    expect(await screen.findByText('64% evidence score')).toBeInTheDocument();
+    if (eligible) {
+      const estimate = screen.getByRole('complementary', { name: 'Trained model estimate' });
+      expect(within(estimate).getByText('58.2%')).toBeInTheDocument();
+      expect(within(estimate).getByText(/assumes an entry fill/i)).toBeInTheDocument();
+    } else {
+      expect(screen.queryByRole('complementary', { name: 'Trained model estimate' })).not.toBeInTheDocument();
+    }
   });
   it('one refresh button submits the full refresh job and reloads advice', async () => {
     let submitted: unknown;

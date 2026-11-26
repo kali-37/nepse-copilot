@@ -222,13 +222,15 @@ class DailyPipeline:
         return count
 
     # ---------------------------------------------------------------- signals
-    def reconciled_bars(self, symbol: str, *, adjusted: bool = True, as_of: date | None = None) -> list[PriceBar]:
+    def reconciled_bars(
+        self, symbol: str, *, adjusted: bool = True, as_of: date | None = None,
+        limit: int | None = None,
+    ) -> list[PriceBar]:
         """Reconciled history for a symbol as PriceBars (for indicators)."""
         out: list[PriceBar] = []
         actions = self.storage.corporate_actions(symbol) if adjusted else []
-        history = self.storage.reconciled_history(symbol)
+        history = self.storage.reconciled_history(symbol, as_of=as_of, limit=limit)
         if as_of is not None:
-            history = [r for r in history if r.business_date <= as_of]
             actions = [action for action in actions if action.ex_date <= as_of]
             if adjusted:
                 adjust_prices(history, actions)

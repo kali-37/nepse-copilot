@@ -22,6 +22,7 @@ from nepse_trader.analysis.backtest import Backtester
 from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.analysis.strategies import STRATEGIES, build_strategy
 from nepse_trader.calendar import is_trading_day
+from nepse_trader.cli.financial_evidence import register as _register_financial_evidence
 from nepse_trader.cli.progress import progress_bars, progress_spinner
 from nepse_trader.config import get_settings, load_sources
 from nepse_trader.export import EXPORT_TABLES, export_csv, export_parquet
@@ -1739,6 +1740,7 @@ def ai_test(
 from nepse_trader.cli.research import register as _register_research  # noqa: E402
 
 _register_research(app)
+_register_financial_evidence(fund_app)
 
 if __name__ == "__main__":
     app()

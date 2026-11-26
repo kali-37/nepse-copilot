@@ -5,8 +5,9 @@ from __future__ import annotations
 import json
 import math
 import uuid
-from datetime import UTC, date, datetime, timedelta
+from datetime import UTC, date, datetime, time, timedelta
 from decimal import Decimal
+from zoneinfo import ZoneInfo
 
 from nepse_trader.advisor.decision_signals import (
     chart_states,
@@ -18,6 +19,7 @@ from nepse_trader.advisor.decision_state import decision_state, market_date, ses
 from nepse_trader.advisor.fundamentals import assess_fundamentals
 from nepse_trader.advisor.holding_advice import holding_advice, record_advice_history
 from nepse_trader.advisor.investments import investment_candidate
+from nepse_trader.advisor.model_estimates import attach_model_estimates
 from nepse_trader.advisor.positions import available_cash, owned_positions
 from nepse_trader.analysis.costs import CostEngine
 from nepse_trader.calendar import (
@@ -26,6 +28,9 @@ from nepse_trader.calendar import (
     previous_trading_day,
 )
 from nepse_trader.models import OrderSide
+from nepse_trader.storage.research import evidence_by_symbol
+
+_NEPAL = ZoneInfo("Asia/Kathmandu")
 
 
 def build_decisions(
@@ -45,6 +50,8 @@ def build_decisions(
     investments = []
     fundamental_checks = {}
     fundamentals = pipe.storage.fundamentals(as_of=today)
+    evidence_cutoff = min(datetime.now(UTC), datetime.combine(today, time.max, tzinfo=_NEPAL))
+    evidence = evidence_by_symbol(pipe.storage, as_of=evidence_cutoff)
     snapshot_dates = {
         row[0]: date.fromisoformat(row[1])
         for row in pipe.storage._conn.execute(
@@ -120,6 +127,15 @@ def build_decisions(
                 bars,
                 states,
             )
+            fundamental = assess_fundamentals(
+                fundamentals.get(symbol),
+                quote=state.close,
+                snapshot_date=snapshot_dates.get(symbol),
+                today=today,
+                evidence=evidence.get(symbol, ()),
+                symbol=symbol,
+                as_of=evidence_cutoff,
+            )
             if not stale and bars[-1].business_date == observed:
                 candidate = investment_candidate(
                     symbol,
@@ -131,6 +147,7 @@ def build_decisions(
                     today=today,
                     owned=symbol in owned,
                     cost_engine=engine,
+                    fundamental_report=fundamental,
                 )
                 if candidate:
                     observed_sessions = pipe.storage._conn.execute(
@@ -149,12 +166,6 @@ def build_decisions(
                                 cooldowns[symbol], 1
                             ).isoformat()
                         investments.append(candidate)
-            fundamental = assess_fundamentals(
-                fundamentals.get(symbol),
-                quote=state.close,
-                snapshot_date=snapshot_dates.get(symbol),
-                today=today,
-            )
             for horizon, days in [("day", 3), ("month", 22)]:
                 strength = state.strength(days)
                 hits, total = historical_evidence(
@@ -276,6 +287,10 @@ def build_decisions(
             if len(selected) == 3:
                 break
         ideas[horizon] = selected
+    if today == datetime.now(_NEPAL).date():
+        attach_model_estimates(
+            pipe, ideas, today=today, observed=observed, completed=completed, entry_on=trade_date
+        )
     owned_advice = []
     for position in holdings:
         symbol = position["symbol"]
@@ -304,6 +319,9 @@ def build_decisions(
                 quote=quote,
                 snapshot_date=snapshot_dates.get(symbol),
                 today=today,
+                evidence=evidence.get(symbol, ()),
+                symbol=symbol,
+                as_of=evidence_cutoff,
             ),
         )
         net_exit_pnl = None
@@ -357,7 +375,7 @@ def build_decisions(
             "candidates": sorted(investments, key=lambda p: -p["score"])[:4],
             "checked_fundamentals": len(fundamentals),
             "fundamentals_missing": len(set(names) - set(fundamentals)),
-            "criteria": "Positive EPS/book value; quote-based P/E≤30 and price/book≤3; snapshot≤90 days old; ≥200 sessions over ≥1 year; average volume≥10,000; historical drawdown≤25%, volatility≤30% and positive fee-adjusted price CAGR.",
+            "criteria": "Positive EPS and book value, price/EPS≤30 and price/book≤3, current issuer evidence or provider snapshot within 90 days, ≥200 sessions over ≥1 year, average volume≥10,000, historical drawdown≤25%, volatility≤30% and positive fee-adjusted price CAGR.",
             "note": "A research watchlist, not a reserved purchase budget. Stocks can lose capital. Historical price returns are not promised returns or bank deposit rates.",
         },
         recent_exits=[

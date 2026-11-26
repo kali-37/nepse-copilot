@@ -7,8 +7,24 @@ import { Card } from '../components/ui/Card';
 import { ErrorState } from '../components/ui/ErrorState';
 import { LoadingSpinner } from '../components/ui/LoadingSpinner';
 import { StatCard } from '../components/ui/StatCard';
+import { FinancialCoveragePanel } from '../components/research/FinancialCoveragePanel';
+import { ModelValidationPanel } from '../components/research/ModelValidationPanel';
 
 export function ResearchPage() {
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold text-text-primary">Research</h1>
+        <p className="mt-1 text-sm text-text-secondary">Inspect financial evidence, test model estimates and search the local evidence library</p>
+      </div>
+      <FinancialCoveragePanel />
+      <ModelValidationPanel />
+      <EvidenceLibrary />
+    </div>
+  );
+}
+
+function EvidenceLibrary() {
   const [query, setQuery] = useState('');
   const [symbol, setSymbol] = useState('');
   const [stats, setStats] = useState<RagStats | null>(null);
@@ -41,12 +57,7 @@ export function ResearchPage() {
   if (error && !stats) return <ErrorState message={error} />;
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold text-text-primary">Research</h1>
-        <p className="mt-1 text-sm text-text-secondary">Search the local evidence library and inspect the facts behind a decision</p>
-      </div>
-
+    <>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <StatCard label="Indexed documents" value={stats?.total ?? 0} icon={<Database className="h-4 w-4" />} />
         <StatCard label="Search engine" value={stats?.uses_fts ? 'FTS5 / BM25' : 'LIKE fallback'} icon={<Search className="h-4 w-4" />} />
@@ -144,6 +155,6 @@ export function ResearchPage() {
           </Card>
         </div>
       )}
-    </div>
+    </>
   );
 }
